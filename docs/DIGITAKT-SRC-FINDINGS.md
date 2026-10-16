@@ -51,21 +51,26 @@ stack and buffer guards. These checks do not boot the firmware.
 
 ## Validation status
 
-The final scoped sources pass 27 shared native checks on each OS. They cover
+The silent PARAM fixture passes 26 shared native checks on each OS. They cover
 eight independent values, defaults, editing, locks/restoration, separate note
 locks, None/53 choices and both LFOs, including null sound pointers. Codec
 checks preserve original words, fractions, metadata and native-unwritten
 output bytes; mixed kits/pools and 79-lane pattern conversion pass. A shared
 legacy-machine scenario checks the existing reset, popup and LFO naming paths.
 
-Both final scoped images boot from fresh snapshots and cold-load the named
-panel-saved project. All eight distinct values and held-step locks restore;
-page 2 reports native IDs 164–171. All eight controls edit independently,
-and held-step editing of the last addition leaves its base value unchanged.
-The actual panel LFO chooser selects raw virtual destination 53 on both
-releases. Strict runtime checks pass. Screens
-used for PR preparation are `docs/img/digitakt-src-page1.png` and
-`docs/img/digitakt-src-page2.png` (emulated OS 1.54).
+The test consumer is `tests/fixtures/digitakt-src-parameters`: two pages
+of eight controls and no audio-render callback. Native setters and saved
+sounds retain all sixteen values, including P4 and P16. The OS 1.54 PARAM
+diagnostic image boots with strict checks passing; two PARAM tracks produce
+zero PCM. Page 1 uses IDs 132–139 and page 2 uses 164–171. Screens used for
+PR preparation are `docs/img/digitakt-src-page1.png` and
+`docs/img/digitakt-src-page2.png` (physical Digitakt mk1, OS 1.54,
+read directly from its LCD buffer over USB).
+
+Earlier SINE images booted and cold-loaded all eight additions and locks.
+Panel encoder/LFO gestures passed on earlier sixteen-value images; they
+were not reconfirmed on the refreshed SINE image. This is historical
+evidence, not complete physical acceptance of PARAM.
 
 Actual standalone menu save/list/ordinary-replacement/reload passed on both
 prior sixteen-value builds; 1.54 restored eight distinct nonzero values.
@@ -82,6 +87,28 @@ docs, catalogs, dependencies and packaging have no net changes.
 
 Final build/lint/patch checks pass on both OS releases, including byte-exact
 verification of untouched sections 2/4/5/8. Unit tests: 21 passed. SDK checks:
-12 passed and 18 skipped for missing Digitone stock/released-core fixtures. No physical hardware or Transfer
-validation occurred. Hardware acceptance remains
-[#4](https://github.com/simonjohansson/elekloader/issues/4).
+12 passed and 18 skipped for missing Digitone stock/released-core fixtures.
+
+## OS 1.54 hardware findings
+
+The user flashed the diagnostic builds and used digihealth's read-only USB
+channel with FAST AUDIO off. Two SINE test tracks caused visible screen lag:
+CPU averaged 98.6%, DSP 94.1%, with 102.8% peak DSP. Removing parameter locks
+left load high. The expanded test oscillator is removed from the PR; the
+public SINE example is unchanged.
+
+With two silent PARAM tracks, the user confirmed both SRC pages and added
+92 parameter locks, including 40 on the added parameters. The user then
+confirmed the playhead moving and the screen remaining snappy. A 20-reading
+capture during that physical playback measured mean CPU 80.2%, mean DSP
+76.9% and peak DSP 85.8%, with no reported heap faults. Processed-value
+readback observed changing, nonzero additions on both tracks. This is close
+to the ordinary-track baseline (79.4% CPU, 76.5% DSP).
+
+Earlier scripted MIDI Start phases did not independently establish that
+playback advanced; only the later physical-PLAY capture is playback evidence.
+These measurements attribute the bulk of the observed load to the removed
+test oscillator, not proof of zero cost for the shared parameter hooks.
+Full physical LFO and sound/project persistence acceptance remains
+[#4](https://github.com/simonjohansson/elekloader/issues/4). Diagnostics,
+raw captures and firmware stay local and are excluded from the PR.

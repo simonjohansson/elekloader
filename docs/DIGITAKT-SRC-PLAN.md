@@ -10,8 +10,8 @@ persistence. This is shared support for custom firmware machines.
 Change `mods/machine-pages`, its C SDK declarations, the existing native
 probes and test fixtures. Keep core, existing UI3/UI3.1 machines, the public
 SINE example, loader engines/checks, file schemas and dependencies unchanged.
-The test consumer retains SINE's original first-page behavior and demonstrates
-only the eight new values on page 2. Oscillator optimization is outside scope.
+The test consumer is silent PARAM: eight controls on each page, with no
+audio-render callback or oscillator. Oscillator optimization is outside scope.
 There is no compatibility layer for the abandoned two-addition experiment.
 
 ## Native identities
@@ -118,11 +118,12 @@ Use existing high-level probes for both OS releases:
    native calling conventions.
 4. Boot the final image, edit all eight controls, use held page actions and
    locks, save through menus, discard RAM snapshots and cold-reload a project.
-5. Demonstrate eight independent audible effects in the test consumer.
+5. Verify independent processed values with the silent PARAM consumer and
+   confirm that it registers no audio-render callback.
 
 Run unit tests, available SDK checks and build/lint/patch verification.
 Missing fixtures are skipped, not passed. No firmware or extracted data is
-committed; no hardware flashing is authorized. Physical checks remain #4.
+committed. Record physical checks and remaining gaps in #4.
 
 Evidence: [DIGITAKT-SRC-FINDINGS.md](DIGITAKT-SRC-FINDINGS.md).
 Tracking: [research #6](https://github.com/simonjohansson/elekloader/issues/6),

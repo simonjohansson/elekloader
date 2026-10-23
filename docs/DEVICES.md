@@ -528,8 +528,10 @@ the Digitakt II. Nothing has been sent to a unit yet.
     `0x46710000`-`0x48000000`, in both views, filled as the reset clear
     returns: through a cold boot and two panel sessions (every page, mode,
     arrow and encoder; PLAY, the 16 trigs, RECORD and MIDI notes) to 2.25G
-    instructions, only the stack's top 52 bytes changed, and the state
-    digest was the same with the region holding zeros, so nothing read it.
+    instructions, the canary held everywhere but the stack's top 52 bytes,
+    and the final state (the regions cleared) was the same as a run that
+    filled them with zeros. The probe compares contents, not accesses: a
+    read whose value is unused, or a write later undone, would not show.
     The area is 24 MB above the DMA buffers and 768 KB below the stack top.
   - SRAM is not qualified: the profile has no SRAM area and no `.fast`.
 - **Checked in an emulator** (digikit's `boot_gate`, ColdFire only): a

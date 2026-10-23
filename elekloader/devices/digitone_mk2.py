@@ -33,9 +33,10 @@ platform; the main OS runs from DDR at 0x40000400. Measured on OS 1.12
   alias (0x4E6C0000-0x4E709340, so 0x466C0000-0x46709340), and the stack
   top. No decoded instruction names 0x47E00000-0x48000000 or its alias
   besides the stack top and FLT_MAX. A canary over 0x46710000-0x48000000,
-  cached and uncached, was neither written nor read through a cold boot and
-  two panel sessions (to 2.25G instructions) but for the stack's top 52
-  bytes.
+  cached and uncached, held through a cold boot and two panel sessions in
+  digikit's emulator (ColdFire only, to 2.25G instructions) but for the
+  stack's top 52 bytes, and the final state matched a zero-filled run's.
+  That compares contents, not accesses.
   No core yet, so no linkable mods: `ddr` is unset and format-1 blobs get
   the area's size. SRAM is not qualified: there is no .fast area.
 """

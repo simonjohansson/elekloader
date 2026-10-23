@@ -68,8 +68,8 @@ Build it with the SDK (it needs m68k binutils; with Homebrew's
 `m68k-elf-binutils`, set `ELEKLOADER_CROSS=m68k-elf-`):
 
 ```bash
-python -m elekloader.sdk.build mods/core-dn2 --stock Digitone_II_OS1.12.syx      # out/core-0.2.elemod
-python -m elekloader.lint mods/core-dn2/out/core-0.2.elemod --stock Digitone_II_OS1.12.syx
+python -m elekloader.sdk.build mods/core-dn2 --stock Digitone_II_OS1.12.syx      # out/core-0.3.elemod
+python -m elekloader.lint mods/core-dn2/out/core-0.3.elemod --stock Digitone_II_OS1.12.syx
 ```
 
 Checked in digikit's emulator (ColdFire only, no DSP, so no audio; 23 Oct
@@ -97,3 +97,45 @@ fresh device-info and project-directory replies were identical before and
 after, and the user reported it playing and responsive. This is smoke
 evidence, not full hardware event or audio/workload qualification; HM02
 and HC02 have not been flashed.
+
+
+## 0.3: input bridge and SysEx observers
+
+DigiHealth's DN2 port uses these shared facilities; it owns no stock code
+sites. The six UI events and their existing implementations remain intact.
+
+- `input.c` merges physical and synthetic key masks and refuses physical
+  overlap or a full UI queue. `core_keys_set` and `core_keys_clear` run only
+  on the UI task. The stock driver at `0x4011fc8c` retains its 68-byte frame;
+  the bridge replays its complete eight-byte prologue and continues at
+  `0x4011fc94`. Its state bytes are at `0x445a2e30`.
+- The queue object is `0x4059e214`: the UI receives it at `0x4002f178`, and
+  initialization passes it to `0x4011fa7c`. `0x4029f0d0` is the panel's
+  pointer cell, not the queue object. Queue checks reserve room below the
+  stock key/encoder record-pool limits.
+- `core_encoder_turn(1..9, -30..30)` (nonzero detents) calls the stock panel
+  decoder `0x4011ff0c`. The stock periodic callback queues the accumulated
+  encoder event through the same core/stock UI path as physical input.
+- `core_millis()` uses the existing panel callback, registered at
+  `0x401200c4` with mask 1. PIT2's stock setup has prescaler 6 and modulus
+  17187: approximately 120 Hz at the derived 132 MHz bus clock. The bridge
+  adds 25 ms per three callbacks (8/9 ms resolution), separately from the
+  stock counter that wraps at 4096. It starts no timer. Device calibration
+  remains a physical check; a stalled scheduler can delay input cleanup.
+- `ev_sysex`: `void f(const unsigned char *message, unsigned length,
+  unsigned source)`, on the MIDI task before stock routing. It preserves
+  the router ABI at `0x4012197a` and always continues stock routing. Handlers
+  validate their own header, exact lengths and source; 2/4 are USB and 8/16
+  DIN. `fw_sysex_send` exports the stock sender `0x401236d2`.
+
+The C declarations are in `elekloader/sdk/include/digitone-mk2/core.h`.
+No arbitrary memory-write or function-call command is added. 0.3 is
+experimental and has not yet been installed on a unit. The earlier CO02
+hardware observations above apply to 0.2.
+
+`tests/test_dn2_input.py` checks ownership and input/queue bounds without
+firmware. `tests/test_digitone2.py` checks the stock sites, stack/queue
+contracts, clock setup and exact patch boundaries. DigiHealth's compiled
+DN2 test drives the stock SysEx router and verifies the six UI events,
+menu callbacks after reopening, input consumption, frame readback and
+hold expiry through independent diagnostic counters.

@@ -135,6 +135,27 @@ Digitakt II's, at the Digitone II's sites, and no render events (its audio
 renders on the DSP). It has no `.fast`: SRAM is not qualified there, so a
 mod with `.fast` code is refused. Its tick rate has not been measured.
 
+### Remote panel input and SysEx (core-dn2 0.3, Digitone II)
+
+Include `digitone-mk2/core.h` and require `resources.core: "0.3"`.
+On the UI task, `core_keys_set(group, synthetic_mask)` merges a group's
+synthetic buttons with the physical panel; `core_keys_clear()` releases
+only synthetic ownership. The result is `CORE_KEYS_OK`, `INVALID`, `BUSY`
+or `OVERLAP`. Refuse overlap, retry a busy release on a later tick, and
+bound every hold using unsigned `core_millis()` differences. Its resolution
+is 8/9 ms from the stock periodic callback; it leaves DTIM0 stopped.
+`core_encoder_turn(encoder, detents)` accepts encoder 1..9 and nonzero
+-30..30 detents, subject to queue bounds. Driver acceptance does not prove
+that a view handled the input: read back the resulting state.
+
+`ev_sysex` is `void f(const unsigned char *message, unsigned length,
+unsigned source)` on the MIDI task, before stock routing. Every observer
+must validate its header, lengths and source (2/4 USB, 8/16 DIN). It cannot
+take a message: stock routing continues. `fw_sysex_send(data, length,
+abort, port)` is the stock sender; port 2 selects USB. Keep UI actions out
+of the MIDI task; queue bounded work for `ev_tick`. The DigiHealth DN2
+port is an example of using all of this without owning stock sites.
+
 The Analog Rytm MKII's core (mods/core-ar2) has `ev_tick`, `ev_draw`,
 `ev_key`, `ev_enc`, `ev_settings`, `ev_render_in` and `ev_render_out`, and
 from 0.2 mod storage and the event `ev_project` ("Mod storage (core-ar2 0.2,

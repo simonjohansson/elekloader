@@ -33,7 +33,7 @@ There is one core file per device and OS:
 | Digitone mk1, Digitone Keys | 1.44 | `core-dn1-3.2-os1.44.elemod` | the same pre-release |
 | Digitone mk1, Digitone Keys | 1.43, 1.44 | `core-dn1-4.0.elemod`, `core-dn1-4.0-os1.44.elemod` | the [core-dn1-v4.0](https://github.com/irpina/elekloader/releases/tag/core-dn1-v4.0) pre-release |
 | Digitakt II | 1.17 | `core-dt2-1.0.elemod` | not released yet: build it ([below](#building-a-core)) |
-| Digitone II | 1.12 | `core-dn2-0.2.elemod` | experimental, not released: build it ([below](#building-a-core)); core alone flashed and booted on a unit (CO02); hardware event and audio qualification pending |
+| Digitone II | 1.12 | `core-dn2-0.3.elemod` | experimental, not released: build it ([below](#building-a-core)); core alone flashed and booted on a unit (CO02); hardware event and audio qualification pending |
 | Analog Rytm MKII | 1.73 | `core-ar2-0.2.elemod` | not released: the last core with 1.73; build it from commit 92a99c9 ([below](#building-a-core)) |
 | Analog Rytm MKII | 1.74 | `core-ar2-0.3.elemod` | the [core-ar2-v0.3](https://github.com/irpina/elekloader/releases/tag/core-ar2-v0.3) pre-release, and the shop; 1.74 only |
 | Analog Rytm MKII | 1.74 | `core-ar2-0.4.elemod` | not released: build it ([below](#building-a-core)); 1.74 only. Mods with pages built for 0.3 (rytm2_mods v1.2's lfo-rnd, voice-dac, euclid-accents, velocity-humanise, comp-preview) do not link with it: their sites overlap core's page sites |
@@ -123,7 +123,9 @@ core.
   render events (its audio renders on the DSP). Checked in digikit's
   emulator. Core alone (CO02) flashed over USB and its version was read back
   after reboot; the user reported a cold boot after 10 seconds off.
-  Hardware event and audio qualification remain pending.
+  From 0.3: a physical/synthetic panel bridge, bounded encoder turns, a
+  monotonic input clock and SysEx observers (`ev_sysex`). 0.3 is not yet
+  flashed; hardware event and audio qualification remain pending.
 - **Analog Rytm MKII** ([mods/core-ar2](../mods/core-ar2)): the Digitakt
   mk1's core.s, settings.s and render.s with the Rytm's addresses: the hook
   bus's tick (about 20 a second), draw, key, encoder and SETTINGS events,

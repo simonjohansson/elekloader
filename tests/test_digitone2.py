@@ -300,7 +300,8 @@ def built(moddir, tmp):
 CORE_SITES = ((0x40000538, '4eb9400019b0'), (0x4002e464, '4eb94011d5d4'),
               (0x4002e4ca, '4eb94011d60a'), (0x4002f20c, '4eb94002c5c8'),
               (0x4002f256, '4eb94002c55c'), (0x4009ff88, '205248780002'),
-              (0x400987a2, '4cef7c7c0018'))
+              (0x400987a2, '4cef7c7c0018'), (0x4011fc8c, '4fefffbc48d77cfc'),
+              (0x4011f8c4, '52b9466768b0'), (0x4012197a, '47f940207f9e'))
 
 
 def at(img, addr, n):
@@ -321,7 +322,7 @@ def test_the_cores_addresses_are_the_firmwares_calls():
         assert refs_to(img, sym[routine]) == [site], routine
     assert at(img, sym['VBR_FN'], 12) == '203c400000004e7b08014e75'
     for site, stock_bytes in CORE_SITES:
-        assert at(img, site, 6) == stock_bytes
+        assert at(img, site, len(stock_bytes) // 2) == stock_bytes
     assert at(img, 0x4002e4c6, 4) == '2f0b2f0a'                     # bmp (a3), then ctrl (a2)
     assert at(img, 0x4011d5d4, 10) == '206f0004102800204e75'         # return ctrl->dirty (+0x20)
     assert refs_to(img, 0x4011d5d4) == [0x4002e464]
@@ -364,7 +365,10 @@ def test_the_menu_routines_are_the_builders_own():
 CORE_HOOKS = {0x40000538: ('4eb9', 'boot'), 0x4002e464: ('4eb9', 'core_tick'),
               0x4002e4ca: ('4eb9', 'core_draw'), 0x4002f20c: ('4eb9', 'core_key'),
               0x4002f256: ('4eb9', 'core_enc'), 0x4009ff88: ('4ef9', 'core_settings'),
-              0x400987a2: ('4ef9', 'core_personalize')}
+              0x400987a2: ('4ef9', 'core_personalize'),
+              0x4011fc8c: ('4ef9', 'core_panel_buttons'),
+              0x4011f8c4: ('4eb9', 'core_panel_clock'),
+              0x4012197a: ('4eb9', 'core_sysex')}
 
 
 def assert_hooked(new, man):
@@ -375,10 +379,12 @@ def assert_hooked(new, man):
     for a, (op, target) in CORE_HOOKS.items():
         want = op + '%08x' % man['_map'][target]
         assert at(new, a, 6) == want, (hex(a), target, at(new, a, 6), want)
+        if a == 0x4011fc8c:
+            assert at(new, a + 6, 2) == '4e71'  # the eight-byte prologue, NOP-padded
 
 
 def test_core_builds_links_and_verifies():
-    """mods/core-dn2 alone: its two sites and the appended image change,
+    """mods/core-dn2 alone: only its declared sites and the appended image change,
     nothing else; its RAM is in the area; every other section is stock."""
     with tempfile.TemporaryDirectory() as tmp:
         core = built(os.path.join('mods', 'core-dn2'), tmp)
@@ -387,8 +393,8 @@ def test_core_builds_links_and_verifies():
     o = formats.parse(outputs['syx'], DEV)
     new = formats.main_image(o, DEV)
     changed = [i for i in range(len(img)) if new[i] != img[i]]
-    sites = [s - DEV.main_load for s, _ in CORE_SITES]
-    assert changed and all(any(s <= i < s + 6 for s in sites) for i in changed)
+    sites = [(s - DEV.main_load, len(stock) // 2) for s, stock in CORE_SITES]
+    assert changed and all(any(s <= i < s + width for s, width in sites) for i in changed)
     assert_hooked(new, man)
     lay = man['link']['layout']
     assert DEV.ddr[0] == lay['ddr'][0] < lay['bss'][1] <= DEV.ddr[1]
@@ -410,7 +416,7 @@ def test_the_example_links_with_core():
         st, img = stock()
         new = formats.main_image(formats.parse(outputs['syx'], DEV), DEV)
         changed = {i for i in range(len(img)) if new[i] != img[i]}
-        assert changed <= {s - DEV.main_load + k for s, _ in CORE_SITES for k in range(6)}
+        assert changed <= {s - DEV.main_load + k for s, stock in CORE_SITES for k in range(len(stock) // 2)}
         assert_hooked(new, man)
         # without core, or with two, or on core's site, or with .fast code: refused
         expect(lambda: patch.build(SYX, [hello], version='HM01', log=lambda *a: None), 'core')
@@ -553,6 +559,38 @@ def test_the_version_the_unit_reports_is_the_containers():
     st, img = stock()
     assert img[0x40134816 - DEV.main_load:][:12] == bytes.fromhex('2f3c000800004eb9401353ae')
     assert st.version == '1.12' and b'\x001.12\x00' not in img     # (1.125 is a parameter's label)
+
+
+
+
+def test_remote_input_uses_the_stock_panel_queue_and_periodic_callback():
+    """Core 0.3: addresses follow producers and consumer, not nearby globals.
+    The panel's queue pointer cell is not the queue object used for bounds.
+    PIT2's callback advances the separate monotonic clock; DTIM0 stays off.
+    """
+    st, img = stock()
+    with open(os.path.join(os.path.dirname(HERE), 'mods/core-dn2/mod.json')) as fh:
+        mod = json.load(fh)
+    sym = {k: int(v, 0) for k, v in mod['defsym'].items()}
+    assert sym['KEY_CONTINUE'] == 0x4011fc94 and sym['KEY_STACK'] == 68
+    assert sym['KEY_STATE'] == 0x445a2e30 and sym['UI_QUEUE'] == 0x4059e214
+    assert sym['PANEL_ENCODER'] == 0x4011ff0c and sym['PANEL_COUNTER'] == 0x466768b0
+    assert sym['SYSEX_SEND'] == 0x401236d2 and sym['SYSEX_TABLE'] == 0x40207f9e
+    assert at(img, 0x4011fc8c, 14) == '4fefffbc48d77cfc242f00482e02'
+    assert at(img, 0x4011fc9a, 6) == '41f9445a2e30'
+    assert at(img, 0x4002f178, 12) == '48794059e2144eb940001928'
+    assert at(img, 0x4002ee96, 12) == '48794059e2144eb94011fa7c'
+    assert at(img, 0x4011fe10, 6) == '2f394029f0d0'
+    assert at(img, 0x4011fa7c, 12) == '202f0004670623c04029f0d0'
+    assert at(img, 0x4011ff0c, 12) == '4fefffe47227202f002048d7'
+    assert [word(img, 0x401f3c10 + 4*i) for i in range(9)] == list(range(1, 10))
+    assert at(img, 0x401200c4, 14) == '48780001487af7f24eb940002aa4'
+    assert at(img, 0x4011f8c4, 6) == '52b9466768b0'
+    assert at(img, 0x40002c5e, 22) == '303c432313c1fc04002d30bc0636720933c0fc088002'
+    assert at(img, 0x4012194e, 24) == '4feffff048d70c0c226f0014222f0018242f001c71910c80'
+    assert at(img, 0x40121978, 8) == '204947f940207f9e'
+    assert at(img, 0x401236d2, 22) == '42004fefffe848d70c1c282f001c242f0020246f0024'
+    assert mod['collections']['ev_sysex'] == 4 and sym['NO_DTIM0'] == 1
 
 
 if __name__ == '__main__':

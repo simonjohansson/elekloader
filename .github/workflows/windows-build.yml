@@ -47,7 +47,9 @@ jobs:
           v=$(python -c "import elekloader; print(elekloader.__version__)")
           test "$TAG" = "v$v" || { echo "tag $TAG is not v$v"; exit 1; }
       - name: Unit tests
-        run: python tests/test_units.py
+        run: |
+          python tests/test_units.py
+          python -m unittest discover -s tests -p "test_sharc*.py"
       - name: Build tools
         run: python -m pip install -r packaging/requirements-build.txt
       - name: The core mods, from the release

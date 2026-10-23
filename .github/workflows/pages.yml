@@ -52,6 +52,7 @@ jobs:
       - name: Unit tests
         run: |
           python tests/test_units.py
+          python -m unittest discover -s tests -p "test_sharc*.py"
           node --test "js/test/*.test.ts"
       - name: The core mods, from the latest release
         run: |

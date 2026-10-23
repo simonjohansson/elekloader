@@ -120,6 +120,8 @@ docs match its code.
 
 - **[DN2 SHARC evidence](SHARC-DN2.md)**: the pinned stock identity, memory
   views, independent size limits and runtime ownership still to qualify.
+- **[SHARC boot records](SHARC-BOOT.md)**: ordered parsing and bounded synthetic
+  insertion, with shared Python/TypeScript refusal cases.
 - **[SHARC sine compiler probe](../examples/sharc-sine-probe/README.md)**:
   firmware-free developer qualification of a pinned open toolchain; not yet
   an installable DN2/DT2 module.

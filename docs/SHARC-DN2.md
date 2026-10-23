@@ -118,7 +118,7 @@ and its [cache correction](https://github.com/naturarum/dn2-cfw/blob/5c95c781803
 | Selache startup, generic linker map and division runtime | Not copied or linked into the sine; division-runtime license/header mismatch remains relevant only if later code needs it |
 
 The [compiler probe](../examples/sharc-sine-probe/README.md) documents its exact
-inputs and fallback toolchain. The next boot-record implementation is original
-code against the narrow format facts and independent synthetic vectors. No
+inputs and fallback toolchain. The [boot-record implementation](SHARC-BOOT.md) is original code against the
+narrow format facts and independent synthetic vectors. No
 current Digikit source is vendored, and an external development tool does not
 become an embedded runtime merely because it inspected an artifact.

@@ -477,9 +477,10 @@ Recovery to stock worked on the unit (21 Oct 2026).
 
 ## The Digitone II (1.12)
 
-The profile (`digitone_mk2.py`, where each fact's evidence is) and, from
-core-dn2 0.1, linkable mods with a core that boots and runs `ev_draw`
-(mods/core-dn2/README.md has its sites and evidence). The Digitone II
+Experimental. The profile (`digitone_mk2.py`, where each fact's evidence
+is), whole builds, and linkable mods with a core (core-dn2 0.2: tick, draw,
+key, encoder, SETTINGS and PERSONALIZE; mods/core-dn2/README.md has its
+sites and evidence). The Digitone II
 runs on the Digitakt II's platform, but every address, size and count here
 was found again in DN2 1.12's own sections (23 Oct 2026), none copied from
 the Digitakt II. Nothing has been sent to a unit yet.

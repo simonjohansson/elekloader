@@ -40,7 +40,8 @@ monolithic build; section 4 says how to go from A to B.
   uses them); `mods/core` builds it for the Digitakt mk1
   (`python -m elekloader.sdk.build mods/core --stock Digitakt_OS1.53.syx`),
   `mods/core-dn1` for the Digitone mk1, `mods/core-dt2` for the
-  Digitakt II and `mods/core-ar2` for the Analog Rytm MKII. The
+  Digitakt II, `mods/core-dn2` for the Digitone II (experimental) and
+  `mods/core-ar2` for the Analog Rytm MKII. The
   Octatrack's core, `mods/core-ot`, has a hook bus of its own from 0.2, with the Octatrack's events ("The hook bus on the
   Octatrack" below).
 
@@ -96,7 +97,7 @@ what you see when it is broken (section 5 has the fixes).
 12. **One file, one release.** A mod targets one stock release by hash.
     Porting to another OS version means finding every address again.
 
-### The hook bus (core's events): the Digitakt mk1, the Digitone mk1, the Digitakt II, the Analog Rytm MKII and the Analog Four MKII
+### The hook bus (core's events): the Digitakt mk1, the Digitone mk1, the Digitakt II, the Digitone II, the Analog Rytm MKII and the Analog Four MKII
 
 Handlers are C functions (arguments on the stack; d0-d1/a0-a1 free,
 everything else kept; the result in d0). `order` sorts handlers of one
@@ -181,6 +182,8 @@ The sites core owns (do not patch them):
   0x400ea41c;
 - Digitakt II 1.17: 0x40000538, 0x40032ad4, 0x40032b3a, 0x40033d94,
   0x40033dde, 0x400a5eac, 0x4009e2a2;
+- Digitone II 1.12: 0x40000538, 0x4002e464, 0x4002e4ca, 0x4002f20c,
+  0x4002f256, 0x4009ff88, 0x400987a2;
 - Analog Rytm MKII 1.73: 0x400008c0, 0x400a2bee, 0x400a2c56, 0x400a47cc,
   0x400a4816, 0x400db87e, 0x4011fb02, 0x40121656;
 - Analog Rytm MKII 1.74: 0x400008c0, 0x400a2c5a, 0x400a2cc2, 0x400a4838,
@@ -1607,6 +1610,8 @@ of your own. It is a complete mod: a C handler on `ev_draw` that draws a
 small square in the top-right corner of every screen. For the Digitakt II,
 `examples/hello-marker-dt2/` builds the same source, and
 `examples/perform-direct/` is a real mod in one key handler. For the
+Digitone II, `examples/hello-marker-dn2/` builds the same source, and
+`examples/hooks-check-dn2/` subscribes to every event its core has. For the
 Analog Rytm MKII, `examples/hello-marker-ar2/` builds the same source for
 1.73 and 1.74, and `examples/hooks-check-ar2/` subscribes to every event its
 core has.

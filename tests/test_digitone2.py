@@ -459,6 +459,11 @@ def test_hooks_check_links_with_core():
         d.pop('signature', None)
         p = write_mod(tmp, d, 'hc-render-0.1.elemod')
         expect(lambda: patch.build(SYX, [core, p], version='HC01', log=lambda *a: None), 'ev_render_in')
+        d = json.loads(json.dumps(doc))                                  # RAM past the 256 KB area
+        d['sections']['.bss']['size'] = DEV.ddr[1] - DEV.ddr[0]
+        d.pop('signature', None)
+        p = write_mod(tmp, d, 'hc-big-0.1.elemod')
+        expect(lambda: patch.build(SYX, [core, p], version='HC01', log=lambda *a: None), 'RAM')
         d = dict(doc, id='hooks-check-2')
         d.pop('signature', None)
         p = write_mod(tmp, d, 'hooks-check-2-0.1.elemod')

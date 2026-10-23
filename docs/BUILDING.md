@@ -56,8 +56,13 @@ MKII, the Analog Four MKII and the Digitone II:
 
 Don't turn the unit off until the upgrade is done.
 
-On the Digitone II, stock 1.12 has completed this route, but custom builds
-still need acceptance on a unit. The verifier caps the decoded update
+On the Digitone II, stock 1.12 has completed this route. A core-only build
+(CO02) also flashed over USB with elektroid-cli; its version was read back
+after reboot, and the user reported a cold boot after 10 seconds off.
+A one-minute MIDI exercise completed without transport errors, with the
+device responding afterward and the user reporting it playing and
+responsive. Full hardware event and audio/workload qualification remain
+pending. The verifier caps the decoded update
 (8-byte preamble plus container, including its seal) at 2 MiB, based on a
 measured USB stall with larger builds. This conservative cap has not been
 located in the firmware code ([device evidence](DEVICES.md#the-digitone-ii-112)).

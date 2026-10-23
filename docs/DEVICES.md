@@ -485,8 +485,9 @@ key, encoder, SETTINGS and PERSONALIZE; mods/core-dn2/README.md has its
 sites and evidence). The Digitone II
 runs on the Digitakt II's platform, but every address, size and count here
 was found again in DN2 1.12's own sections (23 Oct 2026), none copied from
-the Digitakt II. Stock 1.12 and MIDI recovery have worked on a unit;
-the first core builds stalled during USB transfer before flashing (below).
+the Digitakt II. Stock 1.12 and MIDI recovery have worked on a unit.
+The first core builds stalled during USB transfer before flashing; the
+smaller core-only CO02 build then flashed and booted successfully (below).
 
 - **Files.** The Digitakt II's family, device byte `0x15`, the same six
   sections (5, 2, 3, 4, 7, 8), main OS 3,196,288 bytes depacked. Sealed as
@@ -565,6 +566,23 @@ the first core builds stalled during USB transfer before flashing (below).
   builds even when they fit flash. This is an operational cap inferred
   from the stall, not proof of the exact receive-buffer boundary. The
   bootstrap's MIDI receive limit remains unknown.
+- **On the unit** (23 Oct 2026): the core-only CO02 from source `e12a80b`,
+  sha256 `90cdea1d94cbc39907353bc1f3b70c710b0b0e2ef44423e3b5679fdd12cb1832`,
+  transferred over USB with elektroid-cli in 94.5 seconds and flashed.
+  The user confirmed reboot, and a fresh device-info readback reported
+  `CO02`. Its decoded update is 1,915,960 bytes, below the conservative
+  cap. The user then reported a cold boot after 10 seconds off.
+  A seeded one-minute MIDI exercise sent 6,974 scenario messages and 145
+  cleanup messages without transport or cleanup errors. Fresh device-info
+  (`CO02`) and 128-slot project-directory replies were identical before
+  and after; the user reported it "Playing and responsive" during the run.
+  No incoming MIDI messages were observed, so individual parameter changes
+  were not acknowledged or read back. This is a short smoke check, not an
+  audio-quality measurement or full event/workload qualification. It
+  establishes acceptance of this exact smaller build, not the exact
+  receive-buffer boundary. The ten-minute workload and hardware event
+  checks remain pending; hello-marker HM02 and hooks-check HC02 have not
+  been flashed.
 - **Recovery.** The STARTUP menu (FUNC at power-on), TRIG 4 for OS UPGRADE,
   the stock file over MIDI DIN (the 1.12 manual, 14.4). Proven on the unit
   with stock 1.12 (23 Oct 2026); about 15 minutes, followed by a normal

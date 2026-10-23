@@ -120,8 +120,9 @@ sites. The six UI events and their existing implementations remain intact.
   `0x401200c4` with mask 1. PIT2's stock setup has prescaler 6 and modulus
   17187: approximately 120 Hz at the derived 132 MHz bus clock. The bridge
   adds 25 ms per three callbacks (8/9 ms resolution), separately from the
-  stock counter that wraps at 4096. It starts no timer. Device calibration
-  remains a physical check; a stalled scheduler can delay input cleanup.
+  stock counter that wraps at 4096. It starts no timer. On the physical
+  DS03 build, three one-second comparisons with the host clock differed
+  by at most 0.3%. A stalled scheduler can delay input cleanup.
 - `ev_sysex`: `void f(const unsigned char *message, unsigned length,
   unsigned source)`, on the MIDI task before stock routing. It preserves
   the router ABI at `0x4012197a` and always continues stock routing. Handlers
@@ -130,8 +131,21 @@ sites. The six UI events and their existing implementations remain intact.
 
 The C declarations are in `elekloader/sdk/include/digitone-mk2/core.h`.
 No arbitrary memory-write or function-call command is added. 0.3 is
-experimental and has not yet been installed on a unit. The earlier CO02
-hardware observations above apply to 0.2.
+experimental. On 23 Oct 2026 the DS03 showcase (core 0.3, DigiHealth 1.3
+and hooks-check 0.1) flashed over USB, rebooted after physical YES, and
+reported DS03. All 7,204 immutable runtime bytes matched the exact linked
+image through read-only diagnostics (SHA-256
+`d2ae7fb04404ca4440e5430a634e57cd5a5aa10e86b61b35f0a788a8ebb019de`).
+The physical check passed all six UI events, encoder delivery, repeated
+SETTINGS/PERSONALIZE callbacks, subscriber ordering and consumed versus
+pass-through TEMPO. Saved screens were reviewed separately from input
+acknowledgements. The earlier CO02 observations apply to 0.2; longer
+project/audio acceptance remains tracked separately.
+
+DigiHealth is available on the [DN2 fork branch](https://github.com/simonjohansson/digihealth/tree/codex/dn2-remote-control).
+The hooks-check showcase draws five bars over the top of every screen;
+these deliberately erase parts of the stock interface. They are diagnostic
+drawing, not a display-tearing symptom. Omit hooks-check for normal use.
 
 `tests/test_dn2_input.py` checks ownership and input/queue bounds without
 firmware. `tests/test_digitone2.py` checks the stock sites, stack/queue
@@ -139,3 +153,11 @@ contracts, clock setup and exact patch boundaries. DigiHealth's compiled
 DN2 test drives the stock SysEx router and verifies the six UI events,
 menu callbacks after reopening, input consumption, frame readback and
 hold expiry through independent diagnostic counters.
+
+After the showcase, the DH03 build (core 0.3 + DigiHealth only) was installed
+using remote YES from the verified update dialog. Its version and all
+6,620 immutable runtime bytes matched. Fresh screens show the clean stock
+UI, normal TEMPO behaviour and both DigiHealth SETTINGS rows; a 120 ms
+FUNC hold expired with zero owned/stock-held keys by the 300 ms check.
+SYSTEM INFO toggled on/off with matching screenshots and published STATS.
+The device was left on DH03 with SYSTEM INFO off and no synthetic keys held.

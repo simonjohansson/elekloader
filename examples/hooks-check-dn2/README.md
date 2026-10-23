@@ -3,7 +3,9 @@
 A test for [core-dn2](../../mods/core-dn2): it subscribes to every event the
 core provides and shows what it counts. The unit behaves exactly as stock
 apart from the drawing until its PERSONALIZE row is selected; from then on
-it takes [TEMPO].
+it takes [TEMPO]. **The five bars erase parts of the stock interface on every
+screen.** This is intentional diagnostic drawing and can look like tearing;
+omit this mod for normal use.
 
 | what | where on screen | moves when |
 |---|---|---|
@@ -26,7 +28,7 @@ counters are globals, so an emulator can read them from the link map.
 python -m elekloader.sdk.build mods/core-dn2 --stock Digitone_II_OS1.12.syx
 python -m elekloader.sdk.build examples/hooks-check-dn2 --stock Digitone_II_OS1.12.syx
 python -m elekloader.patch --stock Digitone_II_OS1.12.syx \
-    --mod mods/core-dn2/out/core-0.2.elemod --mod examples/hooks-check-dn2/out/hooks-check-0.1.elemod \
+    --mod mods/core-dn2/out/core-0.3.elemod --mod examples/hooks-check-dn2/out/hooks-check-0.1.elemod \
     --out dn2-hooks.syx --version HC01
 ```
 
@@ -42,4 +44,9 @@ counters back after each step:
   release), and the order-60 handler's count did not change;
 - the order flag stayed clear over 170 key events.
 
-Not yet run on a unit.
+On 23 Oct 2026 the same six-event checks passed on a physical Digitone II
+with the DS03 showcase (core 0.3 + DigiHealth 1.3 + hooks-check 0.1). Fresh
+screen captures and independent counters verified both reopened menu
+callbacks, subscriber order and consumed/pass-through TEMPO. Read-only
+runtime comparison matched the exact installed build. This is functional
+control evidence; it does not qualify audio or longer project use.

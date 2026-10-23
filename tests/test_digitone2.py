@@ -227,15 +227,16 @@ def test_a_build_past_the_flash_store_is_refused():
     big = img + os.urandom(room + 0x1000)
     out = syx.write(st, syx.pack_main(big), DEV)
     expect(lambda: syx.verify(out, st, big, DEV), '0x380000')
-    expect(lambda: build(bundle([], os.urandom(DEV.blob_max + 1), version='DN02')), 'blob', 'allows')
-    build(bundle([], os.urandom(DEV.blob_max), version='DN02'))      # the area's size fits
+    room = DEV.ddr[1] - DEV.ddr[0]
+    expect(lambda: build(bundle([], os.urandom(room + 1), version='DN02')), 'blob', 'allows')
+    build(bundle([], os.urandom(room), version='DN02'))              # the area's size fits
 
 
 def test_regions_only_in_the_qualified_ddr():
     """A whole build's RAM goes in the one qualified area; SRAM is not
     qualified, and the Digitakt II's SRAM areas are refused here."""
     assert DEV.areas == {'ddr': (0x47F00000, 0x47F40000)}
-    assert DEV.blob_max == 0x47F40000 - 0x47F00000             # a blob is copied into the area
+    assert DEV.ddr == (0x47F00000, 0x47F40000) and DEV.blob_max is None   # the linker's area too
     assert DEV.sram_code == (0, 0) and not DEV.fast_table
     site = a_string_site()
     build(bundle([site], regions=[('state', 0x47F00000, 0x47F01000)], version='DN03'))
@@ -244,18 +245,18 @@ def test_regions_only_in_the_qualified_ddr():
                'outside every free area')
 
 
-def test_no_linkable_mods_yet():
-    """No core: format-2 mods are refused with the reason."""
-    assert not DEV.linkable()
+def test_linkable_mods_need_the_digitone_ii_core():
+    """Format-2 mods link in the qualified area, with a core."""
+    assert DEV.linkable()
     addr, new = a_string_site()
     st, img = stock()
     o = addr - DEV.main_load
     doc = {'elemod': 2, 'id': 'x', 'version': '1', 'target': devices.target_of(DEV, REL),
-           'sections': {},
+           'sections': {}, 'requires': ['core'],
            'sites': [{'addr': '0x%08x' % addr, 'len': len(new), 'kind': 'data',
                       'stock_sha256': sha(img[o:o + len(new)]), 'new': new.hex()}]}
     problems = link.check([link.Mod2(doc, 'x')], img)
-    assert any('no linkable (format-2) mods yet' in p for p in problems), problems
+    assert any('requires core' in p for p in problems), problems
 
 
 # ---- memory: what the reset clears and copies, and what the OS names above it ----------------
@@ -274,6 +275,99 @@ def test_the_area_is_outside_what_the_os_clears_copies_and_uses():
     assert word(img, 0x4000399e) == 0x4e709300                                           # the DMA top
     lo, hi = DEV.areas['ddr']
     assert 0x46709300 + 16 * 4 <= lo and hi <= 0x48000000 - 0x80000
+
+
+# ---- the core (mods/core-dn2) and the example ------------------------------------------------
+
+def built(moddir, tmp):
+    """-> the .elemod mod.json in `moddir` builds to (needs the cross toolchain)."""
+    import shutil
+    from elekloader.sdk import build as sdkbuild
+    need(SYX)
+    if not shutil.which(os.environ.get('ELEKLOADER_CROSS', DEV.toolchain['prefix']) + 'as'):
+        raise Skip('no cross assembler (ELEKLOADER_CROSS)')
+    return sdkbuild.build(os.path.join(os.path.dirname(HERE), moddir), SYX, tmp)[0]
+
+
+# core 0.1's sites: the OS entry's call that sets the VBR, and the UI loop's drawAll(ctrl, bmp)
+CORE_SITES = ((0x40000538, '4eb9400019b0'), (0x4002e4ca, '4eb94011d60a'))
+
+
+def test_the_cores_addresses_are_the_firmwares_calls():
+    """Each defsym is the routine the firmware calls at its site, its only
+    caller: drawAll at the draw site; Brain::key and Brain::enc at the UI
+    loop's dispatch (0x4002f20c, 0x4002f256), which core.s returns to though
+    0.1 does not hook them. VBR_FN sets the vector base and returns."""
+    st, img = stock()
+    with open(os.path.join(os.path.dirname(HERE), 'mods', 'core-dn2', 'mod.json')) as fh:
+        sym = {k: int(v, 0) for k, v in json.load(fh)['defsym'].items()}
+    for site, routine in ((0x4002e4ca, 'DRAWALL'), (0x4002f20c, 'KEYDISP'),
+                          (0x4002f256, 'ENCDISP'), (0x40000538, 'VBR_FN')):
+        assert img[site - DEV.main_load:][:2] == b'\x4e\xb9' and word(img, site + 2) == sym[routine]
+        assert refs_to(img, sym[routine]) == [site], routine
+    assert img[sym['VBR_FN'] - DEV.main_load:][:12] == bytes.fromhex('203c400000004e7b08014e75')
+    for site, stock_bytes in CORE_SITES:
+        assert img[site - DEV.main_load:][:6].hex() == stock_bytes
+    # the draw site's arguments: push bmp (a3), push ctrl (a2), call
+    assert img[0x4002e4c6 - DEV.main_load:][:4] == bytes.fromhex('2f0b2f0a')
+
+
+def test_core_builds_links_and_verifies():
+    """mods/core-dn2 alone: its two sites and the appended image change,
+    nothing else; its RAM is in the area; every other section is stock."""
+    with tempfile.TemporaryDirectory() as tmp:
+        core = built(os.path.join('mods', 'core-dn2'), tmp)
+        outputs, man = patch.build(SYX, [core], version='CO01', log=lambda *a: None)
+    st, img = stock()
+    o = formats.parse(outputs['syx'], DEV)
+    new = formats.main_image(o, DEV)
+    changed = [i for i in range(len(img)) if new[i] != img[i]]
+    sites = [s - DEV.main_load for s, _ in CORE_SITES]
+    assert changed and all(any(s <= i < s + 6 for s in sites) for i in changed)
+    for s in sites:
+        assert new[s:s + 2] == b'\x4e\xb9'
+    lay = man['link']['layout']
+    assert DEV.ddr[0] == lay['ddr'][0] < lay['bss'][1] <= DEV.ddr[1]
+    assert lay['boot'][0] == DEV.image_end(REL) and len(new) > len(img)
+    assert all(o.stored[k] == st.stored[k] for k in (5, 2, 4, 7, 8))
+    assert man['output']['main']['inplace_min_gap'] > 0
+
+
+def test_the_example_links_with_core():
+    """examples/hello-marker-dn2: one ev_draw handler; no sites of its own."""
+    with tempfile.TemporaryDirectory() as tmp:
+        core = built(os.path.join('mods', 'core-dn2'), tmp)
+        hello = built(os.path.join('examples', 'hello-marker-dn2'), tmp)
+        outputs, man = patch.build(SYX, [core, hello], version='HM01', log=lambda *a: None)
+        tables = man['link']['tables']
+        assert tables['ev_draw']['entries'] == 1
+        assert all(tables[t]['entries'] == 0 for t in ('ev_tick', 'ev_key', 'ev_enc'))
+        st, img = stock()
+        new = formats.main_image(formats.parse(outputs['syx'], DEV), DEV)
+        changed = {i for i in range(len(img)) if new[i] != img[i]}
+        assert changed <= {s - DEV.main_load + k for s, _ in CORE_SITES for k in range(6)}
+        # without core, or with two, or on core's site, or with .fast code: refused
+        expect(lambda: patch.build(SYX, [hello], version='HM01', log=lambda *a: None), 'core')
+        with open(core) as fh:
+            c2 = json.load(fh)
+        c2['id'] = 'core2'
+        p2 = write_mod(tmp, c2, 'core2-0.1.elemod')
+        expect(lambda: patch.build(SYX, [core, p2], version='HM01', log=lambda *a: None), 'exactly one')
+        with open(hello) as fh:
+            doc = json.load(fh)
+        st, img = stock()
+        a = 0x4002e4ca - DEV.main_load
+        clash = dict(doc, id='clash', sites=[{'addr': '0x4002e4ca', 'len': 6, 'kind': 'data',
+                                              'stock_sha256': sha(img[a:a + 6]), 'new': '4e714e714e71'}])
+        clash.pop('signature', None)
+        p3 = write_mod(tmp, clash, 'clash-1.0.elemod')
+        expect(lambda: patch.build(SYX, [core, p3], version='HM01', log=lambda *a: None), 'overlap')
+        doc['sections']['.fast'] = doc['sections'].pop('.run')
+        doc['relocs'] = [[('.fast' if r[0] == '.run' else r[0])] + r[1:] for r in doc['relocs']]
+        doc['symbols'] = {k: (['.fast', v[1]] if v[0] == '.run' else v) for k, v in doc['symbols'].items()}
+        doc.pop('signature', None)
+        p4 = write_mod(tmp, doc, 'hello-fast-1.0.elemod')
+        expect(lambda: patch.build(SYX, [core, p4], version='HM01', log=lambda *a: None), '.fast')
 
 
 # ---- the flash: what the firmware reads and writes there (docs/DEVICES.md) ------------------

@@ -191,9 +191,8 @@ export const DIGITONE_MK2: Device = {
       'a098f620019b2ad38fd7e0397df39501fb1cf6bc26d0283915f34c49446fdf1a', 3196288),
   ],
   stage: 0x40400000, flashAt: 0x80000, flashLimit: 0x380000, trailer: 'hmac', hmacKeyFrom: [2, 'Multiplier'],
-  blobMax: 0x40000,
   areas: { ddr: [0x47f00000, 0x47f40000] },
-  ddr: [0, 0],                                    // no core yet: no linkable mods
+  ddr: [0x47f00000, 0x47f40000],
   recovery: 'hold FUNC while powering on for the STARTUP menu, press TRIG 4 (OS UPGRADE), '
     + 'then send the stock .syx over MIDI (not USB)',
 }

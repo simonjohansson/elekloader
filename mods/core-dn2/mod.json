@@ -1,0 +1,20 @@
+{
+ "id": "core", "version": "0.1",
+ "license": "GPL-2.0-or-later",
+ "title": "core", "category": "Framework", "author": "irpina",
+ "description": "The boot copier and the hook bus for the Digitone II: every other mod needs it. On its own it changes nothing the unit does. 0.1 runs ev_draw; ev_tick, ev_key and ev_enc are declared (core.s names them) but not yet called.",
+ "device": "digitone-mk2", "os": "1.12",
+ "sources": ["../core/core.s"],
+ "defsym": {
+  "DRAWALL": "0x4011d60a",
+  "KEYDISP": "0x4002c5c8",
+  "ENCDISP": "0x4002c55c",
+  "NO_DTIM0": "1",
+  "VBR_FN": "0x400019b0"
+ },
+ "sites": [
+  {"addr": "0x40000538", "stock": "4eb9400019b0", "op": "jsr", "target": "boot"},
+  {"addr": "0x4002e4ca", "stock": "4eb94011d60a", "op": "jsr", "target": "core_draw"}
+ ],
+ "collections": {"ev_tick": 4, "ev_draw": 4, "ev_key": 4, "ev_enc": 4}
+}

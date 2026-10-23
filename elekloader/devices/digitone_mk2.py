@@ -37,8 +37,8 @@ platform; the main OS runs from DDR at 0x40000400. Measured on OS 1.12
   digikit's emulator (ColdFire only, to 2.25G instructions) but for the
   stack's top 52 bytes, and the final state matched a zero-filled run's.
   That compares contents, not accesses.
-  No core yet, so no linkable mods: `ddr` is unset and format-1 blobs get
-  the area's size. SRAM is not qualified: there is no .fast area.
+  It is the linker's `ddr` too (core-dn2), and a whole build's blob gets its
+  size. SRAM is not qualified: there is no .fast area.
 """
 from . import Device, Release
 
@@ -61,10 +61,10 @@ DEVICE = Device(
     trailer='hmac',
     hmac_key_from=(2, b'Multiplier'),
     isa='coldfire',
-    blob_max=0x40000,                           # what the area below holds
     areas={
         'ddr': (0x47F00000, 0x47F40000),          # above the DMA buffers, below the boot stack
     },
+    ddr=(0x47F00000, 0x47F40000),
     recovery=('hold FUNC while powering on for the STARTUP menu, press TRIG 4 (OS UPGRADE), '
               'then send the stock .syx over MIDI (not USB)'),
     toolchain={

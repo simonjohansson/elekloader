@@ -120,6 +120,8 @@ docs match its code.
 
 - **[DN2 SHARC evidence](SHARC-DN2.md)**: the pinned stock identity, memory
   views, independent size limits and runtime ownership still to qualify.
+- **[DN2 SHARC runtime evidence](SHARC-CONTEXT.md)**: reset-data provenance,
+  coupled emulator checks and the remaining context/ownership boundaries.
 - **[SHARC boot records](SHARC-BOOT.md)**: ordered parsing and bounded synthetic
   insertion, with shared Python/TypeScript refusal cases.
 - **[SHARC sine compiler and execution probe](../examples/sharc-sine-probe/README.md)**:

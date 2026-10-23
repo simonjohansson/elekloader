@@ -107,6 +107,12 @@ also refused. The exclusions follow the bounded
 [memory investigation](https://github.com/naturarum/dn2-cfw/blob/5c95c78180348c825518f2bda8d2cf1afb2a312a/notes/T3.2-sharc-memmap.md#L293-L303)
 and its [cache correction](https://github.com/naturarum/dn2-cfw/blob/5c95c78180348c825518f2bda8d2cf1afb2a312a/notes/T3.2-sharc-memmap.md#L586-L593).
 
+## Runtime investigation
+
+[The DN2 context investigation](SHARC-CONTEXT.md) records the recovered ADI
+reset input, the coupled-emulator reproduction route and its remaining limits.
+This is maintainer evidence, not an extra mod-author setup procedure.
+
 ## Source and runtime provenance
 
 | Material | Use in this slice |

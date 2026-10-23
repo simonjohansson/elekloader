@@ -5,12 +5,33 @@ import { str } from './py.ts'
 
 export class UnknownFirmware extends Error {}
 
+export type SharcProfile = {
+  section: number
+  processor: string
+  isa: string
+  siliconRevision: string | null
+  storedSha256: string
+  storedLen: number
+  decodedSha256: string
+  decodedLen: number
+  storedMax: number
+  decodedMax: number
+  recordCount: number
+  l1Aliases: [number, number, number][]          // core-byte start/end, loader-byte start; not ownership
+  l2Bytes: Range
+  l2Pc16: [number, number, number]               // PC16 start/end, loader-byte start
+  ddrBytes: Range
+  protected: [number, number, string][]         // loader-byte exclusions
+  ownedRanges: Range[]                         // qualified loader-byte intervals only
+}
+
 export type Release = {
   version: string        // the OS version, as Elektron names it
   syxSha256: string      // the stock .syx file
   mainSha256: string     // its main OS section, depacked
   mainLen: number        // ... and that section's length
   binSha256: string      // the stock card file (.bin), where the device has one
+  sharc?: SharcProfile   // absent unless this release has measured section-7 facts
 }
 
 export type Range = [number, number]
@@ -193,8 +214,23 @@ export const DIGITONE_MK2: Device = {
   updateMax: 0x200000,                           // conservative USB cap, measured on a unit; not found in code
   key: 'digitone-mk2', name: 'Digitone II', sysexId: 0x15,
   releases: [
-    rel('1.12', '7e5b8a733d4ab1fdf7e5d22757f7d8eddaa3cbf71d0858874a791844c02ceb35',
+    { ...rel('1.12', '7e5b8a733d4ab1fdf7e5d22757f7d8eddaa3cbf71d0858874a791844c02ceb35',
       'a098f620019b2ad38fd7e0397df39501fb1cf6bc26d0283915f34c49446fdf1a', 3196288),
+      sharc: {
+        section: 7, processor: 'ADSP-21569', isa: 'sharc+-visa', siliconRevision: null,
+        storedSha256: '5ff93df8747bdf9eb28acf50391fb484d6aa6782bfe969b2b3807a8412645660', storedLen: 602076,
+        decodedSha256: '336e340aa0cdcd34e314cfa44849f709a3134f6bd4cd57dfc7e15702c83115e2', decodedLen: 836956,
+        storedMax: 0x100000, decodedMax: 0xfffff, recordCount: 95,
+        l1Aliases: [[0x240000, 0x270000, 0x28240000], [0x2c0000, 0x2f0000, 0x282c0000],
+          [0x300000, 0x320000, 0x28300000], [0x380000, 0x3a0000, 0x28380000]],
+        l2Bytes: [0x20000000, 0x20100000], l2Pc16: [0xb80000, 0xc00000, 0x20000000],
+        ddrBytes: [0x80000000, 0xa0000000],
+        protected: [[0x200fa000, 0x200fe000, 'DN2 special window'], [0x200fe000, 0x20100000, 'Boot ROM workspace'],
+          [0x282ec000, 0x282f0000, 'L1 block 1 cache'], [0x2831c000, 0x28320000, 'L1 block 2 cache'],
+          [0x2839c000, 0x283a0000, 'L1 block 3 cache']],
+        ownedRanges: [],
+      },
+    },
   ],
   stage: 0x40400000, flashAt: 0x80000, flashLimit: 0x380000, trailer: 'hmac', hmacKeyFrom: [2, 'Multiplier'],
   areas: { ddr: [0x47f00000, 0x47f40000] },

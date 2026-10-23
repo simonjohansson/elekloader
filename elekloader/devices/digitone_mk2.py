@@ -51,7 +51,35 @@ DEVICE = Device(
             version='1.12',
             syx_sha256='7e5b8a733d4ab1fdf7e5d22757f7d8eddaa3cbf71d0858874a791844c02ceb35',
             main_sha256='a098f620019b2ad38fd7e0397df39501fb1cf6bc26d0283915f34c49446fdf1a',
-            main_len=3196288)
+            main_len=3196288,
+            sharc={
+                'section': 7,
+                'processor': 'ADSP-21569',
+                'isa': 'sharc+-visa',
+                'silicon_revision': None,       # no chip-stepping observation; OS 1.12 is not a silicon revision
+                'stored_sha256': '5ff93df8747bdf9eb28acf50391fb484d6aa6782bfe969b2b3807a8412645660',
+                'stored_len': 602076,
+                'decoded_sha256': '336e340aa0cdcd34e314cfa44849f709a3134f6bd4cd57dfc7e15702c83115e2',
+                'decoded_len': 836956,
+                'stored_max': 0x100000,         # the sender's first 1 MiB staging buffer
+                'decoded_max': 0xfffff,         # second buffer also holds one command byte
+                'record_count': 95,
+                # (core-byte start, end, loader-byte start); physical capacity, not free RAM.
+                'l1_aliases': ((0x240000, 0x270000, 0x28240000),
+                               (0x2c0000, 0x2f0000, 0x282c0000),
+                               (0x300000, 0x320000, 0x28300000),
+                               (0x380000, 0x3a0000, 0x28380000)),
+                'l2_bytes': (0x20000000, 0x20100000),
+                'l2_pc16': (0xb80000, 0xc00000, 0x20000000),
+                'ddr_bytes': (0x80000000, 0xa0000000),
+                # Loader-byte ranges excluded from new code/data, independent of ownership.
+                'protected': ((0x200fa000, 0x200fe000, 'DN2 special window'),
+                              (0x200fe000, 0x20100000, 'Boot ROM workspace'),
+                              (0x282ec000, 0x282f0000, 'L1 block 1 cache'),
+                              (0x2831c000, 0x28320000, 'L1 block 2 cache'),
+                              (0x2839c000, 0x283a0000, 'L1 block 3 cache')),
+                'owned_ranges': (),            # #35 must qualify runtime ownership before insertion
+            })
     },
     main_section=3,
     main_load=0x40000400,

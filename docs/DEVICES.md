@@ -477,8 +477,9 @@ Recovery to stock worked on the unit (21 Oct 2026).
 
 ## The Digitone II (1.12)
 
-Whole builds (format 1) only: the profile (`digitone_mk2.py`, where each
-fact's evidence is), with no core yet, so no linkable mods. The Digitone II
+The profile (`digitone_mk2.py`, where each fact's evidence is) and, from
+core-dn2 0.1, linkable mods with a core that boots and runs `ev_draw`
+(mods/core-dn2/README.md has its sites and evidence). The Digitone II
 runs on the Digitakt II's platform, but every address, size and count here
 was found again in DN2 1.12's own sections (23 Oct 2026), none copied from
 the Digitakt II. Nothing has been sent to a unit yet.
@@ -518,8 +519,8 @@ the Digitakt II. Nothing has been sent to a unit yet.
   stack down from `0x48000000`. Its heap (a buddy allocator, 32 MB at
   `0x4464bbf0`) is inside the clear.
 - **Mods' area.** `0x47F00000`-`0x47F40000` (256 KB), the Digitakt II's,
-  the profile's one area: a whole build's regions must lie in it, and its
-  blob may be at most its size (`blob_max`).
+  the profile's one area and the linker's `ddr`: a whole build's regions
+  must lie in it, and its blob may be at most its size.
   - Above the clear, the OS names only its DMA buffers, all through the
     uncached alias (+0x08000000): `0x466c0000`-`0x46709340` in the cached
     view. In its code, nothing names `0x47E00000`-`0x48000000` or its alias
@@ -539,17 +540,26 @@ the Digitakt II. Nothing has been sent to a unit yet.
   area's 256 KB) or a region, and one grown to 3.5 KB below the flash
   limit, all boot as stock does, with the same instruction count to the
   main screen and the same screen.
+- **The core** (mods/core-dn2 0.1) hooks the boot site (0x40000538) and
+  the draw site (0x4002e4ca, `drawAll`), found by the Digitakt II's code and
+  checked in the Digitone II's own; the tick, key and encoder sites follow
+  in the next core. In the emulator, core alone boots to a screen identical
+  to stock's, hello-marker-dn2 (`Bitmap::fillRect` 0x40114b22) changes only
+  its 3x3 square, and the area holds the linked run image after boot.
 - **Not known yet.** The receive buffers' size bounds, in the OS (USB) and
   in the bootstrap (MIDI); the bootstrap's flash path has not been run.
 - **Recovery.** The STARTUP menu (FUNC at power-on), TRIG 4 for OS UPGRADE,
   the stock file over MIDI DIN (the 1.12 manual, 14.4). Not yet tried on a
   unit.
 - **The TypeScript engine** (js/) has the profile too (`DIGITONE_MK2`). A
-  DN2-only cases document for `tools/parity.ts` (whole builds from the `.syx`
-  and the zip, a check, and refusals: no version, a blob over the area,
-  regions in SRAM and past the area, a Digitakt II mod, a format-2 mod,
-  wrong stock bytes) gives the same files, messages and checks as the
-  Python (23 Oct 2026).
+  DN2-only cases document for `tools/parity.ts` gives the same files,
+  messages and checks as the Python (23 Oct 2026), in 19 cases:
+  - whole builds from the `.syx` and the zip, and a check;
+  - core alone, core with hello-marker, and their check;
+  - refusals: no version, a blob over the area, regions in SRAM and past
+    the area, a Digitakt II mod, a format-2 mod or hello-marker without
+    core, two cores, a site on core's draw site, `.fast` code, wrong stock
+    bytes.
 
 ## What a new device needs besides its profile
 

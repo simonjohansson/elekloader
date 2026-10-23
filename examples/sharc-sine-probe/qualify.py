@@ -131,11 +131,8 @@ def rejected(label, operation, expected_message):
     raise ValueError(f'{label}: incorrectly accepted')
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('selache', type=Path, help='clean source checkout of the pinned Selache commit')
-    args = parser.parse_args()
-    selache = args.selache.resolve()
+def compile_probe(selache):
+    selache = selache.resolve()
     require(command(['git', 'rev-parse', 'HEAD'], cwd=selache, text_output=True).strip() == PIN,
             f'Selache must be pinned to {PIN}')
     require(not command(['git', 'status', '--porcelain', '--untracked-files=normal'],
@@ -262,7 +259,15 @@ def main():
                   commands=commands)
     (out / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
     print(f'PASS: {facts["code_bytes"]} code bytes, {facts["data_bytes"]} data bytes; '
-          f'{len(negative)} negative checks. Target execution remains issue #33.\n{out / "report.json"}')
+          f'{len(negative)} negative checks. Compile-only qualification.\n{out / "report.json"}')
+    return out, report
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('selache', type=Path, help='clean source checkout of the pinned Selache commit')
+    args = parser.parse_args()
+    compile_probe(args.selache)
 
 
 if __name__ == '__main__':

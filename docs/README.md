@@ -122,8 +122,8 @@ docs match its code.
   views, independent size limits and runtime ownership still to qualify.
 - **[SHARC boot records](SHARC-BOOT.md)**: ordered parsing and bounded synthetic
   insertion, with shared Python/TypeScript refusal cases.
-- **[SHARC sine compiler probe](../examples/sharc-sine-probe/README.md)**:
-  firmware-free developer qualification of a pinned open toolchain; not yet
+- **[SHARC sine compiler and execution probe](../examples/sharc-sine-probe/README.md)**:
+  firmware-free qualification of a pinned open toolchain and executed sine; not yet
   an installable DN2/DT2 module.
 - **[Releasing](RELEASING.md)**: the version, the core files a release
   carries, the workflows that build the apps, the kit and the site, and

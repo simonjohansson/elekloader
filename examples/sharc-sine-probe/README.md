@@ -1,11 +1,13 @@
-# SHARC sine compiler probe
+# SHARC sine compiler and execution probe
 
 This is the firmware-free compiler qualification for
 [issue #31](https://github.com/simonjohansson/elekloader/issues/31). It builds
-an actual SHARC+ sine kernel, checks its executable and retains the artifacts
-for [target execution in #33](https://github.com/simonjohansson/elekloader/issues/33).
+an actual SHARC+ sine kernel and checks its executable. The optional execution
+command covers [issue #33](https://github.com/simonjohansson/elekloader/issues/33)
+using a pinned external runner and a small synthetic caller.
 It is **not an installable mod**. There is no `mod.json`, firmware input,
-boot stream, stock hook or device operation. The normal module build workflow
+stock hook or device operation. Execution uses an author-only loader stream.
+The normal module build workflow
 will be integrated separately; this developer probe adds no SDK contract.
 
 ## Build and check
@@ -41,7 +43,7 @@ the host, flags and commands. Do not commit these build artifacts.
 Expected result:
 
 ```text
-PASS: 320 code bytes, 152 data bytes; 10 negative checks. Target execution remains issue #33.
+PASS: 320 code bytes, 152 data bytes; 10 negative checks. Compile-only qualification.
 ```
 
 The fixed candidate options are `-proc ADSP-21569 -char-size-8 -O1`, with
@@ -84,14 +86,12 @@ the disassembler use 16-bit SW parcels. Data addresses are bytes. The map's
 global-symbol list contains section-relative offsets, whereas the executable
 symbol table has linked addresses; use the latter for entrypoints.
 
-The observed argument register is R4, and `sine_sample` returns float bits in
-R0. Calls emit `CJUMP`, delayed frame stores, indirect return and `RFRAME`.
-Render adjusts I7 by +/-8 with `(NW)`, and sample by +/-4 with `(NW)`; these
-instruction operands are not a measured stack byte budget. I6/I7, M5/M7/M14,
-addressing mode, register preservation, frame setup and return semantics
-must be established by #33 and the later stock adapter. No startup initializes
-them here. The probe does not claim a stock-compatible ABI or stack high-water
-mark.
+The argument register is R4, and `sine_sample` returns float bits in R0.
+Calls emit `CJUMP`, delayed frame stores, indirect return and `RFRAME`.
+Render adjusts I7 by +/-8 with `(NW)`, and sample by +/-4 with `(NW)`.
+The execution check below measures their combined stack use in bytes and
+supplies the required synthetic caller state. There is no startup object.
+The later stock adapter must establish its own compatible context.
 
 ## Checks and compiler limitations
 
@@ -117,7 +117,8 @@ Selache at this pin exits successfully but emits bits `0xc2000000` (-32.0),
 instead of `0xbe000000` (-0.125). The checker independently decodes the object
 data with Python's binary32 reader and retains this reproduction. The sine
 avoids negative float initializers: its emitted runtime negation is
-`F3 = -F1`, with the result moved into R0. Execution of that form remains #33.
+`F3 = -F1`, with the result moved into R0. The execution check exercises that
+form, including negative zero.
 
 The compiler also accepts an unknown option silently. Switching this source
 to `-char-size-32` produces an identical executable. That switch changes a
@@ -128,13 +129,99 @@ The measured four-byte float/uint32 accesses suit this probe; they do not
 qualify narrow loads, arbitrary C, or a general byte-addressed ABI. Neither
 the option spelling nor assembler attributes prove those properties.
 
-For #33, run the actual `sine.dxe` code with bounded, guarded state/output/stack
-and explicit calling-convention setup. Include phases on both sides of bit
-31, all quadrants, uint32 wrap, zero increment, init reset and repeated
-32-sample blocks. Phase `0x80000000` intentionally returns negative zero.
-Require actual return, samples and state; compiler success or runner exit
-zero is insufficient. These execution, sound, timing and hardware checks
-have not run in #31.
+## Execute the compiled sine
+
+Build the loader tool from the same Selache checkout, then fetch the external
+runner once. No firmware, stock manifest or Digikit device setup is needed:
+
+```sh
+(
+    cd out/selache
+    mise exec rust@1.98.1 -- cargo build --release --locked -p selload
+)
+git clone https://github.com/ElekLabs/digikit.git out/digikit
+(
+    cd out/digikit
+    git checkout --detach 38dfbe4ae88263511eed95691c07fc07e17b6f26
+)
+mise exec python@3.12.13 -- python examples/sharc-sine-probe/execute.py out/selache out/digikit
+```
+
+Both arguments may name existing clean checkouts at those exact pins. This
+command reruns the complete compile qualification into a new output folder,
+links `caller.s`, and verifies the original 320 code bytes and 152 data bytes
+remain unchanged. It checks the loader stream's code parcel byte order and
+data bytes, then uses Digikit's existing `LoadedMemory` and `Runner` APIs.
+The Digikit checkout is read only; no dependency installation is needed for
+this runner path. The one-argument `qualify.py` command remains compile only.
+
+Expected final line:
+
+```text
+PASS: 18 blocks, 6 float returns, 7 execution negatives.
+```
+
+`execution-report.json` is written only after all checks pass. It records the
+runner pin and imported-source hashes, caller and tool hashes, commands,
+static decoded forms, per-call instruction counts, actual register changes,
+stack depths and exact return PCs. `samples.json` contains 256 deterministic
+440 Hz samples; `execution.dxe`, `execution.ldr`, map and disassembly retain
+the exact author-only executable. `report.json` separately records compile
+qualification; its existence alone does not imply execution passed.
+
+The check compares every sample's binary32 bits and both persistent state
+words against an independent host calculation. Eighteen 32-sample blocks
+cover all 64 table phases and quadrants, bit 31, uint32 wrap, zero increment
+and repeated rendering. Each case starts with deliberately dirty state and
+checks init, then repeats init after rendering. Six direct sample calls
+check the R4 argument/R0 float-return path, including `0x80000000`'s negative
+zero. There are no emitted numeric conversions to qualify: phase shifts,
+integer additions and float negation are exercised directly.
+
+The 24-byte synthetic caller pushes its frame link and return address.
+It supplies byte-addressed I6/I7, M5=0, M7=-1, M13=0, M14=1, zero DAG lengths,
+MODE1=0 (SISD), and the runner's explicit `assume_nw32=True` setting. General
+registers, DAG bases/modifiers, inactive registers and flags carry sentinels.
+The observed maximum I7 drop is **64 bytes**, including the caller and nested
+sample frame; init uses 8 bytes. Every call must return to the exact sentinel
+within 3,000 instructions. Render takes 1,654–1,686 interpreter instructions
+depending on sign branches; these counts are **not SHARC cycles**.
+
+Render changes R0–R7, I4, I12 and ASTATX in this setup; I6/I7 return to their
+entry values. The harness requires R8–R15, all remaining seeded DAG/mode
+registers, inactive bank, hardware PC stack, loop/status stacks and guard
+bytes to survive. A write watch checks every guest store, including stores
+that reproduce an existing value: only the current function's state words,
+32 output words and its bounded stack are permitted. The uninitialized-memory
+zero-fill option, approximate reciprocal option, provisional instructions
+and external-call continuation remain disabled.
+
+The instruction check is deliberately limited to the emitted probe. Its
+operand allowlist, branch boundaries, two delayed slots and indexed-store
+register classes follow the [SHARC+ programming reference, rev 1.5](https://www.analog.com/media/en/dsp-documentation/processor-manuals/sc58x-2158x-prm.pdf),
+chapters 12–16; byte-pointer/NW scaling is described in chapters 6–7.
+In particular, indexed DM stores exclude DAG1 source registers, and indexed
+PM stores exclude DAG2 sources (pp. 13-13, 13-16, 15-7 and 15-10); direct
+absolute stores are exempt. A negative `DM(I7,M7)=I6` is actually assembled,
+disassembled and rejected by this manual-derived rule. Digikit independently
+decodes every instruction extent; agreement alone is not the legality test.
+Unknown mnemonics, a non-return bound, insufficient stack, unknown NW width,
+an output pointer shifted by one word and a mutated table also fail.
+
+The small checker tests need only Python:
+
+```sh
+mise exec python@3.12.13 -- python tests/test_sharc_probe.py
+```
+
+This proves this kernel in the explicit synthetic context only. It does not
+model caches, DMA, interrupts, Boot ROM, hardware timing or the stock hook.
+The numeric and register checks cover binary32 values; the runner does not
+establish preservation of a hardware 40-bit floating-point context.
+It is not broad compiler/ISA qualification. The fixed-tone hardware change
+in #41 must add #35's actual hook-wrapper context and instruction checks,
+including DAG I/B/L/M preservation and B-before-I restoration if needed.
+ModelDigi work extends this harness only for operations its port emits.
 
 ## Source and license closure
 
@@ -146,6 +233,11 @@ included library file is
 which declares MIT and contains typedefs/macros, not runtime code. Its SHA-256
 is `a9ee83d975c9606dccf6dc5b8b6792ba6a92603411f5c7448ab685d4fd00c40c`.
 This example's sources declare GPL-2.0-or-later.
+
+Execution additionally runs Selache's `selload` and imports the separately
+checked out [Digikit runner](https://github.com/ElekLabs/digikit/blob/38dfbe4ae88263511eed95691c07fc07e17b6f26/tools/sharc_dev/sharc_run.py).
+Digikit is AGPL-3.0-or-later. Its implementation is not copied into Elekloader
+or bundled with this example; the report hashes the external files used.
 
 The linked runtime-file set is empty. In particular, neither MIT startup nor
 `libsel/src/support/runtime.s` is linked. The latter's GPL-3.0 declaration

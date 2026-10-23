@@ -84,4 +84,16 @@ Checked in digikit's emulator (ColdFire only, no DSP, so no audio; 23 Oct
   the rows are listed once in SETTINGS and PERSONALIZE after reopening each,
   and the handlers' order and a taken key behave as its README says.
 
-0.1 hooked only boot and draw. Not yet run on a unit.
+0.1 hooked only boot and draw. The first 0.2 builds stalled during USB
+transfer before flashing: their decoded updates exceeded 2 MiB. The
+profile now caps updates at 2 MiB, measured on a unit rather than found
+in code ([docs/DEVICES.md](../../docs/DEVICES.md)). The smaller core-only
+CO02 from source `e12a80b` (sha256
+`90cdea1d94cbc39907353bc1f3b70c710b0b0e2ef44423e3b5679fdd12cb1832`)
+flashed over USB with elektroid-cli on 23 Oct 2026. Its version was read
+back as `CO02` after reboot; the user reported a cold boot after 10 seconds
+off. A one-minute seeded MIDI exercise completed without transport errors;
+fresh device-info and project-directory replies were identical before and
+after, and the user reported it playing and responsive. This is smoke
+evidence, not full hardware event or audio/workload qualification; HM02
+and HC02 have not been flashed.

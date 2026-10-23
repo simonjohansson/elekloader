@@ -58,6 +58,7 @@ DEVICE = Device(
     stage=0x40400000,
     flash_at=0x80000,
     flash_limit=0x380000,
+    update_max=0x200000,                       # conservative USB cap, measured on a unit; not found in code
     trailer='hmac',
     hmac_key_from=(2, b'Multiplier'),
     isa='coldfire',

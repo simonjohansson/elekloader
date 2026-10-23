@@ -229,7 +229,13 @@ def test_a_build_past_the_flash_store_is_refused():
     expect(lambda: syx.verify(out, st, big, DEV), '0x380000')
     room = DEV.ddr[1] - DEV.ddr[0]
     expect(lambda: build(bundle([], os.urandom(room + 1), version='DN02')), 'blob', 'allows')
-    build(bundle([], os.urandom(room), version='DN02'))              # the area's size fits
+    build(bundle([], bytes(room), version='DN02'))                 # the area's size fits if compressible
+
+
+def test_a_build_over_the_measured_usb_update_limit_is_refused():
+    room = DEV.ddr[1] - DEV.ddr[0]
+    expect(lambda: build(bundle([], os.urandom(room), version='DN02')),
+           'decoded update stream', 'measured USB update limit of 2097152 bytes')
 
 
 def test_regions_only_in_the_qualified_ddr():

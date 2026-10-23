@@ -21,7 +21,7 @@ file on your own machine, and you flash it the way you flash any OS update.
 | Digitakt (mk1) | 1.53, 1.54 | supported |
 | Digitakt II | 1.17 | experimental: whole builds (format-1 mods) and linkable mods with its own core (the hook bus's tick, draw, key and encoder events), sealed as the unit checks them; boots in digikit's emulator; core with a key-swap mod works on a unit (Transfer over USB) |
 | Digitone (mk1) and Digitone Keys | 1.43, 1.44 | supported |
-| Digitone II | 1.12 | experimental: whole builds (format-1 mods) and linkable mods with its own core (the hook bus's tick, draw, key, encoder, SETTINGS and PERSONALIZE events), sealed as the unit checks them; boots and runs every event in digikit's emulator; not yet run on a unit |
+| Digitone II | 1.12 | experimental: whole builds (format-1 mods) and linkable mods with its own core (the hook bus's tick, draw, key, encoder, SETTINGS and PERSONALIZE events), sealed as the unit checks them; boots and runs every event in digikit's emulator; core alone flashed over USB and booted on a unit (CO02), with a cold boot reported by the user; hardware event and audio qualification pending |
 | Octatrack (MKI and MKII) | 1.40C | supported: whole builds (format-1 mods); linkable mods with its own core: boots on an MKII, not yet run on an MKI |
 | Model:Cycles, Model:Samples | 1.13 | supported: linkable mods with their own core (the hook bus's tick, draw, key and encoder events); builds work on both units (Transfer over USB) |
 | Analog Rytm MKII | 1.74 | supported: linkable mods with its own core (the hook bus's tick, draw, key, encoder, SETTINGS and render events); builds with the core work on a unit (Transfer over USB) |
@@ -53,8 +53,8 @@ stock OS file always restores the unit. On a Digitakt mk1, a Digitakt II,
 a Digitone mk1 or a Digitone II, hold **FUNC** while powering on for the
 startup menu, press **TRIG 4** for OS UPGRADE, and send the stock `.syx`
 with Transfer's legacy OS upgrade mode (on the Digitakt II and the Digitone
-II, over its MIDI ports: not USB; the Digitone II's, from its manual, is not
-yet tried on a unit). On the
+II, over its MIDI ports: not USB; the Digitone II's recovery was checked
+with stock 1.12 on a unit). On the
 Octatrack, hold **FUNC** while powering on, press **TRIG 3** for MIDI
 UPGRADE, and send the stock `.syx` over 5-pin DIN MIDI (USB MIDI does not
 work for this). On a Model:Cycles or Model:Samples, hold **FUNC** while

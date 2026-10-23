@@ -138,6 +138,51 @@ context; a fixture with zero circular lengths or no loops is insufficient.
 These observations do not expose or prove preservation of hardware extended
 floating-point bits.
 
+### Bounded candidate access check
+
+The candidate core-byte `[0x2dd600,0x2dde00)` and loader alias
+`[0x282dd600,0x282dde00)` were watched across **two complete 666,667-instruction
+frame periods**: restored frame 0 (silent) and frame 687 (first sounding
+SPORT block, 54 of 64 samples nonzero). The latter starts from its own genuine
+pre-frame state, after native replay matched every captured SPI reply and
+SPORT block through frame 687. That replay uses the same native instruction
+implementation as the coupled run; it checks continuation and ordering,
+not independent ISA correctness.
+
+An original private Python observer then records attempted backing-memory
+reads (including unmapped reads and alias probes), DM/PM accesses and overlay
+reads/writes used by SPI DMA, SPORT and IIR. It observes same-value writes;
+it does not infer absence of access from unchanged bytes. Its self-check
+requires detection of absent reads, repeated identical writes and the range's
+exclusive end. Neither frame had an unresolved address or a candidate access.
+
+| Frame | DM/PM reads / writes | Overlay byte reads / writes | Backing reads/probes |
+|---|---:|---:|---:|
+| Silent 0 | 201,894 / 146,404 | 687,276 / 584,937 | 1,043,277 |
+| Sounding 687 | 201,807 / 146,325 | 686,911 / 584,618 | 1,043,898 |
+
+These are observer event counts, not unique hardware transactions. Both runs
+complete without a halt and match the native engine's modeled registers,
+banks, stacks, MMRs, explicit memory ranges, page hashes and SPORT block,
+with **zero differences**. The reports hash to
+`edcb4da1398c6e43f695bcb934d0b0687b7da37456d367cf26ba9efbbab603ca`
+(silent) and
+`b6bacb758913cacb720a3ba90c6df44ecb0b6b6e1197e2bb50aeffca170be067`
+(sounding).
+
+This supports the narrow candidate in these two observed contexts. It does
+not establish lifetime allocation ownership, cover every initialization or
+interrupt path, or authorize a production reservation. The next bounded
+integration needs the exact bridge checked against the captured circular,
+bank and loop state, a justified full-width preservation policy, and explicit
+experimental placement/initialization rules. Physical behavior stays in #41.
+
+The owner-local commands, original observation scripts, source/tool hashes,
+paired snapshots and reports are retained in ignored
+`out/sharc35-runtime-20261023/`. No firmware, state, full manual or extracted
+manual text is committed. These investigation inputs are not mod-author
+requirements.
+
 ## Limits that remain
 
 This route flattens the loader and starts at the last FIRST entry. It does

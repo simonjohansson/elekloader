@@ -248,6 +248,28 @@ def test_a_longer_section_table_moves_the_data_start():
     assert all(o.stored[k] == s.stored[k] for k in (5, 2, 4, 6, 7, 8))
 
 
+def test_the_update_limit_counts_the_preamble_and_is_optional():
+    from dataclasses import replace
+    body = b'main os image ' * 300
+    cont = _container([(5, 0, b'meta'), (3, 0x40000400, aplib.pack_section(body))])
+    stream = struct.pack('>II', len(cont), transport.content_checksum(cont)) + cont
+    raw = transport.encode_syx(stream, 0x0A, FRAMING0, FRAMING1)
+    st = syx.Syx(raw)
+    dev = devices.devices()[0]
+    for limit in (None, len(stream), len(stream) + 1):
+        syx.verify(raw, st, body, replace(dev, update_max=limit))
+    for limit in (len(cont), len(stream) - 1):
+        try:
+            syx.verify(raw, st, body, replace(dev, update_max=limit))
+        except syx.SyxError as e:
+            assert str(e) == ('decoded update stream %d bytes exceeds the measured USB update limit of %d bytes'
+                              % (len(stream), limit))
+        else:
+            raise AssertionError('accepted an update over the limit')
+    assert [(d.key, d.update_max) for d in devices.devices() if d.update_max is not None] == [
+        ('digitone-mk2', 0x200000)]
+
+
 def test_the_main_os_is_stored_padded_to_4():
     """Elektron stores a packed section as its header and stream, then zeros
     to a multiple of 4; the table's length counts them, the header's does not

@@ -84,4 +84,8 @@ Checked in digikit's emulator (ColdFire only, no DSP, so no audio; 23 Oct
   the rows are listed once in SETTINGS and PERSONALIZE after reopening each,
   and the handlers' order and a taken key behave as its README says.
 
-0.1 hooked only boot and draw. Not yet run on a unit.
+0.1 hooked only boot and draw. The first 0.2 builds stalled during USB
+transfer before flashing: their decoded updates exceeded 2 MiB. The
+profile now caps updates at 2 MiB, measured on a unit rather than found
+in code ([docs/DEVICES.md](../../docs/DEVICES.md)). Builds with the new
+packer still need acceptance on a unit.

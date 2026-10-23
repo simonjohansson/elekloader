@@ -114,9 +114,11 @@ _TERMINATOR_TRAILER_BYTE = 0xFF
 # the git history; the constants are that decoder's.
 _BIAS = 767              # offset = ((g << 8) + byte) - 767
 _FAR = 3328              # past this, the decoder adds 1 to the length
-_MIN_MATCH = 3           # below this a match costs more bits than literals
-_MAX_OFFSET = 1 << 16    # further back only makes the gamma longer
+_MIN_MATCH = 3           # the hash key: candidates share their first three bytes
+_MAX_OFFSET = (1 << 20) - 1   # Elektron's own streams reach back up to just under 1 MiB, on every device
 _MAX_COUNT = 1 << 11     # Elektron's own streams never match more than 2048 bytes (issue #59)
+_CANDIDATES = 8          # positions tried per hash chain: more buys under 1% for twice the time
+_LITERAL_BITS = 9
 
 
 def _match_events(offset, count):
@@ -154,73 +156,111 @@ def _match_events(offset, count):
     return out
 
 
-def _find_matches(data, min_match=_MIN_MATCH, max_offset=_MAX_OFFSET,
-                  max_count=_MAX_COUNT, candidates=24):
-    """-> [(pos, offset, count), ...] greedy, non-overlapping, in order.
+def _reuse_events(offset, count):
+    """-> events for one back-reference that reuses the last offset: a gamma of
+    2 (the reuse code) in place of the offset, then the length as in a match."""
+    length = count - 1 - (1 if offset > _FAR else 0)
+    if length < 1:
+        raise ValueError('count %d too small for offset %d' % (count, offset))
+    out = [(0, b'')] + [(bit, b'') for bit in _gamma_bits(REUSE)]
+    if length <= 3:
+        out += [((length >> 1) & 1, b''), (length & 1, b'')]
+    else:
+        out += [(0, b''), (0, b'')] + [(bit, b'') for bit in _gamma_bits(length - 2)]
+    return out
 
-    A hash of the next three bytes to the positions they last appeared at.
-    Greedy and bounded rather than optimal: this has to run over a 2.4 MB
-    section, and the requirement is a smaller file, not the smallest one.
+
+def _gamma_cost(value):
+    return 2 * (value.bit_length() - 1)
+
+
+def _match_cost(offset, count, reuse):
+    """-> the bits a match costs, or None when the decoder cannot express it."""
+    length = count - 1 - (1 if offset > _FAR else 0)
+    if length < 1:
+        return None
+    lc = 2 if length <= 3 else 2 + _gamma_cost(length - 2)
+    return 1 + (_gamma_cost(REUSE) if reuse else _gamma_cost((offset + _BIAS) >> 8) + 8) + lc
+
+
+def _parse(data):
+    """-> [('L', byte) | ('M', offset, count) | ('R', offset, count), ...]: a
+    literal, a match, or a match that reuses the last offset.
+
+    Each step takes the back-reference that saves the most bits over
+    literals: the last offset, then the newest _CANDIDATES positions that
+    share the next three bytes, within _MAX_OFFSET (ties keep the first
+    found). It looks one byte ahead, and emits a literal instead when the
+    match there saves more than a literal costs. The last offset is reused
+    only once a match has set it (the decoder starts it at 1; Elektron's
+    streams never rely on that). Every position is hashed once, in order.
     """
     n = len(data)
-    if n < min_match:
-        return []
-    table = {}
-    out = []
-    i = 0
-    while i < n - min_match:
-        key = data[i:i + min_match]
-        best_off = best_len = 0
-        chain = table.get(key)
-        if chain:
-            for j in reversed(chain[-candidates:]):
-                off = i - j
-                if off <= 0 or off > max_offset:
-                    continue
-                # A far offset needs one more byte to be worth coding at all.
-                limit = min(max_count, n - i)
-                k = 0
-                while k < limit and data[j + k] == data[i + k]:
-                    k += 1
-                need = min_match + (1 if off > _FAR else 0)
-                if k >= need and k > best_len:
-                    best_off, best_len = off, k
-                    if k >= 64:
-                        break
-        chain = table.setdefault(key, [])
-        chain.append(i)
-        if len(chain) > candidates:
-            del chain[:-candidates]
-        if best_len:
-            out.append((i, best_off, best_len))
-            # Index the covered positions so later matches can reach into them.
-            for k in range(1, best_len):
-                p = i + k
-                if p < n - min_match:
-                    c = table.setdefault(data[p:p + min_match], [])
-                    c.append(p)
-                    if len(c) > candidates:
-                        del c[:-candidates]
-            i += best_len
+    head, prev = {}, [-1] * n
+    hashed = [0]                          # positions below this are in the chains
+
+    def hash_to(p):
+        while hashed[0] <= p:
+            q = hashed[0]
+            if q + _MIN_MATCH <= n:
+                k = (data[q] << 16) | (data[q + 1] << 8) | data[q + 2]
+                prev[q] = head.get(k, -1)
+                head[k] = q
+            hashed[0] = q + 1
+
+    def run(i, j, limit):
+        k = 0
+        while k < limit and data[i + k] == data[j + k]:
+            k += 1
+        return k
+
+    def best(i, last):
+        """-> (bits saved, offset, count, reuse) of the best back-reference at i."""
+        hash_to(i)
+        limit = min(_MAX_COUNT, n - i)
+        out = (0, 0, 0, False)
+        if last and last <= i:
+            k = run(i, i - last, limit)
+            c = _match_cost(last, k, True) if k >= 2 else None
+            if c is not None and _LITERAL_BITS * k - c > out[0]:
+                out = (_LITERAL_BITS * k - c, last, k, True)
+        j, tried = (prev[i] if i + _MIN_MATCH <= n else -1), 0
+        while j >= 0 and tried < _CANDIDATES:
+            off = i - j
+            if off > _MAX_OFFSET:
+                break
+            k = run(i, j, limit)
+            c = _match_cost(off, k, off == last)
+            if c is not None and _LITERAL_BITS * k - c > out[0]:
+                out = (_LITERAL_BITS * k - c, off, k, off == last)
+            j, tried = prev[j], tried + 1
+        return out
+
+    out, i, last = [], 0, 0
+    while i < n:
+        gain, off, count, reuse = best(i, last)
+        if gain > 0 and i + 1 < n and best(i + 1, last)[0] > gain + _LITERAL_BITS:
+            gain = 0                          # a literal here, and the better match next
+        if gain > 0:
+            out.append(('R' if reuse else 'M', off, count))
+            last = off
+            i += count
         else:
+            out.append(('L', data[i]))
             i += 1
     return out
 
 
 def _events_lz(data):
     """_events(), but emitting back-references where they pay."""
-    matches = {pos: (off, count) for pos, off, count in _find_matches(data)}
     events = []
-    i, n = 0, len(data)
-    while i < n:
-        hit = matches.get(i)
-        if hit:
-            off, count = hit
-            events.extend(_match_events(off, count))
-            i += count
+    for e in _parse(data):
+        if e[0] == 'L':
+            events.append((1, bytes((e[1],))))
+        elif e[0] == 'M':
+            events.extend(_match_events(e[1], e[2]))
         else:
-            events.append((1, bytes((data[i],))))
-            i += 1
+            events.extend(_reuse_events(e[1], e[2]))
     events.append((0, b''))
     gbits = _gamma_bits(_TERMINATOR_GAMMA_VALUE)
     last = len(gbits) - 1

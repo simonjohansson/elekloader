@@ -14,6 +14,7 @@ and a hook bus of its own.
 | `main_section`, `main_load` | which container section is the main OS, and where it runs | the section table (id 3, `0x40000400`) |
 | `stage` | where the bootloader stages the main OS before unpacking it in place | the bootstrap's loader (`0x800005fe`: read to `0x40200000`, unpack to `0x40000400`) |
 | `flash_at`, `flash_limit` | where the container sits in flash and must end | the bootstrap (`0x80000` .. `0x380000`) |
+| `update_max` | maximum decoded ELE3 update bytes, including the 8-byte preamble and the container (seal included); `None` when unknown | unknown on the mk1; DN2's conservative USB cap is measured on a unit, not found in code |
 | `trailer` | how the file is sealed: `None`, or `'hmac'` | mk1 has none |
 | `hmac_key_from` | for `'hmac'`: the section and seed string the key is derived from (never the key itself) | none on the mk1 |
 | `isa` | the main CPU's instruction decoder, for the boundary checks | ColdFire (`isa/coldfire.py`) |
@@ -483,7 +484,8 @@ key, encoder, SETTINGS and PERSONALIZE; mods/core-dn2/README.md has its
 sites and evidence). The Digitone II
 runs on the Digitakt II's platform, but every address, size and count here
 was found again in DN2 1.12's own sections (23 Oct 2026), none copied from
-the Digitakt II. Nothing has been sent to a unit yet.
+the Digitakt II. Stock 1.12 and MIDI recovery have worked on a unit;
+the first core builds stalled during USB transfer before flashing (below).
 
 - **Files.** The Digitakt II's family, device byte `0x15`, the same six
   sections (5, 2, 3, 4, 7, 8), main OS 3,196,288 bytes depacked. Sealed as
@@ -550,11 +552,21 @@ the Digitakt II. Nothing has been sent to a unit yet.
   session; examples/hooks-check-dn2 shows every event firing, the row in
   SETTINGS and in PERSONALIZE (once, after reopening), two `ev_key`
   handlers in their order, and a taken key that the stock never sees.
-- **Not known yet.** The receive buffers' size bounds, in the OS (USB) and
-  in the bootstrap (MIDI); the bootstrap's flash path has not been run.
+- **USB update size (measured, not found in code).** On a unit (23 Oct
+  2026), stock 1.12's decoded stream of 1,886,024 bytes transferred and
+  flashed with elektroid-cli. The first core build, 2,147,448 decoded
+  bytes, stalled before YES with both elektroid-cli and Transfer. The
+  last acknowledged SysEx offset (2,660,352 bytes) corresponds to
+  2,099,083 decoded bytes, within one USB block of 2 MiB. The profile's
+  `update_max=0x200000` conservatively caps the **8-byte preamble plus
+  container**, including its seal, at 2 MiB. `syx.verify` refuses larger
+  builds even when they fit flash. This is an operational cap inferred
+  from the stall, not proof of the exact receive-buffer boundary. The
+  bootstrap's MIDI receive limit remains unknown.
 - **Recovery.** The STARTUP menu (FUNC at power-on), TRIG 4 for OS UPGRADE,
-  the stock file over MIDI DIN (the 1.12 manual, 14.4). Not yet tried on a
-  unit.
+  the stock file over MIDI DIN (the 1.12 manual, 14.4). Proven on the unit
+  with stock 1.12 (23 Oct 2026); about 15 minutes, followed by a normal
+  boot showing 1.12.
 - **The TypeScript engine** (js/) has the profile too (`DIGITONE_MK2`). A
   DN2-only cases document for `tools/parity.ts` gives the same files,
   messages and checks as the Python (23 Oct 2026), in 24 cases:

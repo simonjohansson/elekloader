@@ -25,6 +25,7 @@ export type Device = {
   stage: number | null                          // null: unknown, so the in-place unpack is not simulated
   flashAt: number
   flashLimit: number
+  updateMax: number | null                      // decoded ELE3 update bytes: 8-byte preamble + container
   trailer: null | 'hmac'
   isa: 'coldfire'
   hmacKeyFrom: [number, string] | null          // for 'hmac': the section and seed the key is derived from
@@ -54,7 +55,7 @@ const rel = (version: string, syxSha256: string, mainSha256: string, mainLen: nu
 const base = {
   mainSection: 3, mainLoad: 0x40000400, isa: 'coldfire' as const, hmacKeyFrom: null, container: 'ele3' as const,
   versionLen: 4, versionAt: 0x14, versionOptional: false, protected: [], relocatable: [], blobMax: null, sramCode: [0, 0] as Range, coreDdr: [] as [string, Range][], slotClaims: [] as [string, number, number, string][], fastTable: '',
-  imageFree: [], reserve: null, dspPayloads: {}, dspAreas: [], trailer: null,
+  imageFree: [], reserve: null, dspPayloads: {}, dspAreas: [], trailer: null, updateMax: null,
 }
 
 export const DIGITAKT_MK1: Device = {
@@ -185,6 +186,7 @@ export const ANALOG_FOUR_MK2: Device = {
 
 export const DIGITONE_MK2: Device = {
   ...base,
+  updateMax: 0x200000,                           // conservative USB cap, measured on a unit; not found in code
   key: 'digitone-mk2', name: 'Digitone II', sysexId: 0x15,
   releases: [
     rel('1.12', '7e5b8a733d4ab1fdf7e5d22757f7d8eddaa3cbf71d0858874a791844c02ceb35',

@@ -183,8 +183,23 @@ export const ANALOG_FOUR_MK2: Device = {
     + 'then send the stock .syx over MIDI DIN (not USB)',
 }
 
+export const DIGITONE_MK2: Device = {
+  ...base,
+  key: 'digitone-mk2', name: 'Digitone II', sysexId: 0x15,
+  releases: [
+    rel('1.12', '7e5b8a733d4ab1fdf7e5d22757f7d8eddaa3cbf71d0858874a791844c02ceb35',
+      'a098f620019b2ad38fd7e0397df39501fb1cf6bc26d0283915f34c49446fdf1a', 3196288),
+  ],
+  stage: 0x40400000, flashAt: 0x80000, flashLimit: 0x380000, trailer: 'hmac', hmacKeyFrom: [2, 'Multiplier'],
+  blobMax: 0x40000,
+  areas: { ddr: [0x47f00000, 0x47f40000] },
+  ddr: [0, 0],                                    // no core yet: no linkable mods
+  recovery: 'hold FUNC while powering on for the STARTUP menu, press TRIG 4 (OS UPGRADE), '
+    + 'then send the stock .syx over MIDI (not USB)',
+}
+
 const DEVICES: Device[] = [DIGITAKT_MK1, DIGITAKT_MK2, DIGITONE_MK1, OCTATRACK, MODEL_CYCLES, MODEL_SAMPLES,
-  ANALOG_RYTM_MK2, ANALOG_FOUR_MK2]
+  ANALOG_RYTM_MK2, ANALOG_FOUR_MK2, DIGITONE_MK2]
 
 export const devices = (): Device[] => DEVICES
 

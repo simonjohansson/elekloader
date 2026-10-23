@@ -475,11 +475,85 @@ Recovery to stock worked on the unit (21 Oct 2026).
   same files, messages and checks as the Python (21 Oct 2026). The web page's
   list of where to download each stock OS does not name the A4 yet.
 
+## The Digitone II (1.12)
+
+Whole builds (format 1) only: the profile (`digitone_mk2.py`, where each
+fact's evidence is), with no core yet, so no linkable mods. The Digitone II
+runs on the Digitakt II's platform, but every address, size and count here
+was found again in DN2 1.12's own sections (23 Oct 2026), none copied from
+the Digitakt II. Nothing has been sent to a unit yet.
+
+- **Files.** The Digitakt II's family, device byte `0x15`, the same six
+  sections (5, 2, 3, 4, 7, 8), main OS 3,196,288 bytes depacked. Sealed as
+  the Digitakt II: the key comes from section 2's seed `"Multiplier"` (no
+  other string there verifies the trailer). The OS's upgrade validator
+  (`0x400dbdb0`) checks the content checksum, then the seal, with its own
+  copy of the seed and constant (`0x40210a4a`, `0x4021b9ef`), which give
+  the same key. The writer reproduces the stock file byte for byte, seal
+  included; the profile also knows Elektron's zip of it.
+- **Staging.** The bootstrap is the Digitakt II 1.17's code instruction for
+  instruction, at the same addresses: the loader `0x80000596` reads section
+  3 from flash at its container offset + `0x80000` to `0x40400000`, and the
+  depacker `0x80000432` (byte-identical) unpacks it to `0x40000400`. Run
+  in place (in digikit's ColdFire core), that depacker yields the stock
+  image from Elektron's stream and from elekloader's repack, and from
+  builds grown by 256 KB of code, by 1 MB of random bytes, and past the
+  stage; on a stream whose output overtakes its unread input it faults,
+  the case `syx.verify` refuses. Stock's in-place gap is 2,128,334 bytes.
+- **Flash.** `flash_limit` is `0x380000`: the settings store
+  `0x380000`-`0x400000` (26 and 12 pushes of `0x380000` and `0x3c0000`). Stock
+  takes 1.80 MB of the 3 MB; elekloader's repack of stock ends at
+  `0x28c2f0`. The in-OS upgrade (`0x40139104`) erases from `0x80000` only as
+  far as the container it received. The bootstrap and the OS both read the
+  container's header at `0x80000` and want product `0x34`, which the
+  writer keeps.
+- **No protected range.** Every write and erase through the SPI NOR driver
+  comes from the settings store, the factory console, the in-OS upgrade or
+  a migration (`0x400f2022`) that erases only the `0x400000`, `0x800000` and
+  `0xc00000` sectors; none writes bytes of the main OS. The main OS holds no
+  copy of the bootstrap: they share only a font-width table and zero runs.
+- **At reset** (`0x400004e8`), the OS copies `0x402fd000-0x40305000` to SRAM
+  at `0x80000000` and `0x40305000-0x4030c980` to `0x80008000` (zeroing the
+  rest of the second half), clears DDR `0x402fd000-0x466b84d0` and runs its
+  stack down from `0x48000000`. Its heap (a buddy allocator, 32 MB at
+  `0x4464bbf0`) is inside the clear.
+- **Mods' area.** `0x47F00000`-`0x47F40000` (256 KB), the Digitakt II's,
+  the profile's one area: a whole build's regions must lie in it, and its
+  blob may be at most its size (`blob_max`).
+  - Above the clear, the OS names only its DMA buffers, all through the
+    uncached alias (+0x08000000): `0x466c0000`-`0x46709340` in the cached
+    view. In its code, nothing names `0x47E00000`-`0x48000000` or its alias
+    but the stack top, stores to `0x48000000` itself (a reset) and `FLT_MAX`.
+  - In digikit's emulator (`regions_probe`, ColdFire only), a canary over
+    `0x46710000`-`0x48000000`, in both views, filled as the reset clear
+    returns: through a cold boot and two panel sessions (every page, mode,
+    arrow and encoder; PLAY, the 16 trigs, RECORD and MIDI notes) to 2.25G
+    instructions, only the stack's top 52 bytes changed, and the state
+    digest was the same with the region holding zeros, so nothing read it.
+    The area is 24 MB above the DMA buffers and 768 KB below the stack top.
+  - SRAM is not qualified: the profile has no SRAM area and no `.fast`.
+- **Checked in an emulator** (digikit's `boot_gate`, ColdFire only): a
+  repack of stock, whole builds with a data site and a blob (up to the
+  area's 256 KB) or a region, and one grown to 3.5 KB below the flash
+  limit, all boot as stock does, with the same instruction count to the
+  main screen and the same screen.
+- **Not known yet.** The receive buffers' size bounds, in the OS (USB) and
+  in the bootstrap (MIDI); the bootstrap's flash path has not been run.
+- **Recovery.** The STARTUP menu (FUNC at power-on), TRIG 4 for OS UPGRADE,
+  the stock file over MIDI DIN (the 1.12 manual, 14.4). Not yet tried on a
+  unit.
+- **The TypeScript engine** (js/) has the profile too (`DIGITONE_MK2`). A
+  DN2-only cases document for `tools/parity.ts` (whole builds from the `.syx`
+  and the zip, a check, and refusals: no version, a blob over the area,
+  regions in SRAM and past the area, a Digitakt II mod, a format-2 mod,
+  wrong stock bytes) gives the same files, messages and checks as the
+  Python (23 Oct 2026).
+
 ## What a new device needs besides its profile
 
 - **Sealed files.** `trailer='hmac'` with `hmac_key_from` (the Digitakt
-  II, above). Another sealed device needs its seed found in its bootstrap
-  (the Digitone II's is `"Multiplier"`, digikit), and the writer checked to
+  II and the Digitone II, above). Another sealed device needs its seed found
+  in its bootstrap, and the writer checked to
   reproduce its stock file, seal included.
 - **The packing format.** The loader repacks with the same codec
   (`codec/`). Check that the device's own depacker accepts it: every

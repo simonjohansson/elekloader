@@ -289,15 +289,23 @@ def built(moddir, tmp):
     return sdkbuild.build(os.path.join(os.path.dirname(HERE), moddir), SYX, tmp)[0]
 
 
-# core 0.1's sites: the OS entry's call that sets the VBR, and the UI loop's drawAll(ctrl, bmp)
-CORE_SITES = ((0x40000538, '4eb9400019b0'), (0x4002e4ca, '4eb94011d60a'))
+# core's sites (core-dn2 0.2): the OS entry's VBR call, the UI loop's dirty check, drawAll, key and
+# encoder dispatch, the SETTINGS builder's last row, and the PERSONALIZE builder's epilogue
+CORE_SITES = ((0x40000538, '4eb9400019b0'), (0x4002e464, '4eb94011d5d4'),
+              (0x4002e4ca, '4eb94011d60a'), (0x4002f20c, '4eb94002c5c8'),
+              (0x4002f256, '4eb94002c55c'), (0x4009ff88, '205248780002'),
+              (0x400987a2, '4cef7c7c0018'))
+
+
+def at(img, addr, n):
+    return img[addr - DEV.main_load:addr - DEV.main_load + n].hex()
 
 
 def test_the_cores_addresses_are_the_firmwares_calls():
     """Each defsym is the routine the firmware calls at its site, its only
-    caller: drawAll at the draw site; Brain::key and Brain::enc at the UI
-    loop's dispatch (0x4002f20c, 0x4002f256), which core.s returns to though
-    0.1 does not hook them. VBR_FN sets the vector base and returns."""
+    caller, with the arguments core.s expects: drawAll(ctrl, bmp), and
+    Brain::key/enc(brain, event); the dirty check returns ctrl's byte +0x20,
+    as core_tick does after its handlers. VBR_FN sets the vector base."""
     st, img = stock()
     with open(os.path.join(os.path.dirname(HERE), 'mods', 'core-dn2', 'mod.json')) as fh:
         sym = {k: int(v, 0) for k, v in json.load(fh)['defsym'].items()}
@@ -305,11 +313,44 @@ def test_the_cores_addresses_are_the_firmwares_calls():
                           (0x4002f256, 'ENCDISP'), (0x40000538, 'VBR_FN')):
         assert img[site - DEV.main_load:][:2] == b'\x4e\xb9' and word(img, site + 2) == sym[routine]
         assert refs_to(img, sym[routine]) == [site], routine
-    assert img[sym['VBR_FN'] - DEV.main_load:][:12] == bytes.fromhex('203c400000004e7b08014e75')
+    assert at(img, sym['VBR_FN'], 12) == '203c400000004e7b08014e75'
     for site, stock_bytes in CORE_SITES:
-        assert img[site - DEV.main_load:][:6].hex() == stock_bytes
-    # the draw site's arguments: push bmp (a3), push ctrl (a2), call
-    assert img[0x4002e4c6 - DEV.main_load:][:4] == bytes.fromhex('2f0b2f0a')
+        assert at(img, site, 6) == stock_bytes
+    assert at(img, 0x4002e4c6, 4) == '2f0b2f0a'                     # bmp (a3), then ctrl (a2)
+    assert at(img, 0x4011d5d4, 10) == '206f0004102800204e75'         # return ctrl->dirty (+0x20)
+    assert refs_to(img, 0x4011d5d4) == [0x4002e464]
+    for site in (0x4002f20c, 0x4002f256):                            # the event (d2), then brain
+        assert at(img, site - 6, 6) == '2f022f2eff80'
+
+
+def test_the_menu_routines_are_the_builders_own():
+    """SETTINGS (0x4009fbe0): the menu in a2, and the site's two instructions
+    are what core_settings replays before SETTINGS_RET. PERSONALIZE
+    (0x40097eac): its rows are core_additem's: new(0x54) through OP_NEW,
+    ITEM_CTOR(item, label, select, draw, change, -1, 8), MENU_ADD(menu, item)
+    with the menu in a4, each callback a 16-byte std::function with its
+    manager at +8 and its invoker at +12; it ends with the movem, lea 0x80
+    and rts personalize.s replays. FN_MGR is the manager of a plain function
+    pointer: its type query gives PFSs15FileStorageInfoE's typeinfo."""
+    st, img = stock()
+    with open(os.path.join(os.path.dirname(HERE), 'mods', 'core-dn2', 'mod.json')) as fh:
+        sym = {k: int(v, 0) for k, v in json.load(fh)['defsym'].items()}
+    assert at(img, 0x4009fbe8, 4) == '246f0048'                     # a2 = the menu
+    assert at(img, 0x4009ff88, 6) == '205248780002' and sym['SETTINGS_RET'] == 0x4009ff8e
+    assert at(img, 0x40097eac, 4) == '4fefff98'                     # its 0x80-byte frame
+    assert at(img, 0x400987a2, 12) == '4cef7c7c00184fef00804e75'
+    assert at(img, 0x40097f06, 6) == '45f9%08x' % sym['OP_NEW']
+    assert at(img, 0x40097fe4, 6) == '4bf9%08x' % sym['MENU_ADD']
+    assert at(img, 0x4009806a, 6) == '4df9%08x' % sym['ITEM_CTOR']
+    assert at(img, 0x4009876c, 4) == '48780054'                     # new(0x54)
+    assert at(img, 0x40098772, 8) == '487800084878ffff'             # step 8, id -1
+    assert at(img, 0x4009878e, 4) == '2f0c4e95'                     # MENU_ADD(a4, item)
+    assert at(img, 0x40098764, 8) == '2f4800642f400068'             # manager +8, invoker +12
+    mgr = sym['FN_MGR']
+    assert at(img, mgr + 0x1e, 2) == '20bc'                         # op 0: *a0 = &typeinfo
+    ti = word(img, mgr + 0x20)
+    name = word(img, ti + 4)
+    assert img[name - DEV.main_load:][:23] == b'PFSs15FileStorageInfoE\0'
 
 
 def test_core_builds_links_and_verifies():
@@ -325,7 +366,7 @@ def test_core_builds_links_and_verifies():
     sites = [s - DEV.main_load for s, _ in CORE_SITES]
     assert changed and all(any(s <= i < s + 6 for s in sites) for i in changed)
     for s in sites:
-        assert new[s:s + 2] == b'\x4e\xb9'
+        assert new[s:s + 2] in (b'\x4e\xb9', b'\x4e\xf9')            # jsr, or jmp for the menus
     lay = man['link']['layout']
     assert DEV.ddr[0] == lay['ddr'][0] < lay['bss'][1] <= DEV.ddr[1]
     assert lay['boot'][0] == DEV.image_end(REL) and len(new) > len(img)
@@ -341,7 +382,8 @@ def test_the_example_links_with_core():
         outputs, man = patch.build(SYX, [core, hello], version='HM01', log=lambda *a: None)
         tables = man['link']['tables']
         assert tables['ev_draw']['entries'] == 1
-        assert all(tables[t]['entries'] == 0 for t in ('ev_tick', 'ev_key', 'ev_enc'))
+        assert all(tables[t]['entries'] == 0
+                   for t in ('ev_tick', 'ev_key', 'ev_enc', 'ev_settings', 'ev_personalize'))
         st, img = stock()
         new = formats.main_image(formats.parse(outputs['syx'], DEV), DEV)
         changed = {i for i in range(len(img)) if new[i] != img[i]}
@@ -368,6 +410,41 @@ def test_the_example_links_with_core():
         doc.pop('signature', None)
         p4 = write_mod(tmp, doc, 'hello-fast-1.0.elemod')
         expect(lambda: patch.build(SYX, [core, p4], version='HM01', log=lambda *a: None), '.fast')
+
+
+def test_hooks_check_links_with_core():
+    """examples/hooks-check-dn2: a handler on each of the six events, two on
+    ev_key in their order, a row in SETTINGS and in PERSONALIZE. An event
+    core-dn2 does not have, or a second mod with the same row, is refused."""
+    with tempfile.TemporaryDirectory() as tmp:
+        core = built(os.path.join('mods', 'core-dn2'), tmp)
+        hc = built(os.path.join('examples', 'hooks-check-dn2'), tmp)
+        outputs, man = patch.build(SYX, [core, hc], version='HC01', log=lambda *a: None)
+        tables = man['link']['tables']
+        assert {t: tables[t]['entries'] for t in ('ev_tick', 'ev_draw', 'ev_key', 'ev_enc',
+                                                  'ev_settings', 'ev_personalize')} == {
+            'ev_tick': 1, 'ev_draw': 1, 'ev_key': 2, 'ev_enc': 1, 'ev_settings': 1, 'ev_personalize': 1}
+        o = formats.parse(outputs['syx'], DEV)
+        new = formats.main_image(o, DEV)
+        key = int(tables['ev_key']['at'], 16)
+        lay = man['link']['layout']
+        run = new[lay['run_load'] - DEV.main_load:]                     # the DDR image as loaded
+        entries = [int.from_bytes(run[key - DEV.ddr[0] + 4 * i:][:4], 'big') for i in range(3)]
+        with open(hc) as fh:
+            doc = json.load(fh)
+        first, second = (lay['sections']['hooks-check .run'] + doc['symbols'][f][1]
+                         for f in ('hc_first', 'hc_key'))
+        assert entries == [first, second, 0]                             # order 40, then 60
+        tick = [c for c in doc['contribute'] if c['to'] == 'ev_tick'][0]
+        d = dict(doc, contribute=doc['contribute'] + [dict(tick, to='ev_render_in')])
+        d.pop('signature', None)
+        p = write_mod(tmp, d, 'hc-render-0.1.elemod')
+        expect(lambda: patch.build(SYX, [core, p], version='HC01', log=lambda *a: None), 'ev_render_in')
+        d = dict(doc, id='hooks-check-2')
+        d.pop('signature', None)
+        p = write_mod(tmp, d, 'hooks-check-2-0.1.elemod')
+        expect(lambda: patch.build(SYX, [core, hc, p], version='HC01', log=lambda *a: None),
+               'settings:HOOK TEST')
 
 
 # ---- the flash: what the firmware reads and writes there (docs/DEVICES.md) ------------------

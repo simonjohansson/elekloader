@@ -62,11 +62,11 @@ below was found again in 1.17.
   it from there to `0x40000400` with its depacker (`0x80000432`). The mk1
   stages at `0x40200000`; this image, 3.27 MB depacked, runs past that.
   Stock's in-place gap is 2,065,240 bytes.
-- **The unit's own depacker takes elekloader's stream.** Run in Unicorn
-  through digikit's harness (`emu/oracle.py`, with the 1.17 entry), the
-  bootstrap's depacker yields the stock main OS from both Elektron's
-  stream and elekloader's repack of it (1,385,586 bytes against
-  1,147,584).
+- **The unit's own depacker takes elekloader's stream.** Run in place in
+  digikit's ColdFire core (23 Oct 2026), the bootstrap's depacker yields
+  the stock main OS from elekloader's repack (1,179,664 stored bytes,
+  against Elektron's 1,147,584). The earlier packer was also checked in
+  Unicorn through digikit's harness (`emu/oracle.py`, with the 1.17 entry).
 - **Flash.** The container starts at `0x80000`: the bootstrap's read above,
   and digikit's map of the OS's own reads. The OS keeps a store at
   `0x380000`-`0x400000`, with the mk1's code at its own addresses: it reads
@@ -357,12 +357,13 @@ Digitakt's in the places elekloader depends on.
 - **Staging.** The bootstrap's loader (`0x80000590`) is the Digitakt mk1's call
   for call: section 3 from flash at its container offset + `0x80000`, to
   `0x40200000`, unpacked in place to `0x40000400` by the same depacker. Stock's
-  in-place gap is 401,261 bytes; elekloader's repack of stock, 533,073.
+  in-place gap on 1.74 is 401,995 bytes; elekloader's repack of 1.74,
+  436,273 (packer checked 23 Oct 2026).
 - **Flash.** `flash_limit` is `0x300000`. The OS keeps the Digitakt's store at
   `0x380000`-`0x400000`, and a second one of its own at `0x300000`-`0x380000`
   (a 0x1B072-byte block at `0x300000` or `0x340000`), read, written and erased
-  through the same routines. elekloader's repack of stock ends at `0x20A5D0`
-  (Elektron's at `0x1EA2F0`). The in-OS upgrade erases from `0x80000`, a
+  through the same routines. elekloader's repack of 1.74 ends at `0x1F2BB0`
+  (Elektron's at `0x1EA5D0`). The in-OS upgrade erases from `0x80000`, a
   sector at a time, only as far as the container it received reaches.
 - **No protected range.** The main OS holds no copy of the bootstrap: no 512
   bytes of section 2's first 0x7D94 are in it (after them come zero-padded
@@ -429,11 +430,11 @@ Recovery to stock worked on the unit (21 Oct 2026).
   call, with a byte-identical depacker: section 3 from flash at its container
   offset + `0x80000`, to `0x40200000`, unpacked in place to `0x40000400`.
   Stock's in-place gap is 540,192 bytes; elekloader's repack of stock,
-  649,113.
+  563,703 (packer checked 23 Oct 2026).
 - **Flash.** `flash_limit` is `0x300000`, where the OS keeps its voice
   calibration record (`RBOW`, 0xE56 bytes). The settings store is the
   Rytm's, `0x380000`-`0x400000`; there is no store at `0x340000`.
-  elekloader's repack of stock ends at `0x1A2D10` (Elektron's at
+  elekloader's repack of stock ends at `0x18DF70` (Elektron's at
   `0x188390`).
 - **No protected range.** Every call into the SPI NOR routines comes from
   the calibration record, the settings store, the factory console, the in-OS
@@ -507,7 +508,8 @@ the first core builds stalled during USB transfer before flashing (below).
 - **Flash.** `flash_limit` is `0x380000`: the settings store
   `0x380000`-`0x400000` (26 and 12 pushes of `0x380000` and `0x3c0000`). Stock
   takes 1.80 MB of the 3 MB; elekloader's repack of stock ends at
-  `0x28c2f0`. The in-OS upgrade (`0x40139104`) erases from `0x80000` only as
+  `0x253ae0` (1,160,952 stored main-OS bytes; packer checked 23 Oct 2026).
+  The in-OS upgrade (`0x40139104`) erases from `0x80000` only as
   far as the container it received. The bootstrap and the OS both read the
   container's header at `0x80000` and want product `0x34`, which the
   writer keeps.

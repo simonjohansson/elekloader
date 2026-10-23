@@ -48,13 +48,19 @@ verifies the file. With `pip install .` the command is `elekpatch`.
 Send the `.syx` to the unit the way Elektron describes for OS updates
 ([How to update your device](https://support.elektron.se/support/solutions/articles/43000662890-how-to-update-your-device)).
 For the Digitakt mk1, the Digitakt II, the Digitone mk1, the Analog Rytm
-MKII and the Analog Four MKII (and the Digitone II, not yet tried on a unit):
+MKII, the Analog Four MKII and the Digitone II:
 1. Connect it over USB and open Elektron Transfer.
 2. Select the unit and **Connect**.
 3. Drag the `.syx` onto **Drop files here**.
 4. Press **YES** on the unit.
 
 Don't turn the unit off until the upgrade is done.
+
+On the Digitone II, stock 1.12 has completed this route, but custom builds
+still need acceptance on a unit. The verifier caps the decoded update
+(8-byte preamble plus container, including its seal) at 2 MiB, based on a
+measured USB stall with larger builds. This conservative cap has not been
+located in the firmware code ([device evidence](DEVICES.md#the-digitone-ii-112)).
 
 For the Octatrack, from the card (back it up first):
 1. **PROJECT > SYSTEM > USB DISK MODE**, and copy the `.bin` to the root of
@@ -70,8 +76,8 @@ restores the unit. If a custom OS will not start on a Digitakt mk1, a
 Digitakt II, a Digitone mk1 or a Digitone II, hold **FUNC** while powering
 on for the startup menu, and press **TRIG 4** for OS UPGRADE.
 Then send the stock `.syx` with Transfer's legacy OS upgrade mode (on the
-Digitakt II and the Digitone II, over its MIDI ports: not USB; the Digitone
-II's, from its manual, is not yet tried on a unit). On the
+Digitakt II and the Digitone II, over its MIDI ports: not USB). The Digitone
+II's recovery was checked on a unit with stock 1.12 (23 Oct 2026). On the
 Octatrack: hold **FUNC** while powering on, press **TRIG 3** for MIDI
 UPGRADE, and send the stock `.syx` over 5-pin DIN MIDI (USB MIDI does not
 work for this). On the Analog Rytm MKII: hold **FUNC** while powering on for
@@ -88,7 +94,7 @@ The output is refused unless every one of these holds:
   differs only in its 4-character version field; the framing only in its
   message count.
 - Every message checksum, counter and the content checksum are right, and
-  the container fits the device's flash budget.
+  the container fits the device's flash budget and any known update-size cap.
 - The main OS unpacks to exactly the patched image, simulated the way the
   bootloader does it: in place, over its own staged copy.
 

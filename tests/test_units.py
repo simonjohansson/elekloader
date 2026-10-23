@@ -192,6 +192,17 @@ def test_packer_round_trip():
         assert elz.depack_section(packed) == data
 
 
+def test_packer_reaches_past_64_kib():
+    state, data = 7, bytearray()
+    for _ in range(70000):
+        state = (1664525 * state + 1013904223) & 0xFFFFFFFF
+        data.append(state >> 24)
+    data += data[:4096]
+    packed = aplib.pack_section(data)
+    assert elz.depack_section(packed) == data
+    assert len(packed) < 79000       # literals for the distant repeat would exceed 83 KB
+
+
 def _container(sections):
     """[(id, dest, stored)] -> a container laid out like the mk1 files."""
     cont = bytearray(0x80)

@@ -215,25 +215,23 @@ manual and tests every low-byte value against four upper-word patterns:
 Omitting R0's PX1 restore fails all 1,024 cases. This is a finite bitvector
 check of the emitted spill subset, not full bridge execution on silicon.
 
-**Both pinned external runners fail the exact PX bridge.** `PX=R0` writes
-the model's separate PX slot without updating PX1/PX2, so its later `R0=PX`
-reads the wrong value. A three-instruction reproduction and a complete native
-bridge attempt retain that failure. Do not silently repair register values or
-report these runs as successful. The ordinary binary32 models also cannot
-establish preservation of hardware extended bits, even after this defect is
-corrected. The finite full-width check supplies a separate evidence layer.
+At Digikit `38dfbe4`, **both runners failed the exact PX bridge**: `PX=R0`
+changed the model's separate PX slot without updating PX1/PX2, so `R0=PX`
+read a stale value. [Digikit PR #184](https://github.com/ElekLabs/digikit/pull/184)
+fixes the shared Python/native register write and the fast lowering path at
+`ded547e`. The untouched runners at that revision now pass the exact linked
+**548-byte full-width artifact** in the idle and sounding H1 captures: eight
+phase-continuous blocks each, one init, dirty reset, empty binding, caller
+frame and modeled register/bank/loop-slot restoration, known accesses and exact
+stock continuation. Maximum I7 drop is **200 bytes** inside H1's imminent
+544-byte frame. The artifact SHA-256 is
+`238339a708a64f06e4423736f628db86bb61ed3713b1a419de603ba8a8a82aa8a`.
 
-A separate, explicitly isolated diagnostic corrects only the destination-PX
-alias for the exact bridge's `PX=R0..R8` instructions. It routes the modeled
-upper word to PX2 and treats omitted lower eight bits as zero; it does not
-modify the external checkout or qualify hardware extended contents. Under
-that correction, the **exact 548-byte bridge** passes both captured contexts:
-eight phase-continuous blocks each, one init, dirty reset, empty binding,
-unchanged caller state, all modeled registers/banks/loop slots, known access
-addresses and exact continuation. The maximum I7 drop is **200 bytes**,
-inside the imminent 544-byte H1 frame. The parent repeated this experiment;
-its report counts all 180 corrected PX writes. This is explicitly a modified
-binary32 model result, separate from the unchanged-runner failure above.
+The runners retain a **32-bit data-register model**: they route the upper word
+to PX2 and assume zero for the unmodeled lower eight bits in PX1. Thus this is
+an unchanged-runner pass of the full artifact, not a run with true 40-bit
+register state. The independent 1,024-case spill check above covers the low
+bits algebraically; neither layer establishes full bridge execution on silicon.
 
 The actual interrupt-entry check clears active bank mask `0x4f8` to zero
 under MMASK `0xe0b4fb`. The stock SECI prefix's first three pushes use the
@@ -244,8 +242,8 @@ collision based on an unchanged H1 stack bank would use the wrong context.
 
 ### Stock continuation and output routing
 
-The separate binary32 bridge also ran through the unmodified stock H1 caller
-and the next captured SPI frame in the native interpreter. Its sine survives
+The exact full-width bridge also ran through the unmodified stock H1 caller
+and the next captured SPI frame in the fixed native interpreter. Its sine survives
 H1 exactly. Stock processing between H1 and the converter changes some floats
 by one binary32 ULP; this bounded investigation records that transform rather
 than claiming an independently derived end-to-end sample formula. The converter
@@ -257,10 +255,12 @@ block matches the newly generated page byte for byte**, in both the idle and
 sounding captures. A missing hook and zeroed oscillator increment each fail
 that next-block sample check. Empty binding preserves both SPORT blocks and
 the next SPI reply; at the same stock caller-return PC, modeled non-memory
-context matches except the equal 62-instruction clock/timer overhead. Those
-counts are interpreter instructions, not SHARC cycles. The parent repeated
-this route check. These results qualify the route for the binary32 artifact,
-not the unchanged runners' failing full-width PX artifact or a physical DN2.
+context matches except the equal 102-instruction clock/timer overhead. Those
+counts are interpreter instructions, not SHARC cycles. The tested runner models
+32-bit data registers; actual 40-bit preservation, enabled-cache instruction
+visibility and interrupt timing still require physical qualification in #41.
+Private scripts and reports are retained under ignored
+`out/sharc35-bridge-20261023/px-fixed-20261024/`.
 
 ### Explicit experimental placement
 

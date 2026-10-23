@@ -37,6 +37,10 @@ More inputs some suites take:
 - `ELEKLOADER_DSP_ASM` (octabam's `dsp_asm`) for test_octatrack's and
   test_octabam's DSP code.
 - `ELEKLOADER_DN_MODS`, a folder of Digitone mods, for test_gui.
+- `ELEKLOADER_DN2_SYX` and `ELEKLOADER_DN2_MODS` for test_gui's Digitone II
+  test: a folder with core-dn2 and its mods, and another device's core and
+  mods, which must not fit (test_digitone2 builds its own with the cross
+  toolchain).
 - `ELEKLOADER_MODS` for test_gui: `core-2.1.elemod` and `core-2.1-os1.54.elemod`,
   and, for the two-core test, `core-3.0.elemod` and the newest
   `machine-pages-*.elemod` for 1.53.

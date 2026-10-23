@@ -111,6 +111,9 @@ docs match its code.
 
 ## Maintaining elekloader
 
+- **[SHARC sine compiler probe](../examples/sharc-sine-probe/README.md)**:
+  firmware-free developer qualification of a pinned open toolchain; not yet
+  an installable DN2/DT2 module.
 - **[Releasing](RELEASING.md)**: the version, the core files a release
   carries, the workflows that build the apps, the kit and the site, and
   pre-releases.

@@ -353,6 +353,24 @@ def test_the_menu_routines_are_the_builders_own():
     assert img[name - DEV.main_load:][:23] == b'PFSs15FileStorageInfoE\0'
 
 
+# each site's hook: the instruction and the handler it must reach (fixed here, not read from
+# mod.json, so a site dropped from the manifest fails too)
+CORE_HOOKS = {0x40000538: ('4eb9', 'boot'), 0x4002e464: ('4eb9', 'core_tick'),
+              0x4002e4ca: ('4eb9', 'core_draw'), 0x4002f20c: ('4eb9', 'core_key'),
+              0x4002f256: ('4eb9', 'core_enc'), 0x4009ff88: ('4ef9', 'core_settings'),
+              0x400987a2: ('4ef9', 'core_personalize')}
+
+
+def assert_hooked(new, man):
+    """Every core site is its jsr/jmp to its own handler, by the link's map:
+    a missing or misdirected hook fails, though stock already has a jsr at
+    most of the sites."""
+    assert set(CORE_HOOKS) == {a for a, _ in CORE_SITES}
+    for a, (op, target) in CORE_HOOKS.items():
+        want = op + '%08x' % man['_map'][target]
+        assert at(new, a, 6) == want, (hex(a), target, at(new, a, 6), want)
+
+
 def test_core_builds_links_and_verifies():
     """mods/core-dn2 alone: its two sites and the appended image change,
     nothing else; its RAM is in the area; every other section is stock."""
@@ -365,8 +383,7 @@ def test_core_builds_links_and_verifies():
     changed = [i for i in range(len(img)) if new[i] != img[i]]
     sites = [s - DEV.main_load for s, _ in CORE_SITES]
     assert changed and all(any(s <= i < s + 6 for s in sites) for i in changed)
-    for s in sites:
-        assert new[s:s + 2] in (b'\x4e\xb9', b'\x4e\xf9')            # jsr, or jmp for the menus
+    assert_hooked(new, man)
     lay = man['link']['layout']
     assert DEV.ddr[0] == lay['ddr'][0] < lay['bss'][1] <= DEV.ddr[1]
     assert lay['boot'][0] == DEV.image_end(REL) and len(new) > len(img)
@@ -388,6 +405,7 @@ def test_the_example_links_with_core():
         new = formats.main_image(formats.parse(outputs['syx'], DEV), DEV)
         changed = {i for i in range(len(img)) if new[i] != img[i]}
         assert changed <= {s - DEV.main_load + k for s, _ in CORE_SITES for k in range(6)}
+        assert_hooked(new, man)
         # without core, or with two, or on core's site, or with .fast code: refused
         expect(lambda: patch.build(SYX, [hello], version='HM01', log=lambda *a: None), 'core')
         with open(core) as fh:
@@ -426,6 +444,7 @@ def test_hooks_check_links_with_core():
             'ev_tick': 1, 'ev_draw': 1, 'ev_key': 2, 'ev_enc': 1, 'ev_settings': 1, 'ev_personalize': 1}
         o = formats.parse(outputs['syx'], DEV)
         new = formats.main_image(o, DEV)
+        assert_hooked(new, man)
         key = int(tables['ev_key']['at'], 16)
         lay = man['link']['layout']
         run = new[lay['run_load'] - DEV.main_load:]                     # the DDR image as loaded

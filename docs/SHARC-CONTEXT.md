@@ -129,12 +129,14 @@ synthetic caller values or a borrowed H5 observation:
 | L6 / L7 | Both `0x3e2` (994), **not zero** |
 | M6 / M7 | `1` / `0xffffffff` |
 | Active bank mask | `0x4f8` |
-| Hardware loop depth in canonical state | `1`, **not empty** |
+| Serialized loop depth | `1`, with top LADDR/CURLCNTR both `0xffffffff` and `loops=[]` |
 
 RND32 is set, SIMD is clear, and the L1 normal-word configuration corroborates
 32-bit accesses at this entry. Circular buffering is enabled with nonzero
 stack lengths. The proposed bridge must preserve that real DAG, bank and loop
-context; a fixture with zero circular lengths or no loops is insufficient.
+context. The serialized loop slot is a retained sentinel, not evidence of an
+active hardware loop; preserve all slots rather than inferring liveness from
+depth alone. A fixture with zero circular lengths is insufficient.
 These observations do not expose or prove preservation of hardware extended
 floating-point bits.
 
@@ -173,15 +175,135 @@ with **zero differences**. The reports hash to
 This supports the narrow candidate in these two observed contexts. It does
 not establish lifetime allocation ownership, cover every initialization or
 interrupt path, or authorize a production reservation. The next bounded
-integration needs the exact bridge checked against the captured circular,
-bank and loop state, a justified full-width preservation policy, and explicit
-experimental placement/initialization rules. Physical behavior stays in #41.
+integration uses these captured contexts. The bridge and placement follow-up
+below separates completed checks from the external runner limitation.
+Physical behavior stays in #41.
 
 The owner-local commands, original observation scripts, source/tool hashes,
 paired snapshots and reports are retained in ignored
 `out/sharc35-runtime-20261023/`. No firmware, state, full manual or extracted
 manual text is committed. These investigation inputs are not mod-author
 requirements.
+
+## H1 bridge follow-up
+
+The first genuine-context run found a bug in the earlier synthetic adapter:
+**incoming R4 is `0x2d1808`, a caller-stack address, not the master buffer**.
+The old adapter restored registers but wrote 64 output words into the caller
+frame and left the master unchanged. Its synthetic sample check therefore
+was not a valid stock-output check. The revised original
+[H1 bridge](../examples/sharc-sine-probe/h1-bridge.s) supplies `0x268438` to
+render, copies its 32 mono floats to the adjacent right channel, then restores
+R4 before replaying the displaced allocation and continuing at `0x1c2450`.
+
+### Full-width context
+
+The bridge allocates its save area before saving and releases it after
+restoring. It preserves R0–R8 through `PX=Rn`, ordinary 32-bit PX1/PX2 stores,
+and `Rn=PX`, including the original two PX halves. It leaves MODE, MMASK,
+IMASK, both stack bases/lengths and the stock modifier constants unchanged.
+This avoids changing global memory-width settings while interrupts are enabled.
+The primary [SHARC+ PRM revision 1.5](https://www.analog.com/media/en/dsp-documentation/processor-manuals/sc58x-2158x-prm.pdf),
+Figures 2-2/2-3, defines the full 40-bit transfer through PX[63:24]. Its SEC
+handler example also demonstrates adjacent PX transfers without added NOPs.
+The bridge's final I7 changes remain within the captured circular bounds,
+avoiding wrap-related STKY changes after status restoration.
+
+The firmware-free checker reconstructs the exact spill encodings from the
+manual and tests every low-byte value against four upper-word patterns:
+**1,024 cases preserve all 40 bits of R0–R8 and all 64 original PX bits**.
+Omitting R0's PX1 restore fails all 1,024 cases. This is a finite bitvector
+check of the emitted spill subset, not full bridge execution on silicon.
+
+**Both pinned external runners fail the exact PX bridge.** `PX=R0` writes
+the model's separate PX slot without updating PX1/PX2, so its later `R0=PX`
+reads the wrong value. A three-instruction reproduction and a complete native
+bridge attempt retain that failure. Do not silently repair register values or
+report these runs as successful. The ordinary binary32 models also cannot
+establish preservation of hardware extended bits, even after this defect is
+corrected. The finite full-width check supplies a separate evidence layer.
+
+A separate, explicitly isolated diagnostic corrects only the destination-PX
+alias for the exact bridge's `PX=R0..R8` instructions. It routes the modeled
+upper word to PX2 and treats omitted lower eight bits as zero; it does not
+modify the external checkout or qualify hardware extended contents. Under
+that correction, the **exact 548-byte bridge** passes both captured contexts:
+eight phase-continuous blocks each, one init, dirty reset, empty binding,
+unchanged caller state, all modeled registers/banks/loop slots, known access
+addresses and exact continuation. The maximum I7 drop is **200 bytes**,
+inside the imminent 544-byte H1 frame. The parent repeated this experiment;
+its report counts all 180 corrected PX writes. This is explicitly a modified
+binary32 model result, separate from the unchanged-runner failure above.
+
+The actual interrupt-entry check clears active bank mask `0x4f8` to zero
+under MMASK `0xe0b4fb`. The stock SECI prefix's first three pushes use the
+primary stack at `0x26f7a8`, rather than H1's secondary stack at `0x2d16b0`.
+Ten executed prefix instructions in each captured context verify that narrow
+fact; complete interrupt nesting and return remain unqualified. A conjectured
+collision based on an unchanged H1 stack bank would use the wrong context.
+
+### Stock continuation and output routing
+
+The separate binary32 bridge also ran through the unmodified stock H1 caller
+and the next captured SPI frame in the native interpreter. Its sine survives
+H1 exactly. Stock processing between H1 and the converter changes some floats
+by one binary32 ULP; this bounded investigation records that transform rather
+than claiming an independently derived end-to-end sample formula. The converter
+produces exact positive Q31 from the observed input, and subsequent stock
+processing negates the ring. Physical polarity remains unmeasured.
+
+The first SPORT block consumes the previous double-buffer page. The **next
+block matches the newly generated page byte for byte**, in both the idle and
+sounding captures. A missing hook and zeroed oscillator increment each fail
+that next-block sample check. Empty binding preserves both SPORT blocks and
+the next SPI reply; at the same stock caller-return PC, modeled non-memory
+context matches except the equal 62-instruction clock/timer overhead. Those
+counts are interpreter instructions, not SHARC cycles. The parent repeated
+this route check. These results qualify the route for the binary32 artifact,
+not the unchanged runners' failing full-width PX artifact or a physical DN2.
+
+### Explicit experimental placement
+
+The exact linked bridge remains inside the previously watched 2 KiB candidate.
+These are core-byte intervals with exclusive ends, not an approved reservation:
+
+| Item | Start | End | Bytes |
+|---|---:|---:|---:|
+| Init/render binding and zero flag | `0x2dd600` | `0x2dd60c` | 12 |
+| Bridge code | `0x2dd60c` | `0x2dd830` | 548 |
+| Code guard | `0x2dd830` | `0x2dda00` | 464 |
+| Sine and entry code | `0x2dda00` | `0x2ddba8` | 424 |
+| Code guard | `0x2ddba8` | `0x2ddc00` | 88 |
+| Table, width vector and initialized state | `0x2ddc00` | `0x2ddc98` | 152 |
+| Zero data slack | `0x2ddc98` | `0x2dde00` | 360 |
+
+Four disjoint LOADs and three FILLs cover the entire interval. Code guards
+use repeated 16-bit NOP `0x0001`; data slack uses zero. Inserting these before
+FINAL loads them **after stock INIT has returned**. It does not require
+executing INIT in the investigator's model or asserting that INIT has no
+indirect writes. Preserve INIT, all original records and its hardware setup.
+The bridge calls init once on first H1 entry; the binding and state start from
+explicit values. The arithmetic stream addition is 1,248 bytes including
+headers; final compression, container and transfer checks remain integration
+work. No flashable image is emitted by this experiment.
+
+The stock startup clears SHL1C_CFG before later configuring it. A bounded
+6,842-instruction entry slice clears both zero and deliberately dirty initial
+CFG values. Captured H1 has modeled CFG=`0x414141`, CFG2=`0xf0`: caches are
+enabled, with the configured tail excluded from the candidate. ADI nevertheless
+cautions against code in blocks 1/2 while their data caches are enabled
+(PRM printed page 8–3), describing possible DMA/system-request delays.
+Neither padding nor avoiding the cache tail establishes instruction visibility
+or hardware timing. A complete sounding frame executed no block-1/2 code,
+so it provides no stock-code corroboration for that placement. Keep this
+caution in #41's physical gate; do not change cache configuration to fit the
+example or treat the source project's withdrawn crash theory as established.
+
+The new original sources and firmware-free reproduction command live with the
+[existing sine probe](../examples/sharc-sine-probe/README.md#check-the-dn2-h1-bridge).
+Private stock listings, captured-state experiments and reports are retained
+under ignored `out/sharc35-bridge-20261023/`, with a hash manifest. No public
+artifact contract, consumer engine or profile ownership changed.
 
 ## Limits that remain
 

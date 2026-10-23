@@ -8,9 +8,17 @@ import unittest
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'examples/sharc-sine-probe'))
 from execute import check_dag_store, check_subset, expected
+from h1_spills import self_test
 
 
 class ProbeChecks(unittest.TestCase):
+    def test_h1_full_width_spills_and_mutations(self):
+        result = self_test()
+        self.assertEqual(result['roundtrips'], 1024)
+        self.assertEqual(result['omitted_px1_failures'], 1024)
+        self.assertEqual(result['normal32_low_byte_failures'], 1020)
+        self.assertEqual(len(result['rejected_mutations']), 4)
+
     def test_independent_phase_boundaries(self):
         samples, phase = expected(0, 0x40000000, 4)
         self.assertEqual(struct.unpack('<4I', samples), (0, 0x3e000000, 0x80000000, 0xbe000000))

@@ -95,8 +95,9 @@ The profile records four L1 capacity windows, an L2 byte window of
 `[0x20000000,0x20100000)` with its PC16 view, and the DDR byte window.
 Capacity and address equivalence never establish ownership. In particular,
 boot-unloaded L2 contains live firmware pointers, and the investigated 2 KiB
-L1 interval `[0x2dd600,0x2dde00)` still needs valid-frame runtime evidence in
-[#35](https://github.com/simonjohansson/elekloader/issues/35).
+L1 interval `[0x2dd600,0x2dde00)` has bounded idle/sounding frame evidence in
+[#35](https://github.com/simonjohansson/elekloader/issues/35), but remains
+unowned pending the qualified bridge and integration contract.
 
 New payloads must exclude the DN2 special window
 `[0x200fa000,0x200fe000)`, Boot ROM workspace from `0x200fe000` to the end of

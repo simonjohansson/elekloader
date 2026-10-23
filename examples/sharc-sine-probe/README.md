@@ -6,7 +6,8 @@ an actual SHARC+ sine kernel and checks its executable. The optional execution
 command covers [issue #33](https://github.com/simonjohansson/elekloader/issues/33)
 using a pinned external runner and a small synthetic caller.
 It is **not an installable mod**. There is no `mod.json`, firmware input,
-stock hook or device operation. Execution uses an author-only loader stream.
+installed stock hook or device operation. Execution uses an author-only loader stream.
+The separate H1 command below builds the experimental stock-boundary bridge.
 The normal module build workflow
 will be integrated separately; this developer probe adds no SDK contract.
 
@@ -222,6 +223,59 @@ It is not broad compiler/ISA qualification. The fixed-tone hardware change
 in #41 must add #35's actual hook-wrapper context and instruction checks,
 including DAG I/B/L/M preservation and B-before-I restoration if needed.
 ModelDigi work extends this harness only for operations its port emits.
+
+## Check the DN2 H1 bridge
+
+Continue the same small example with #35's actual DN2 boundary:
+
+```sh
+mise exec python@3.12.13 -- python examples/sharc-sine-probe/h1.py out/selache
+```
+
+This reuses the pinned compiler and existing kernel qualification, writes a
+fresh ignored output directory, then assembles `h1-bridge.s` and `h1-hook.s`,
+compiles `h1-entry.c`, and links with `h1.ldf`. It needs no firmware or external
+runner. `h1-report.json` is written only after the exact code/data/entrypoints,
+full-width spill check and disjoint loader-layout checks pass. The preceding
+`report.json` remains only the kernel's compile result.
+
+Expected final line:
+
+```text
+PASS: H1 compile/layout and 1024 full-width spill cases; runtime unqualified.
+```
+
+The experimental bridge uses the captured stock modifier constants, circular
+stack and selected register bank. It supplies the verified master address
+`0x268438` to the existing mono render, copies 32 floats to the right channel,
+then restores incoming R4 and the other touched state. Incoming stock R4 is a
+caller-stack pointer: passing it through as output corrupts the caller.
+Initialization occurs once; a zero render binding takes the empty path.
+
+The bridge saves R0–R8 through PX1/PX2, including their hardware extended bits,
+and preserves the original PX halves. `h1_spills.py` independently reconstructs
+the emitted spill encodings from the ADI manual and checks 1,024 full-width
+bitvector cases. Removing a low-byte restore, corrupting a reserved bit,
+changing its source register and substituting an ordinary 32-bit move fail
+its self-check. This checks the exact spill subsequence, not a whole SHARC
+implementation. The full bridge and app byte hashes require deliberate
+reinspection when the producer or source changes.
+
+Linked sizes are **548 bytes bridge + 424 bytes app + 152 bytes data**, plus
+a 12-byte binding. The 2 KiB candidate is completely initialized by four
+LOADs and three disjoint FILLs, with explicit 16-bit NOP guards and zero data
+slack. `h1-synthetic.ldr` exercises the existing record writer with original
+bytes and synthetic FIRST/FINAL records; it is **not a bootable application or
+flashable firmware**. Its private profile copy does not allocate stock memory.
+The six-byte hook object is checked but is not installed anywhere.
+
+**Runtime qualification is still open.** Both pinned external runners mishandle
+writes to PX, so the exact bridge fails there. The independent full-width
+check must not be described as a passing full-bridge execution. The
+[captured-context investigation](../../docs/SHARC-CONTEXT.md#h1-bridge-follow-up)
+records separate routing/context experiments and the placement limits.
+Hardware cache visibility, interrupt timing and output remain #41's gate.
+This maintainer command is not a new mod-author workflow or compiler contract.
 
 ## Source and license closure
 

@@ -540,12 +540,15 @@ the Digitakt II. Nothing has been sent to a unit yet.
   area's 256 KB) or a region, and one grown to 3.5 KB below the flash
   limit, all boot as stock does, with the same instruction count to the
   main screen and the same screen.
-- **The core** (mods/core-dn2 0.1) hooks the boot site (0x40000538) and
-  the draw site (0x4002e4ca, `drawAll`), found by the Digitakt II's code and
-  checked in the Digitone II's own; the tick, key and encoder sites follow
-  in the next core. In the emulator, core alone boots to a screen identical
-  to stock's, hello-marker-dn2 (`Bitmap::fillRect` 0x40114b22) changes only
-  its 3x3 square, and the area holds the linked run image after boot.
+- **The core** (mods/core-dn2 0.2) has the Digitakt II's six events at the
+  Digitone II's sites: boot (0x40000538), `ev_tick` (0x4002e464), `ev_draw`
+  (0x4002e4ca), `ev_key` (0x4002f20c), `ev_enc` (0x4002f256), `ev_settings`
+  (0x4009ff88) and `ev_personalize` (0x400987a2), found by the Digitakt II's
+  code and checked in the Digitone II's own (mods/core-dn2/README.md). In
+  the emulator, core alone shows the same screens as stock through a panel
+  session; examples/hooks-check-dn2 shows every event firing, the row in
+  SETTINGS and in PERSONALIZE (once, after reopening), two `ev_key`
+  handlers in their order, and a taken key that the stock never sees.
 - **Not known yet.** The receive buffers' size bounds, in the OS (USB) and
   in the bootstrap (MIDI); the bootstrap's flash path has not been run.
 - **Recovery.** The STARTUP menu (FUNC at power-on), TRIG 4 for OS UPGRADE,
@@ -553,13 +556,14 @@ the Digitakt II. Nothing has been sent to a unit yet.
   unit.
 - **The TypeScript engine** (js/) has the profile too (`DIGITONE_MK2`). A
   DN2-only cases document for `tools/parity.ts` gives the same files,
-  messages and checks as the Python (23 Oct 2026), in 19 cases:
+  messages and checks as the Python (23 Oct 2026), in 24 cases:
   - whole builds from the `.syx` and the zip, and a check;
-  - core alone, core with hello-marker, and their check;
+  - core alone, with hello-marker, with hooks-check, with both, and a check;
   - refusals: no version, a blob over the area, regions in SRAM and past
-    the area, a Digitakt II mod, a format-2 mod or hello-marker without
-    core, two cores, a site on core's draw site, `.fast` code, wrong stock
-    bytes.
+    the area, a Digitakt II mod, a format-2 mod, hello-marker or
+    hooks-check without core, two cores, a site on core's draw site,
+    `.fast` code, an event core-dn2 lacks, two mods with one row name,
+    wrong stock bytes.
 
 ## What a new device needs besides its profile
 

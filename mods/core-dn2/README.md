@@ -4,13 +4,13 @@ The boot copier and the hook bus for Digitone II OS 1.12. Every set of
 linkable (format 2) mods for the Digitone II needs it. On its own it changes
 nothing the unit does.
 
-0.1 is a checkpoint: it boots and runs `ev_draw`. It builds the shared
-[../core/core.s](../core/core.s) with the Digitone II's addresses
-(`mod.json`). `core.s` names the `ev_tick`, `ev_key` and `ev_enc` tables and
-the key and encoder routines, so 0.1 declares those tables and gives those
-addresses, but it does not hook their sites yet: a handler subscribed to
-them links and is never called. There is no `settings.s`, `fast.s` (SRAM is
-not qualified) or `render.s` (the audio is on the DSP).
+It builds the shared [../core/core.s](../core/core.s) and
+[settings.s](../core/settings.s) with the Digitone II's addresses
+(`mod.json`), and the Digitakt II's
+[../core-dt2/personalize.s](../core-dt2/personalize.s) unchanged: the
+PERSONALIZE builder ends the same way. There is no `fast.s` (SRAM is not
+qualified, so there is no `.fast` area) and no `render.s` (the audio renders
+on the DSP).
 
 - **At boot** (the OS entry's call at 0x40000538, which called 0x400019b0,
   the Digitakt II's: it sets the VBR to 0x40000000 and returns), `boot`
@@ -20,36 +20,68 @@ not qualified) or `render.s` (the audio is on the DSP).
   DTIM0 (`NO_DTIM0`): as on the Digitakt II, the OS reads its counter at ten
   sites (0xfc07000c) and never writes its mode register, so stock reads it
   as stopped, and this core keeps that.
-- **The sites:**
+- **The sites** become the Digitakt II's events, with the same prototypes
+  ([docs/ADAPTING.md](../../docs/ADAPTING.md), "The hook bus"):
 
   | site | was | event |
   |---|---|---|
-  | 0x40000538 | `jsr 0x400019b0`: sets the VBR | (boot) |
+  | 0x4002e464 | `jsr 0x4011d5d4`: returns the view controller's byte +0x20 | `ev_tick` |
   | 0x4002e4ca | `jsr 0x4011d60a`: `drawAll(ctrl, bmp)`, the 128x64 frame | `ev_draw` |
+  | 0x4002f20c | `jsr 0x4002c5c8`: `Brain::key(brain, event)` | `ev_key` |
+  | 0x4002f256 | `jsr 0x4002c55c`: `Brain::enc(brain, event)` | `ev_enc` |
+  | 0x4009ff88 | `movea.l (a2),a0; pea 2.w`, the SETTINGS builder 0x4009fbe0 going on at 0x4009ff8e | `ev_settings` |
+  | 0x400987a2 | `movem.l $18(a7),d2-d6/a2-a6`, the end of the PERSONALIZE builder 0x40097eac, after NOTE EDIT MENU | `ev_personalize` |
 
-  Not hooked yet (the next core): the tick at 0x4002e464 (`jsr 0x4011d5d4`),
-  the key at 0x4002f20c (`jsr 0x4002c5c8`, `KEYDISP`) and the encoder at
-  0x4002f256 (`jsr 0x4002c55c`, `ENCDISP`).
+  `core_additem(menu, row)` adds a row with the firmware's routines:
+  `operator new` 0x40120544, `MenuItem`'s constructor 0x401173b8,
+  `Menu::addItem` 0x40116bee and the `std::function` manager 0x4018de3e
+  (for `PFSs15FileStorageInfoE`, as on the Digitakt II). A row's label
+  callback builds a `std::string` with 0x401ceab8, as the firmware's own
+  labels do (0x4002b294). In SETTINGS the row comes after SYSTEM; in
+  PERSONALIZE after NOTE EDIT MENU.
 
 Each address was found by the Digitakt II 1.17's code, with the addresses
-masked, then checked in the Digitone II's own: the UI loop around both
-sites is the Digitakt II's instruction for instruction (the draw site
-pushes the frame's Bitmap, then the view controller, as `core_draw`
-expects), and each routine is its site's only caller.
-`Bitmap::fillRect`, for hello-marker-dn2, is 0x40114b22: the Digitakt II's
-0x401131ae whole (a twin at 0x40114f62 differs in one instruction).
+masked, then checked in the Digitone II's own, with what the shared
+sources assume about it:
+- the UI loop around the tick, draw, key and encoder sites is the
+  Digitakt II's instruction for instruction. The tick routine is
+  `move.l 4(sp),a0; move.b $20(a0),d0; rts`, what `core_tick` does after
+  its handlers. The draw site pushes the frame's Bitmap and then the view
+  controller; the key and encoder sites push the event and then the brain.
+  Each routine is its site's only caller. `Brain::key` hands the event to
+  the listeners at brain +0x94..+0x98, as on the Digitakt II.
+- the SETTINGS builder keeps the menu in a2 and its site is the two
+  instructions `core_settings` replays.
+- the PERSONALIZE builder makes its last row exactly as `core_additem`
+  does: `new(0x54)`, the constructor with (item, label, select, draw,
+  change, -1, 8), each callback a 16-byte `std::function` (manager at +8,
+  invoker at +12), then `Menu::addItem(menu, item)` with the menu in a4;
+  it ends with the `movem`, `lea $80(a7),a7` and `rts` that `personalize.s`
+  replays. Its frame is the Digitakt II's (0x80 bytes).
+- `KeyEvent` (built by 0x40116278 from the UI queue's message): +12 the key
+  code and +16 the action, as on the other devices (docs/ADAPTING.md);
+  read back in the emulator: a tap of TRIG 1 gives code 25, a release 0x10.
+
+`tests/test_digitone2.py` checks each of these against the stock file.
 
 Build it with the SDK (it needs m68k binutils; with Homebrew's
 `m68k-elf-binutils`, set `ELEKLOADER_CROSS=m68k-elf-`):
 
 ```bash
-python -m elekloader.sdk.build mods/core-dn2 --stock Digitone_II_OS1.12.syx      # out/core-0.1.elemod
-python -m elekloader.lint mods/core-dn2/out/core-0.1.elemod --stock Digitone_II_OS1.12.syx
+python -m elekloader.sdk.build mods/core-dn2 --stock Digitone_II_OS1.12.syx      # out/core-0.2.elemod
+python -m elekloader.lint mods/core-dn2/out/core-0.2.elemod --stock Digitone_II_OS1.12.syx
 ```
 
-Checked in digikit's emulator (`boot_gate --base <stock sha>`, ColdFire
-only, 23 Oct 2026): alone, it boots to the main screen, and that screen is
-identical to stock 1.12's. With [hello-marker-dn2](../../examples/hello-marker-dn2)
-the screen differs from stock in exactly the 3x3 square at (125-127,
-61-63). After boot, `panel_drive` read the area back: it holds the linked
-run image byte for byte, with `.bss` zero. Not yet run on a unit.
+Checked in digikit's emulator (ColdFire only, no DSP, so no audio; 23 Oct
+2026):
+- core alone: under the same session as stock (a trig, two encoders, the
+  TEMPO page, SETTINGS, PERSONALIZE, PLAY and STOP), every one of its 12
+  screens is identical to stock's.
+- with [hello-marker-dn2](../../examples/hello-marker-dn2): the screen
+  differs from stock only in the 3x3 square; after boot the area holds the
+  linked run image byte for byte.
+- with [hooks-check-dn2](../../examples/hooks-check-dn2): every event fires,
+  the rows are listed once in SETTINGS and PERSONALIZE after reopening each,
+  and the handlers' order and a taken key behave as its README says.
+
+0.1 hooked only boot and draw. Not yet run on a unit.

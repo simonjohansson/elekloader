@@ -15,7 +15,8 @@ The normal DN2 mod build remains the same as
 [`sharc-sine`](../sharc-sine/README.md). This probe needs the pinned Selache
 compiler and Digikit runner only for author qualification.
 
-The working cases are a 220 Hz saw, the same 32 frames split 16+16, frequency
+The working cases start from ModelDigi's cost-driver scenario 0 (a 220 Hz saw
+with two muted oscillators), the same 32 frames split 16+16, frequency
 clamping and invalid-shape fallback with muted other voices, and Analog
 on/off/on. All output words and the 116-byte oscillator state must match.
 The first six output samples are zero as specified by ModelDigi. The probe

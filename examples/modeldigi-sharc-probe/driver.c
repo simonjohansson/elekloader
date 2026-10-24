@@ -2,9 +2,11 @@
 #include "oscillator.h"
 
 modeldigi_osc_state scenario_state;
+/* ModelDigi tools/cost/driver.c scenario 0, including the muted voices' state. */
 modeldigi_osc_params scenario_params = {
-    .frequency_q16_16 = {220u * 65536u, 0, 0},
-    .waveform = {3, 0, 0},
+    .frequency_q16_16 = {220u * 65536u, 330u * 65536u + 32768u,
+                         441u * 65536u + 16384u},
+    .waveform = {3, 4, 6},
     .level = {65535, 0, 0},
 };
 int32_t scenario_output[64];

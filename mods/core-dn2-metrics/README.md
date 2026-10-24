@@ -1,6 +1,6 @@
 # DN2 core with optional SHARC callback timing
 
-This is core-dn2 0.1's same ColdFire hooks and source files, with the optional
+This is core-dn2 0.2's same ColdFire hooks and source files, with the optional
 `dn2-master-mono32-l2-metrics-v1` SHARC core. Select it together with an app
 whose artifact uses that ABI; ordinary L1 and unmeasured L2 apps retain
 `mods/core-dn2`. The existing SDK build/patch commands and five artifact keys

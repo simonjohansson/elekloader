@@ -45,9 +45,11 @@ monolithic build; section 4 says how to go from A to B.
   Octatrack's core, `mods/core-ot`, has a hook bus of its own from 0.2, with the Octatrack's events ("The hook bus on the
   Octatrack" below).
 
-### Digitone II SHARC (experimental, OS 1.12)
+### SHARC callbacks (core-dn2 0.2, Digitone II OS 1.12, experimental)
 
 Start with the [C/ASM source workflow](../examples/sharc-sine/README.md).
+Set `"resources": {"core": "0.2"}` in a SHARC mod's manifest; both examples
+already do this, so the loader selects a SHARC-capable DN2 core.
 After its one-time toolchain and stock-file setup, `mise run build-c` or
 `mise run build-asm` compiles the current source, generates its prelinked
 artifact, builds the core and mod, lints them and writes verified firmware.
@@ -191,7 +193,7 @@ renders on the DSP. It copies `.fast` code into SRAM itself, on the first
 `ev_enc` there, since a key can come before that tick (`ev_draw` cannot:
 the tick site runs first).
 
-The Digitone II's core (mods/core-dn2 0.1) has the same six UI events as the
+The Digitone II's core (mods/core-dn2, from 0.1) has the same six UI events as the
 Digitakt II's, at the Digitone II's sites, and no render events (its audio
 renders on the DSP). It has no `.fast`: SRAM is not qualified there, so a
 mod with `.fast` code is refused. Its tick rate has not been measured.

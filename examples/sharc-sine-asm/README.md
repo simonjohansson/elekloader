@@ -6,6 +6,9 @@ note initialization and the 32-sample gain ramp; the same core bridge selects
 the note and copies mono to stereo. The two versions use identical table
 values, phase accumulation, 0.125 peak amplitude, note range and output route.
 
+Both examples require DN2 core **0.2 or newer** through their manifest
+`resources.core` field. The source commands build that core automatically.
+
 ## Build the current assembly source
 
 Follow the shared [C/ASM setup](../sharc-sine/README.md#build-the-current-c-or-assembly-source),

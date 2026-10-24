@@ -10,6 +10,9 @@ bridge copies the 32-float master block to the right channel. No UI or new
 control transport is involved. [Issue #47](https://github.com/simonjohansson/elekloader/issues/47)
 tracks the device proof.
 
+Both examples require DN2 core **0.2 or newer** through their manifest
+`resources.core` field. The source commands build that core automatically.
+
 ## Build the current C or assembly source
 
 These example commands compile the current source, export its bounded SHARC

@@ -12,6 +12,10 @@ PERSONALIZE builder ends the same way. There is no `fast.s` (SRAM is not
 qualified, so there is no `.fast` area) and no `render.s` (the audio renders
 on the DSP).
 
+Core **0.2** adds the SHARC bridge while retaining 0.1's control-side
+sites, tables and exports. SHARC apps require `resources.core: "0.2"`;
+existing control mods may keep their 0.1 requirement.
+
 `bridge.sharc.json` is the checked-in prelinked H1 audio bridge. The linker
 installs it and the exact six-byte stock hook only when an active SHARC app
 passes the [ABI and ownership checks](../../docs/FORMAT.md#digitone-ii-sharc-app).
@@ -79,8 +83,8 @@ Build it with the SDK (it needs m68k binutils; with Homebrew's
 `m68k-elf-binutils`, set `ELEKLOADER_CROSS=m68k-elf-`):
 
 ```bash
-python -m elekloader.sdk.build mods/core-dn2 --stock Digitone_II_OS1.12.syx      # out/core-0.1.elemod
-python -m elekloader.lint mods/core-dn2/out/core-0.1.elemod --stock Digitone_II_OS1.12.syx
+python -m elekloader.sdk.build mods/core-dn2 --stock Digitone_II_OS1.12.syx      # out/core-0.2.elemod
+python -m elekloader.lint mods/core-dn2/out/core-0.2.elemod --stock Digitone_II_OS1.12.syx
 ```
 
 ## Input bridge and SysEx observers
@@ -118,7 +122,7 @@ No arbitrary memory-write or function-call command is added.
 
 ## Validation and limits
 
-Core 0.1 is experimental. `tests/test_digitone2.py` checks the stock sites,
+Core 0.2 is experimental. `tests/test_digitone2.py` checks the stock sites,
 stack/queue contracts, clock setup and exact patch boundaries.
 `tests/test_dn2_input.py` checks ownership and input/queue bounds without
 firmware. Digikit's ColdFire emulator checks stock-identical core-only

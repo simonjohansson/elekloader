@@ -384,9 +384,9 @@ cost or an absolute CPU/SHARC-clock calibration. The
 [fork's physical finding](https://github.com/simonjohansson/digihealth/commit/8e91048558012b6cede66393298b05d9d65419cd)
 states the separate measurement limits.
 
-Before loading a project, the previous working state was saved into the
-verified-empty slot 128 (`NEW PROJECT`) and exported to an integrity-checked
-local recovery package. Neither original saved project was overwritten.
+Before loading a project, the previous working state was saved into a
+verified-empty recovery slot and exported to an integrity-checked local
+package. Neither original saved project was overwritten.
 Loading factory `PRESETS` in slot 1 changes the observed track-1 machine from
 FM Tone to WaveTone. The six-note C sine capture then passes: 18.0053 seconds,
 1,688 buffers, zero drops, identical stereo, peak 0.17857146, nominal-clock
@@ -399,14 +399,12 @@ The first screen request during factory loading timed out waiting for a fresh
 draw; the load was not replayed. Subsequent fresh readback established the
 returned project menu and the newly loaded machine independently.
 
-The unit is left on `HC14`, DigiHealth 1.4 responding, the restored working
-copy in slot 128, A01 selected, transport stopped and requested notes released.
-The extra recovery project is retained. Its local package is
-`out/sharc56-stock-project-20261024/NEW PROJECT.dn2prj` (SHA-256
-`564c028114cc1fb2ddd1762d29dc30b48d05af0eee419a9653591f8dc4a9991c`).
+The prior working state is restored, with transport stopped and requested
+notes released. Its recovery copy and local package are retained; their
+identifiers and integrity hashes stay in the ignored recovery metadata.
 Private preflash, runtime/readback, cadence, audio and restoration evidence is
-under `out/digihealth14-20261024/`; the backup identity is in
-`out/sharc56-stock-project-20261024/recovery-backup.json`. Neither the backup
-nor firmware/captures are committed. #56 remains open for the stated wider
+under `out/digihealth14-20261024/`; the private backup metadata is under
+`out/sharc56-stock-project-20261024/`. Neither project data nor
+firmware/captures are committed. #56 remains open for the stated wider
 workload; actual DSP callback timing is the separately proposed
 [DigiHealth #11](https://github.com/simonjohansson/digihealth/issues/11).

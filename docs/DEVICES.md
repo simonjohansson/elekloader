@@ -520,10 +520,11 @@ smaller core-only CO02 build then flashed and booted successfully (below).
   copy of the seed and constant (`0x40210a4a`, `0x4021b9ef`), which give
   the same key. The writer reproduces the stock file byte for byte, seal
   included; the profile also knows Elektron's zip of it.
-- **SHARC fixed-sine gate.** The profile grants loader-byte
+- **SHARC sine gate.** The profile grants loader-byte
   `[0x282dd600,0x282dde00)` for the checked-in 1 KiB core bridge and 1 KiB
   prelinked app in section 7, and separately grants the exact six-byte H1
-  instruction patch. Only their qualified code/data hashes and entry/stack
+  instruction patch. Only their qualified code/data hashes, apart from the
+  app's bounded 220–880 Hz phase increment, and entry/stack
   declarations can activate the hook. The SDK, linker, writer and independent
   verifier check the stock DSP stream, coverage, budgets, HMAC and untouched
   sections. The [starter](../examples/sharc-sine/README.md) uses no SHARC

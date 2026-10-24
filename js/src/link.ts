@@ -349,9 +349,23 @@ export function check(mods: Mod2[], image: Uint8Array): string[] {
     const profile = app.rel.sharc!
     for (const [role, mod, qualified] of [['core', core, profile.activeCore], ['app', app, profile.activeApp]] as const) {
       const payload = mod.sharc!
+      const segments = payload.segments.map(([off, kind, bytes]) => {
+        let data = bytes
+        if (role === 'app' && off === 0 && kind === 'code') {
+          const [at, original, low, high] = profile.activeAppIncrement!
+          if (data.length >= at + 4) {
+            const step = ((data[at + 1] * 0x1000000) + (data[at] << 16) + (data[at + 3] << 8) + data[at + 2]) >>> 0
+            if (low <= step && step <= high) {
+              data = data.slice()
+              data.set(hexBytes(original, 'SHARC qualified increment'), at)
+            }
+          }
+        }
+        return [off, kind, sha(data)]
+      })
       const entriesMatch = Object.keys(qualified?.entries ?? {}).length === Object.keys(payload.entries ?? {}).length &&
         Object.entries(qualified?.entries ?? {}).every(([name, value]) => payload.entries?.[name] === value)
-      if (!qualified || JSON.stringify(payload.segments.map(([off, kind, data]) => [off, kind, sha(data)])) !== JSON.stringify(qualified.segments)
+      if (!qualified || JSON.stringify(segments) !== JSON.stringify(qualified.segments)
         || JSON.stringify(payload.zero) !== JSON.stringify(qualified.zero)
         || !entriesMatch || payload.stackBytes !== qualified.stackBytes)
         bad.push(`${mod.label()} has unqualified active SHARC ${role} bytes or entry`)

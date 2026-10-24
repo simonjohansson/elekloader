@@ -3,8 +3,9 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { sha } from '../src/bytes.ts'
-import { DIGITONE_MK2 } from '../src/devices.ts'
+import { DIGITONE_MK2, targetOf } from '../src/devices.ts'
 import { ModError } from '../src/elemod.ts'
+import { Mod2, check } from '../src/link.ts'
 import * as formats from '../src/formats.ts'
 import * as sharc from '../src/sharc.ts'
 
@@ -17,6 +18,29 @@ inertArtifact.entries = null
 inertArtifact.stack_bytes = 0
 const synthetic = { ...profile, decodedSha256: sha(original), ownedRanges: [[0x20002000, 0x20002020] as [number, number]] }
 const refusal = (fn: () => unknown, error: string) => assert.throws(fn, e => e instanceof ModError && e.message === error)
+
+test('active DN2 sine accepts only the bounded compiled frequency field', () => {
+  const rel = DIGITONE_MK2.releases[0], target = targetOf(DIGITONE_MK2, rel)
+  const bridge = JSON.parse(readFileSync(new URL('../../mods/core-dn2/bridge.sharc.json', import.meta.url), 'utf8'))
+  const core = new Mod2({ elemod: 2, id: 'core', version: '0.1', target,
+    sections: { '.boot': { align: 4, parts: [['hex', '00000000']] } }, sharc: bridge }, 'core')
+  const image = new Uint8Array(rel.mainLen)
+  const bad = (artifact: unknown) => check([core, new Mod2({ elemod: 2, id: 'sine', version: '0.1', target,
+    sections: {}, sharc: artifact }, 'sine')], image).some(p => p.includes('unqualified active SHARC app'))
+  const original = JSON.parse(readFileSync(new URL('../../examples/sharc-sine/sine.sharc.json', import.meta.url), 'utf8'))
+  assert.equal(bad(original), false)
+  for (const [hz, accepted] of [[220, true], [660, true], [880, true], [219, false], [881, false]] as const) {
+    const artifact = structuredClone(original)
+    const code = bytes(artifact.segments[0].hex)
+    const step = Math.round(hz * 2 ** 32 / 48000)
+    code.set([(step >>> 16) & 255, (step >>> 24) & 255, step & 255, (step >>> 8) & 255], 328)
+    artifact.segments[0].hex = Buffer.from(code).toString('hex')
+    assert.equal(bad(artifact), !accepted, `${hz} Hz`)
+    code[327] ^= 1
+    artifact.segments[0].hex = Buffer.from(code).toString('hex')
+    assert.equal(bad(artifact), true, `${hz} Hz with neighboring byte changed`)
+  }
+})
 
 test('prelinked inert payload covers only its DN2 owner', () => {
   const payload = sharc.modulePayload(inertArtifact, profile)

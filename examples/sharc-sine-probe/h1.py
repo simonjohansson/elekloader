@@ -2,6 +2,7 @@
 """Build and check the experimental DN2 H1 bridge; no firmware or execution."""
 import argparse
 import json
+import os
 from pathlib import Path
 import re
 import struct
@@ -12,11 +13,13 @@ from qualify import (HERE, TOOLS, command, compile_probe, digest, require,
 from h1_spills import verify_full_width_spills
 
 
-def build(selache):
+def build(selache, sine_source=None, entry_source=None, artifact_out=None):
     selache = selache.resolve()
     out, compiler = compile_probe(selache)
     tools = {name: selache / 'target/release' / name for name in TOOLS}
     commands = []
+    sine_source = sine_source or HERE / 'sine.c'
+    entry_source = entry_source or HERE / 'h1-entry.c'
 
     def run(args, output=None):
         commands.append([str(a) for a in args])
@@ -25,15 +28,17 @@ def build(selache):
             (out / output).write_text(text)
         return text
 
-    run([tools['selcc'], *compiler['target_flags'], '-c', '-o', out / 'entry.doj',
-         HERE / 'h1-entry.c'])
+    run([tools['selcc'], *compiler['target_flags'], '-c', '-o', out / 'author-sine.doj', sine_source])
+    require((out / 'author-sine.doj').read_bytes() == (out / 'sine.doj').read_bytes(),
+            'sine source differs from the qualified kernel')
+    run([tools['selcc'], *compiler['target_flags'], '-c', '-o', out / 'entry.doj', entry_source])
     for name in ('bridge', 'hook'):
         run([tools['selas'], '-proc', 'ADSP-21569', '-o', out / f'{name}.doj',
              HERE / f'h1-{name}.s'])
     exe = out / 'h1.dxe'
     run([tools['seld'], '-proc', 'ADSP-21569', '-T', HERE / 'h1.ldf',
          '-entry', 'bridge', '-Map', out / 'h1.map', '-o', exe,
-         out / 'sine.doj', out / 'entry.doj', out / 'bridge.doj'])
+         out / 'author-sine.doj', out / 'entry.doj', out / 'bridge.doj'])
     dump = run([tools['seldump'], '-fh', '-sh', '-n', '.symtab', exe], 'h1.txt')
     for name in ('bridge_code', 'probe_code'):
         run([tools['seldump'], '-ns', name, exe], f'h1-{name}.txt')
@@ -57,6 +62,16 @@ def build(selache):
             'entrypoints differ from inspected artifact')
     require(struct.unpack_from('<I', raw, 24)[0] == entries['bridge'], 'wrong ELF entry')
     validate_data(rows['probe_data']['bytes'])
+    sys.path.insert(0, str(HERE.parent.parent))
+    from elekloader import sharc
+    from elekloader.devices.digitone_mk2 import DEVICE
+    at, original_loader, low, high = DEVICE.releases['1.12'].sharc['active_app_increment']
+    original = bytes.fromhex(original_loader)
+    original_elf = bytes((original[1], original[0], original[3], original[2]))
+    step = int.from_bytes(rows['probe_code']['bytes'][at:at + 4], 'big')
+    require(low <= step <= high, 'sine phase increment is outside 220..880 Hz')
+    normalized_code = (rows['probe_code']['bytes'][:at] + original_elf +
+                       rows['probe_code']['bytes'][at + 4:])
     expected = {
         'bridge_code': (0x16eb06, 548, 7, '1089aaf64fc9e66e2fe9b3a2b037230dfe3af66607a8c1d1b904bb0b487d10cd'),
         'probe_code': (0x16ed00, 424, 7, '6af2fcc203f99499aeb1824e4388d599e5855c094c9aa5e11b56211ca0b4e04a'),
@@ -65,7 +80,8 @@ def build(selache):
     loads, sections = [], {}
     for name, wanted in expected.items():
         row = rows[name]
-        require((row['address'], row['size'], row['flags'], digest(row['bytes'])) == wanted,
+        checked = normalized_code if name == 'probe_code' else row['bytes']
+        require((row['address'], row['size'], row['flags'], digest(checked)) == wanted,
                 f'{name} differs from inspected artifact; requalify the finite bridge')
         code = name != 'probe_data'
         address = 0x28000000 + row['address'] * (2 if code else 1)
@@ -85,9 +101,6 @@ def build(selache):
     require(hook == bytes.fromhex('063e0016eb06'), 'hook does not jump to the bridge')
 
     # Exercise existing records with original bytes only. This grants no stock range.
-    sys.path.insert(0, str(HERE.parent.parent))
-    from elekloader import sharc
-    from elekloader.devices.digitone_mk2 import DEVICE
     original = (sharc._header(sharc.FIRST, entries['bridge'], 0, 16) +
                 sharc._header(sharc.FINAL, entries['bridge'], 0, 0))
     profile = dict(DEVICE.releases['1.12'].sharc, decoded_sha256=digest(original),
@@ -102,20 +115,37 @@ def build(selache):
     require(spans[0][0] == 0x282dd600 and spans[-1][1] == 0x282dde00 and
             all(a[1] == b[0] for a, b in zip(spans, spans[1:])), 'coverage gap or overlap')
     (out / 'h1-synthetic.ldr').write_bytes(stream)
+    by_address = dict(loads)
+    artifact = {'abi': 'dn2-master-mono32-v1',
+                'segments': [{'offset_bytes': 0, 'kind': 'code',
+                              'hex': (by_address[0x282dda00] + struct.pack('<I', 0x00010001) * 22).hex()},
+                             {'offset_bytes': 512, 'kind': 'data', 'hex': by_address[0x282ddc00].hex()}],
+                'zero': [{'offset_bytes': 664, 'size_bytes': 360}],
+                'entries': {'init_offset_bytes': 320, 'render_offset_bytes': 370},
+                'stack_bytes': 84}
+    require(sharc.module_payload(artifact, DEVICE.releases['1.12'].sharc)['owner'] ==
+            DEVICE.releases['1.12'].sharc['app_range'], 'generated artifact owner differs')
     report = dict(status='compile-layout-spill-pass; target-runtime-unqualified',
                   compiler_report_sha256=digest((out / 'report.json').read_bytes()),
                   sources={name: digest((HERE / name).read_bytes()) for name in
                            ('h1.py', 'h1_spills.py', 'h1-bridge.s', 'h1-entry.c',
                             'h1-hook.s', 'h1.ldf')},
+                  author_sources={str(source): digest(source.read_bytes()) for source in
+                                  (sine_source, entry_source)}, phase_increment=step,
                   executable_sha256=digest(raw), sections=sections, entries_pc16=entries,
                   spills=spill_report, hook_elf_hex=hook.hex(),
                   loader_fixture=dict(bytes=len(stream), sha256=digest(stream), spans=spans,
                                       scope='synthetic only; not a bootable application'),
-                  commands=commands,
+                  commands=commands, artifact_sha256=digest((json.dumps(artifact, indent=1) + '\n').encode()),
                   limitations=['This command does not run the separate Digikit PX-fixed bridge checks',
                                'No stock input, reservation or firmware output',
                                'No cache, interrupt timing or physical qualification'])
     (out / 'h1-report.json').write_text(json.dumps(report, indent=2) + '\n')
+    if artifact_out is not None:
+        artifact_out = artifact_out.resolve()
+        temporary = artifact_out.with_name(artifact_out.name + '.tmp')
+        temporary.write_text(json.dumps(artifact, indent=1) + '\n')
+        os.replace(temporary, artifact_out)
     print('PASS: H1 compile/layout and 1024 full-width spill cases; runtime unqualified.\n'
           + str(out / 'h1-report.json'))
     return out

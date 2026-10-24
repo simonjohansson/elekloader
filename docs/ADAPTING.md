@@ -60,6 +60,10 @@ connects the fixed sine to the SHARC master block; its physical USB result
 is recorded in #41. [The starter](../examples/sharc-sine/README.md) explains
 its source and producer. A matching core `.elemod` remains necessary, as for
 other format-2 mods; building that core from source uses the ColdFire toolchain.
+An author may change the starter's 220–880 Hz phase increment and regenerate
+its prelinked artifact with the pinned Selache compiler using the one-command
+`examples/sharc-sine/rebuild.py`; ordinary consumers still use only the three
+commands above.
 
 ## 2. The rules
 

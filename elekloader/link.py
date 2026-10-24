@@ -342,7 +342,17 @@ def check(mods, image):
         profile = app.rel.sharc
         for role, mod in (('core', core), ('app', app)):
             payload, qualified = mod.sharc, profile['active_' + role]
-            if ([(off, kind, sha(data)) for off, kind, data in payload['segments']] != list(qualified['segments'])
+            segments = []
+            for off, kind, data in payload['segments']:
+                if role == 'app' and off == 0 and kind == 'code':
+                    at, original, low, high = profile['active_app_increment']
+                    if len(data) >= at + 4:
+                        field = data[at:at + 4]
+                        step = int.from_bytes(bytes((field[1], field[0], field[3], field[2])), 'big')
+                        if low <= step <= high:
+                            data = data[:at] + bytes.fromhex(original) + data[at + 4:]
+                segments.append((off, kind, sha(data)))
+            if (segments != list(qualified['segments'])
                     or payload['zero'] != list(qualified['zero'])
                     or payload['entries'] != qualified['entries']
                     or payload['stack_bytes'] != qualified['stack_bytes']):

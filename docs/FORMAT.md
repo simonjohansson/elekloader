@@ -90,9 +90,12 @@ fixed-sine starter declares init/render offsets 320/370 and 84 stack bytes.
 The matching core supplies a separate 1 KiB bridge artifact with a hook entry
 at offset 12 and 116 stack bytes. The linker binds the two PC16 callback
 addresses itself; neither app may supply core binding bytes or stock patches.
-For this first device gate, only the exact bridge and sine code/data hashes in
-the DN2 profile are accepted. Other active code is refused pending its own
-qualification in [#41](https://github.com/simonjohansson/elekloader/issues/41).
+For this first device gate, the bridge and sine data/code must match the DN2
+profile. The sole exception is the sine's four phase-increment bytes at app
+code offset 328, which may encode 220–880 Hz. The source producer checks the
+rest of the linked executable before writing the artifact; the linker checks
+the same bounded edit without requiring a compiler. Other active code is
+refused pending its own qualification in [#41](https://github.com/simonjohansson/elekloader/issues/41).
 Only one SHARC app may be selected. The linker checks stock section 7 by
 hash before adding the app's and core's ordered LOAD/FILL records. The active
 path additionally replaces one exact six-byte H1 instruction inside its

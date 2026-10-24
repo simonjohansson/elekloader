@@ -234,7 +234,9 @@ mise exec python@3.12.13 -- python examples/sharc-sine-probe/h1.py out/selache
 
 This reuses the pinned compiler and existing kernel qualification, writes a
 fresh ignored output directory, then assembles `h1-bridge.s` and `h1-hook.s`,
-compiles `h1-entry.c`, and links with `h1.ldf`. It needs no firmware or external
+compiles `h1-entry.c`, and links with `h1.ldf`. The starter's
+`examples/sharc-sine/rebuild.py` uses this same check to regenerate its
+prelinked artifact after a bounded phase-increment edit. It needs no firmware or external
 runner. `h1-report.json` is written only after the exact code/data/entrypoints,
 full-width spill check and disjoint loader-layout checks pass. The preceding
 `report.json` remains only the kernel's compile result.

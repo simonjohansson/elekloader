@@ -26,6 +26,7 @@ export type SharcProfile = {
   patchRanges?: Range[]                        // exact stock instruction intervals
   activeCore?: { segments: [number, string, string][], zero: [number, number][], entries: Record<string, number>, stackBytes: number }
   activeApp?: { segments: [number, string, string][], zero: [number, number][], entries: Record<string, number>, stackBytes: number }
+  activeAppIncrement?: [number, string, number, number] // one inspected 32-bit instruction field
   hook?: [number, string, string]               // loader address, stock bytes, replacement bytes
   abi?: string
   appRange?: Range
@@ -245,6 +246,7 @@ export const DIGITONE_MK2: Device = {
         activeApp: { segments: [[0, 'code', 'a8d3c376c72083c7ac290482c5ae6fe472d7e279e903cf27c5321f213ea70246'],
           [512, 'data', '17f735313bf151356989a7b29ec0cab9ea189a59062f5e22ab521d6f40946c9f']], zero: [[664, 360]],
           entries: { init_offset_bytes: 320, render_offset_bytes: 370 }, stackBytes: 84 },
+        activeAppIncrement: [328, '580226bf', 19685267, 78741067],
         hook: [0x2838489a, '8715ffff78ff', '3e06160006eb'],
       },
     },

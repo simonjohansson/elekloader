@@ -37,6 +37,22 @@ class ActiveSineTests(unittest.TestCase):
             code['hex'] = ('00' if code['hex'][:2] != '00' else '01') + code['hex'][2:]
             self.assertTrue(any('unqualified active SHARC app' in problem for problem in
                                 link.check([core, link.Mod2(mutated, 'mutated')], image)))
+            for frequency, accepted in ((220, True), (660, True), (880, True),
+                                        (219, False), (881, False)):
+                varied = copy.deepcopy(app.doc)
+                code = varied['sharc']['segments'][0]
+                data = bytearray.fromhex(code['hex'])
+                step = round(frequency * (1 << 32) / 48000)
+                word = step.to_bytes(4, 'big')
+                data[328:332] = word[:2][::-1] + word[2:][::-1]
+                code['hex'] = data.hex()
+                problems = link.check([core, link.Mod2(varied, 'varied')], image)
+                self.assertEqual(not any('unqualified active SHARC app' in p for p in problems),
+                                 accepted, frequency)
+                data[327] ^= 1
+                code['hex'] = data.hex()
+                self.assertTrue(any('unqualified active SHARC app' in p for p in
+                                    link.check([core, link.Mod2(varied, 'varied')], image)))
             relocated = copy.deepcopy(app.doc)
             relocated['sharc']['zero'][0]['offset_bytes'] += 4
             relocated['sharc']['zero'][0]['size_bytes'] -= 4

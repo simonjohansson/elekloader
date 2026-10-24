@@ -92,6 +92,8 @@ DEVICE = Device(
                                             (512, 'data', '17f735313bf151356989a7b29ec0cab9ea189a59062f5e22ab521d6f40946c9f')),
                                'zero': ((664, 360),),
                                'entries': {'init_offset_bytes': 320, 'render_offset_bytes': 370}, 'stack_bytes': 84},
+                # One inspected instruction field: phase step for 220..880 Hz at 48 kHz.
+                'active_app_increment': (328, '580226bf', 19685267, 78741067),
                 'hook': (0x2838489a, '8715ffff78ff', '3e06160006eb'),
             })
     },

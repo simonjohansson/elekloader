@@ -69,6 +69,30 @@ A format-2 mod is a relocatable object:
 | `contribute` | entries for tables: `{"to", "order", "data", "relocs", "claims"}` |
 | `copied` | `[{"lo", "hi", "to"}]`: a block of the image this mod copies elsewhere at run time |
 | `storage` | fields this mod keeps with the project: `[{"sym", "scope", "bits"}]` (the Analog Rytm MKII from core-ar2 0.2, the Analog Four MKII from core-a4 0.1; "Mod storage" below) |
+| `sharc` | Digitone II 1.12 only: a prelinked SHARC+ app with the exact envelope below |
+
+### Digitone II SHARC app (inert gate)
+
+The SDK accepts `"sharc": {"artifact": "sine.sharc.json"}` in a mod's
+`mod.json`. The path must stay inside that mod folder. The artifact becomes
+the format-2 mod's top-level `sharc` object; no SHARC compiler runs during
+SDK build, lint or patch. See [the starter](../examples/sharc-sine/README.md).
+
+The object has exactly `abi`, `segments`, `zero`, `entries`, and
+`stack_bytes`. `abi` is `dn2-master-mono32-v1`. Each segment has exactly
+`offset_bytes`, `kind` (`code` or `data`), and `hex` (loader-order bytes).
+Each zero range has `offset_bytes` and `size_bytes`. Segments and zero ranges
+must be nonempty, four-byte aligned, disjoint, and together cover every byte
+of the profiled 1 KiB app reservation at loader address
+`[0x282dda00,0x282dde00)`. Offsets are relative to that reservation.
+For the current inert gate, `entries` must be `null` and `stack_bytes` zero.
+An active app or SHARC core bridge is refused until the audio gate in
+[#41](https://github.com/simonjohansson/elekloader/issues/41) qualifies it.
+Only one SHARC app may be selected. The linker checks stock section 7 by
+hash before adding the app's ordered LOAD/FILL records; the independent
+writer verifier checks the decoded stream, section sizes, HMAC, all outer
+budgets, and unchanged stock sections. A mod without `sharc` retains the
+existing byte-exact build path.
 
 ### The linker
 

@@ -12,8 +12,21 @@ const corpus = JSON.parse(readFileSync(new URL('../../tests/fixtures/sharc.json'
 const bytes = (hex: string): Uint8Array => Uint8Array.from(Buffer.from(hex, 'hex'))
 const original = bytes(corpus.original)
 const profile = DIGITONE_MK2.releases[0].sharc!
+const inertArtifact = JSON.parse(readFileSync(new URL('../../examples/sharc-sine/sine.sharc.json', import.meta.url), 'utf8'))
 const synthetic = { ...profile, decodedSha256: sha(original), ownedRanges: [[0x20002000, 0x20002020] as [number, number]] }
 const refusal = (fn: () => unknown, error: string) => assert.throws(fn, e => e instanceof ModError && e.message === error)
+
+test('prelinked inert payload covers only its DN2 owner', () => {
+  const payload = sharc.modulePayload(inertArtifact, profile)
+  assert.deepEqual(payload.owner, profile.appRange)
+  assert.equal(payload.entries, null)
+  const bad = structuredClone(inertArtifact)
+  bad.zero[1].size_bytes += 4
+  refusal(() => sharc.modulePayload(bad, profile), 'SHARC zero range is unaligned or exceeds its owner')
+  const active = structuredClone(inertArtifact)
+  active.entries = { init_offset_bytes: 0, render_offset_bytes: 424 }
+  refusal(() => sharc.modulePayload(active, profile), 'SHARC entry is not in owned code')
+})
 
 for (const c of corpus.parse_cases) test(`SHARC parse: ${c.name}`, () => {
   const data = bytes(c.hex)

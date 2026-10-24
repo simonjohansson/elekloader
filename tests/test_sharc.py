@@ -2,6 +2,7 @@
 """Firmware-free SHARC corpus; ELEKLOADER_DN2_SYX enables exact owner-stock checks."""
 import json
 import os
+import copy
 from pathlib import Path
 import sys
 import unittest
@@ -115,6 +116,45 @@ class SharcTests(unittest.TestCase):
         outputs = formats.write(parsed, parsed.stored[device.main_section], device)
         self.assertEqual(outputs['syx'], raw)
         formats.verify(outputs, parsed, formats.main_image(parsed, device), device)
+
+    def test_prelinked_inert_payload_boundaries(self):
+        artifact = json.loads((Path(__file__).parents[1] / 'examples/sharc-sine/sine.sharc.json').read_text())
+        payload = sharc.module_payload(artifact, PROFILE)
+        self.assertEqual(payload['owner'], PROFILE['app_range'])
+        self.assertIsNone(payload['entries'])
+        for change, message in (
+                (lambda d: d['segments'][0].update(offset_bytes=4),
+                 'SHARC payload has a gap or overlap in its owner'),
+                (lambda d: d['zero'][1].update(size_bytes=364),
+                 'SHARC zero range is unaligned or exceeds its owner'),
+                (lambda d: d.update(stack_bytes=1),
+                 'inert SHARC payload must declare zero stack'),
+                (lambda d: d.update(entries={'init_offset_bytes': 0,
+                                               'render_offset_bytes': 424}),
+                 'SHARC entry is not in owned code')):
+            bad = copy.deepcopy(artifact)
+            change(bad)
+            self.refusal(lambda: sharc.module_payload(bad, PROFILE), message)
+
+    @unittest.skipUnless(STOCK, 'missing ELEKLOADER_DN2_SYX')
+    def test_inert_section_round_trip_keeps_other_sections(self):
+        stock, dev, _rel = formats.load(STOCK)
+        artifact = json.loads((Path(__file__).parents[1] / 'examples/sharc-sine/sine.sharc.json').read_text())
+        payload = sharc.module_payload(artifact, PROFILE)
+        base = payload['owner'][0]
+        stream = sharc.insert(stock.section(7), PROFILE,
+                              loads=[(base + off, data) for off, _kind, data in payload['segments']],
+                              fills=[(base + off, count, 0) for off, count in payload['zero']])
+        out = formats.write(stock, stock.stored[dev.main_section], dev,
+                            stored_sharc=formats.pack_main(stream, dev))
+        facts = formats.verify(out, stock, formats.main_image(stock, dev), dev,
+                               want_sharc=stream)
+        self.assertIn('sections 2, 4, 5, 8, byte for byte', facts['untouched'])
+        with self.assertRaisesRegex(formats.FormatError, 'section 7 is not stock'):
+            formats.verify(out, stock, formats.main_image(stock, dev), dev)
+        with self.assertRaisesRegex(formats.FormatError, 'SHARC section does not depack to the patched stream'):
+            formats.verify(out, stock, formats.main_image(stock, dev), dev,
+                           want_sharc=stock.section(7))
 
 
 if __name__ == '__main__':

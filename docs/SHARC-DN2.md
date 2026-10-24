@@ -8,9 +8,10 @@ been observed; the profile records it as unknown. OS 1.12 and a compiler's
 
 The release's `sharc` metadata in `elekloader/devices/digitone_mk2.py` and
 `js/src/devices.ts` records identity, capacities, address views and exclusions.
-It grants **no runtime memory**: `owned_ranges` / `ownedRanges` is empty. It does
-not enable a SHARC artifact ABI or change what existing mods may write. The
-Octatrack's `dsp_payloads` / DSP56300 path remains separate.
+It grants only the 1 KiB inert app reservation at loader bytes
+`[0x282dda00,0x282dde00)` for a prelinked artifact. The adjacent bridge and
+H1 hook remain unowned until the active-audio gate. The Octatrack's
+`dsp_payloads` / DSP56300 path remains separate.
 
 ## Reproduce the stock evidence
 
@@ -96,8 +97,9 @@ The profile records four L1 capacity windows, an L2 byte window of
 Capacity and address equivalence never establish ownership. In particular,
 boot-unloaded L2 contains live firmware pointers, and the investigated 2 KiB
 L1 interval `[0x2dd600,0x2dde00)` has bounded idle/sounding frame evidence in
-[#35](https://github.com/simonjohansson/elekloader/issues/35), but remains
-unowned pending the qualified bridge and integration contract.
+[#35](https://github.com/simonjohansson/elekloader/issues/35). Only its upper
+1 KiB is currently owned for inert app records; the lower bridge interval
+remains unowned.
 
 New payloads must exclude the DN2 special window
 `[0x200fa000,0x200fe000)`, Boot ROM workspace from `0x200fe000` to the end of

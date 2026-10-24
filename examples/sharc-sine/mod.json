@@ -1,0 +1,15 @@
+{
+ "id": "sharc-sine",
+ "version": "0.1",
+ "title": "SHARC sine (inert DN2 payload)",
+ "description": "Prelinked 440 Hz sine payload for DN2 section 7; not connected to audio",
+ "license": "GPL-2.0-or-later",
+ "device": "digitone-mk2",
+ "os": "1.12",
+ "requires": [
+  "core"
+ ],
+ "sharc": {
+  "artifact": "sine.sharc.json"
+ }
+}

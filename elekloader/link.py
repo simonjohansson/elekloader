@@ -27,7 +27,7 @@ there is a DSP word address, and a `dsp24` relocation writes one as three little
 """
 import struct
 
-from . import dsp, store
+from . import dsp, sharc, store, syx
 from .elemod import (ModError, sha, _int, _hex, common_checks, insn_check, overlaps, summarize,
                     parse_needs_core, parse_parts, parse_resources, parse_sites, parts_bytes,
                     resolve_target, format_of, version_key,
@@ -76,7 +76,7 @@ class Mod2:
         if format_of(doc) != FORMAT2:
             raise ModError('%s: not a format-2 .elemod file' % name)
         extra = set(doc) - COMMON - {'sections', 'symbols', 'exports', 'imports', 'weak',
-                                     'relocs', 'collections', 'contribute', 'copied', 'storage'}
+                                     'relocs', 'collections', 'contribute', 'copied', 'storage', 'sharc'}
         if extra:
             raise ModError('%s: unknown fields %s' % (name, sorted(extra)))
         for k in ('id', 'version', 'target', 'sections'):
@@ -108,6 +108,8 @@ class Mod2:
             if n != _int(d.get('len', n), name):
                 raise ModError('%s %s: parts make %d bytes, not %s' % (name, sec, n, d.get('len')))
             self.sections[sec] = {'align': align, 'parts': parts, 'len': n}
+        self.sharc = (sharc.module_payload(doc['sharc'], self.rel.sharc, '.boot' in self.sections)
+                      if 'sharc' in doc else None)
         self.symbols = {}
         for nm, v in doc.get('symbols', {}).items():
             if not isinstance(v, list) or len(v) != 2:
@@ -327,6 +329,13 @@ def check(mods, image):
             if m.needs_core and version_key(cores[0].version) < version_key(m.needs_core):
                 bad.append('%s needs core %s or newer, and this build has core %s'
                            % (m.label(), m.needs_core, cores[0].version))
+    sharc_apps = [m for m in mods if m.sharc and '.boot' not in m.sections]
+    if any(m.sharc for m in cores):
+        bad.append('SHARC core bridge installation awaits the active-audio gate')
+    if len(sharc_apps) > 1:
+        bad.append('only one SHARC application may own the DN2 reservation')
+    if any(m.sharc['entries'] is not None for m in sharc_apps):
+        bad.append('active SHARC application requires a qualified matching core bridge')
     owner = {}
     for m in mods:
         for x in m.exports:
@@ -482,7 +491,7 @@ class Linked:
     pass
 
 
-def link(mods, image, lock=None):
+def link(mods, image, lock=None, *, sharc_stream=None):
     """-> Linked: .image (the patched main OS), .map ({name: address}),
     .layout, .tables ({name: (address, count, entry)}), .order, and for a core
     with mod storage .store (the new lockfile) and .store_notes. lock: the
@@ -501,6 +510,21 @@ def link(mods, image, lock=None):
     ddr_base, ddr_end = dev.ddr_for(core.version)
     fast_base, fast_end = dev.sram_code
     order = [core] + sorted((m for m in mods if m is not core), key=lambda m: m.id)
+    sharc_apps = [m for m in order if m.sharc and m is not core]
+    dsp_stream = dsp_stored = None
+    if sharc_apps:
+        if sharc_stream is None:
+            raise ModError('SHARC application needs the stock section-7 stream')
+        if core.sharc:
+            raise ModError('SHARC core bridge installation awaits the active-audio gate')
+        payload = sharc_apps[0].sharc
+        base = payload['owner'][0]
+        dsp_stream = sharc.insert(sharc_stream, rel.sharc,
+                                  loads=[(base + off, data) for off, _kind, data in payload['segments']],
+                                  fills=[(base + off, count, 0) for off, count in payload['zero']])
+        dsp_stored = syx.pack_main(dsp_stream)
+        if len(dsp_stored) > rel.sharc['stored_max']:
+            raise ModError('SHARC stored section exceeds the profile limit')
     tables = {c: (m, e) for m in order for c, e in m.collections.items()}
 
     entries = {c: [] for c in tables}
@@ -785,6 +809,7 @@ def link(mods, image, lock=None):
 
     out = Linked()
     out.image = bytes(img)
+    out.sharc_stream, out.sharc_stored = dsp_stream, dsp_stored
     out.order = [m.label() for m in order]
     out.map = {}
     for (mid, nm), v in addr.items():
@@ -806,6 +831,10 @@ def link(mods, image, lock=None):
         'ddr_spare': ddr_end - bss_end, 'fast_spare': fast_end - fast_at,
         'ddr_size': ddr_end - ddr_base, 'fast_size': fast_end - fast_base,
     }
+    if sharc_apps:
+        out.layout['sharc'] = {'owner': list(payload['owner']), 'decoded': len(dsp_stream),
+                               'decoded_sha256': sha(dsp_stream), 'stored': len(dsp_stored),
+                               'stored_sha256': sha(dsp_stored), 'app': sharc_apps[0].id}
     out.store, out.store_notes = new_lock, store_notes
     if units is not None:                      # the reserve the core takes: units of dev.reserve
         out.layout['reserve'] = {'units': units, 'end': ddr_base + units * dev.reserve[0]}

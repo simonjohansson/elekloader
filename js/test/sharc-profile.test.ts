@@ -5,12 +5,12 @@ import { DIGITONE_MK2, devices } from '../src/devices.ts'
 
 const profile = DIGITONE_MK2.releases[0].sharc!
 
-test('DN2 SHARC evidence does not grant memory or activate an ABI', () => {
+test('DN2 SHARC profile grants only the inert app reservation', () => {
   assert.equal(profile.processor, 'ADSP-21569')
   assert.equal(profile.isa, 'sharc+-visa')
   assert.equal(profile.siliconRevision, null)
-  assert.deepEqual(profile.ownedRanges, [])
-  assert.equal('abi' in profile, false)
+  assert.deepEqual(profile.ownedRanges, [[0x282dda00, 0x282dde00]])
+  assert.equal(profile.abi, 'dn2-master-mono32-v1')
   assert.deepEqual(DIGITONE_MK2.dspPayloads, {})
   assert.deepEqual(devices().flatMap(d => d.releases.filter(r => r.sharc).map(r => [d.key, r.version])),
     [['digitone-mk2', '1.12']])

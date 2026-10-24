@@ -8,8 +8,9 @@ file on your own machine, and you flash it the way you flash any OS update.
   its author's bytes, the short instruction fragments needed to hook the OS,
   and hashes of the stock bytes it expects. Every build starts from your own
   stock file, recognised by its hash.
-- **The bootloader is never touched.** Mods can only change the main OS:
-  the file format has no way to say anything else. Each output file is
+- **The bootloader is never touched.** Mods change the main OS; on the
+  Digitone II, a bounded prelinked SHARC payload may also change section 7.
+  Each output file is
   re-read and verified before it is written. So the stock OS file always
   recovers the device.
 - **Mods are checked against each other before anything is built.** Two

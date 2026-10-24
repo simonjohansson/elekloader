@@ -45,13 +45,31 @@ monolithic build; section 4 says how to go from A to B.
   Octatrack's core, `mods/core-ot`, has a hook bus of its own from 0.2, with the Octatrack's events ("The hook bus on the
   Octatrack" below).
 
+For the Digitone II SHARC starter, the source author supplies a prelinked
+artifact in the mod folder. Building the mod needs no SHARC compiler:
+
+```sh
+python -m elekloader.sdk.build examples/sharc-sine --stock "$DN2_STOCK"
+python -m elekloader.lint examples/sharc-sine/out/sharc-sine-0.1.elemod --stock "$DN2_STOCK" --with "$DN2_CORE" --json
+python -m elekloader.patch --stock "$DN2_STOCK" --mod "$DN2_CORE" --mod examples/sharc-sine/out/sharc-sine-0.1.elemod --out sine-inert.syx --version SN01
+```
+
+The first build prints `BUILT`, lint reports `"ok": true`, and patch prints
+`verified: sections 2, 4, 5, 8, byte for byte`. This artifact is deliberately
+inert: section 7 carries the sine code, but no DSP hook calls it, so it is
+not a playable sine. [The starter](../examples/sharc-sine/README.md) explains
+its source and producer. A matching core `.elemod` remains necessary, as for
+other format-2 mods; building that core from source uses the ColdFire toolchain.
+
 ## 2. The rules
 
 The loader checks all of these before it builds anything; each rule says
 what you see when it is broken (section 5 has the fixes).
 
-1. **Only the main OS changes.** A mod has no way to touch the bootloader
-   or any other section, so the stock OS file always recovers the device.
+1. **Only profiled sections change.** Mods normally change the main OS.
+   Digitone II 1.12 also permits a bounded SHARC app in section 7 (below).
+   The bootloader and other sections remain stock, so the stock OS file
+   remains the recovery path.
    Some main OS bytes stay stock too: the Octatrack's copy of its
    bootloader, and 16 zero bytes after a table that its stock DELAY reads
    (docs/DEVICES.md, `protected` and `keep`). *"protected on the ..."*,

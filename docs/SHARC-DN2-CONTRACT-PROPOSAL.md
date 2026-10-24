@@ -1,7 +1,8 @@
 # Proposed DN2 SHARC sine contract (#36)
 
-**Review draft, 24 October 2026. Nothing on this page is implemented or a
-supported public interface.** This replaces the older synthetic sizing and
+**Approved contract, 24 October 2026. The inert app slice is implemented in
+#37; the active bridge, callback dispatch and device audio remain proposed for
+#41.** This replaces the older synthetic sizing and
 incoming-R4 assumptions retained in [#36](https://github.com/simonjohansson/elekloader/issues/36).
 The first target is DN2 OS 1.12 and one fixed, key-independent 440 Hz sine.
 Playback on hardware is a separate gate, [#41](https://github.com/simonjohansson/elekloader/issues/41).
@@ -46,7 +47,8 @@ python -m elekloader.lint examples/sharc-sine/out/sharc-sine-0.1.elemod --stock 
 python -m elekloader.patch --stock "$DN2_STOCK" --mod "$DN2_CORE" --mod examples/sharc-sine/out/sharc-sine-0.1.elemod --out sine.syx --version SN01
 ```
 
-These are **future commands**, not commands that pass on this branch today.
+These commands work for the inert artifact on this branch. Its bytes are
+installed in section 7 but never called by an audio hook.
 The end user supplies stock OS and matching core/mod files as for other
 devices; no compiler, native linker, remote service or extra DSP patch step
 is involved. The same parsed `.elemod` must work in Python and TypeScript.
@@ -91,8 +93,9 @@ For this ABI, the core's fixed 1 KiB owner is `[0x2dd600,0x2dda00)` and the
 app's fixed 1 KiB owner is `[0x2dda00,0x2dde00)`, expressed here as **core
 bytes**. The corresponding loader aliases are `0x282dd600` and `0x282dda00`;
 the code PCs use 16-bit parcels (`core_byte / 2`). The existing candidate is
-not yet an approved production reservation: the device profile currently has
-`owned_ranges=()`. The profile, never an author offset, grants ownership.
+approved only for the inert app slice: the device profile owns its upper 1 KiB
+while the core bridge's lower 1 KiB remains unowned. The profile, never an
+author offset, grants ownership.
 The app code, data and zero fill above exactly cover its owner. The core owns
 the 12-byte binding at its offset 0, its 548-byte bridge at offset 12, and
 zero-fills the rest of its owner. The H1 jump is core-owned and only installed
@@ -102,16 +105,17 @@ accepted.
 All segment starts and lengths are four-byte aligned. Code hex is the
 variable-width SHARC+ instruction byte stream in **loader order**, not raw
 Selache ELF parcel order; data bytes are unchanged. Entry offsets may be
-two-byte aligned but must point to decoded instruction starts in the owner's
-code segment. Every range must be nonempty, in bounds, disjoint and free of
+two-byte aligned and must point into the owner's code segment. Checking
+decoded instruction starts is part of the future active-app gate. Every range
+must be nonempty, in bounds, disjoint and free of
 protected aliases. Reject malformed hex, missing or unknown keys, booleans
 as integers, wrong ABI, instruction decode gaps, wrong entry kinds, or a
 second SHARC app. There is no runtime linker or general event bus. A producer
 must resolve every reference and omit unwanted sections before export; a
 JSON byte envelope cannot itself prove that an earlier ELF had no unresolved
-relocations or identify which compiler emitted it. The first sine exporter
-checks those source-executable properties and refuses a stale cached output
-when source hashes change. The normal SDK build consumes the artifact as-is;
+relocations or identify which compiler emitted it. The existing probe's
+producer checks those source-executable properties and records source hashes.
+The normal SDK build consumes the artifact as-is;
 it cannot detect a stale source file unless the author regenerates it.
 Elekloader checks the exported bytes, target placement and stock identity,
 not producer labels.
@@ -119,11 +123,12 @@ not producer labels.
 The core artifact uses the same envelope but a core-only
 `entries:{"hook_offset_bytes":12}`. An inert app uses `entries:null` and
 `stack_bytes:0`, with real bounded segments. An active app requires the
-matching bridge and both callbacks; otherwise patching refuses. With no app,
-even a SHARC-capable core leaves section 7 untouched. An inert app alone can
-exercise installation without a hook; an inert app with the core binds both
-entry words to zero and preserves stock stereo output. Only one active app
-and one core may own this reservation.
+matching bridge and both callbacks; otherwise patching refuses. In the
+implemented inert slice, the ordinary core is still required as for every
+format-2 mod, but it installs no SHARC hook or entry binding. With no app,
+section 7 stays byte-identical to stock. One inert app can exercise section-7
+installation while stock audio remains untouched. A SHARC-capable core and
+entry-word binding belong to #41.
 
 ## Callback and installation boundary
 

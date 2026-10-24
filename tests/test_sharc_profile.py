@@ -30,12 +30,12 @@ def stock():
 
 
 class ProfileTests(unittest.TestCase):
-    def test_facts_do_not_grant_runtime_memory(self):
+    def test_profile_grants_only_the_inert_app_reservation(self):
         self.assertEqual(PROFILE['processor'], 'ADSP-21569')
         self.assertEqual(PROFILE['isa'], 'sharc+-visa')
         self.assertIsNone(PROFILE['silicon_revision'])
-        self.assertEqual(PROFILE['owned_ranges'], ())
-        self.assertNotIn('abi', PROFILE)
+        self.assertEqual(PROFILE['owned_ranges'], ((0x282dda00, 0x282dde00),))
+        self.assertEqual(PROFILE['abi'], 'dn2-master-mono32-v1')
         self.assertEqual(DEVICE.dsp_payloads, {})  # OT/DSP56300 support remains separate.
         self.assertEqual([(d.key, r.version) for d in devices.devices()
                           for r in d.releases.values() if r.sharc], [('digitone-mk2', '1.12')])

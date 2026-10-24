@@ -140,3 +140,65 @@ export function insert(stream: Uint8Array, profile: SharcProfile,
   parse(result, profile)
   return result
 }
+
+export type SharcPayload = {
+  segments: [number, 'code' | 'data', Uint8Array][]
+  zero: [number, number][]
+  entries: Record<string, number> | null
+  stackBytes: number
+  owner: [number, number]
+}
+
+/** Validate the narrow prelinked format-2 payload; offsets are owner bytes. */
+export function modulePayload(doc: any, profile: SharcProfile | undefined, core = false): SharcPayload {
+  if (!profile?.abi) throw new ModError('SHARC payload has no supported device ABI')
+  const keys = ['abi', 'entries', 'segments', 'stack_bytes', 'zero']
+  if (!doc || typeof doc !== 'object' || Array.isArray(doc) || Object.keys(doc).sort().join(',') !== keys.join(','))
+    throw new ModError('SHARC payload needs exactly abi, segments, zero, entries, stack_bytes')
+  if (doc.abi !== profile.abi) throw new ModError('SHARC ABI does not match the device profile')
+  const owner = core ? profile.coreRange! : profile.appRange!
+  const size = owner[1] - owner[0]
+  const spans: [number, number][] = [], segments: SharcPayload['segments'] = [], zero: [number, number][] = []
+  if (!Array.isArray(doc.segments) || !doc.segments.length) throw new ModError('SHARC payload needs code segments')
+  for (const item of doc.segments) {
+    if (!item || typeof item !== 'object' || Array.isArray(item) || Object.keys(item).sort().join(',') !== 'hex,kind,offset_bytes')
+      throw new ModError('SHARC segment needs exactly offset_bytes, kind, hex')
+    const off = item.offset_bytes, kind = item.kind, h = item.hex
+    if (!uint32(off) || (kind !== 'code' && kind !== 'data') || typeof h !== 'string' || h.length > size * 2 ||
+      !/^(?:[0-9a-fA-F]{2})+$/.test(h)) throw new ModError('SHARC segment has invalid offset, kind or hex bytes')
+    const data = Uint8Array.from(h.match(/../g)!.map((pair: string) => parseInt(pair, 16)))
+    if (off % 4 || data.length % 4 || off + data.length > size)
+      throw new ModError('SHARC segment is unaligned or exceeds its owner')
+    spans.push([off, off + data.length]); segments.push([off, kind, data])
+  }
+  if (!segments.some(([, kind]) => kind === 'code')) throw new ModError('SHARC payload has no code')
+  if (!Array.isArray(doc.zero)) throw new ModError('SHARC zero ranges must be an array')
+  for (const item of doc.zero) {
+    if (!item || typeof item !== 'object' || Array.isArray(item) || Object.keys(item).sort().join(',') !== 'offset_bytes,size_bytes')
+      throw new ModError('SHARC zero range needs exactly offset_bytes, size_bytes')
+    const off = item.offset_bytes, count = item.size_bytes
+    if (!uint32(off) || !uint32(count) || !count || off % 4 || count % 4 || off + count > size)
+      throw new ModError('SHARC zero range is unaligned or exceeds its owner')
+    spans.push([off, off + count]); zero.push([off, count])
+  }
+  let at = core ? 12 : 0
+  for (const [lo, hi] of spans.sort(([a], [b]) => a - b)) {
+    if (lo !== at) throw new ModError('SHARC payload has a gap or overlap in its owner')
+    at = hi
+  }
+  if (at !== size) throw new ModError('SHARC payload has a gap or overlap in its owner')
+  const entries = doc.entries
+  if (entries !== null) {
+    const entryKeys = core ? 'hook_offset_bytes' : 'init_offset_bytes,render_offset_bytes'
+    if (!entries || typeof entries !== 'object' || Array.isArray(entries) || Object.keys(entries).sort().join(',') !== entryKeys)
+      throw new ModError('SHARC entries do not match core/application role')
+    for (const off of Object.values(entries))
+      if (!uint32(off as number) || (off as number) % 2 || !segments.some(([start, kind, data]) =>
+        kind === 'code' && start <= (off as number) && (off as number) < start + data.length))
+        throw new ModError('SHARC entry is not in owned code')
+  } else if (core) throw new ModError('SHARC core needs a hook entry')
+  const stack = doc.stack_bytes
+  if (!uint32(stack) || stack > profile.stackMax!) throw new ModError('SHARC stack contribution exceeds the profile limit')
+  if (entries === null && stack) throw new ModError('inert SHARC payload must declare zero stack')
+  return { segments, zero, entries, stackBytes: stack, owner }
+}

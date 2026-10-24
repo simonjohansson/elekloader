@@ -78,7 +78,12 @@ DEVICE = Device(
                               (0x282ec000, 0x282f0000, 'L1 block 1 cache'),
                               (0x2831c000, 0x28320000, 'L1 block 2 cache'),
                               (0x2839c000, 0x283a0000, 'L1 block 3 cache')),
-                'owned_ranges': (),            # #35 must qualify runtime ownership before insertion
+                # #37's inert app only. The bridge/hook still need #41's gate.
+                'abi': 'dn2-master-mono32-v1',
+                'app_range': (0x282dda00, 0x282dde00),
+                'core_range': (0x282dd600, 0x282dda00),
+                'stack_max': 544,
+                'owned_ranges': ((0x282dda00, 0x282dde00),),
             })
     },
     main_section=3,

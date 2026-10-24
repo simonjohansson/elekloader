@@ -22,6 +22,9 @@ import {
 import { PCREL, decodeColdFire, readerAt } from './isa/coldfire.ts'
 import { AttributeError, KeyError, PyException, ValueError, hex8, pyType, repr, str } from './py.ts'
 import * as store from './store.ts'
+import { modulePayload, type SharcPayload } from './sharc.ts'
+import * as sharcRecords from './sharc.ts'
+import * as syx from './syx.ts'
 
 /** Python's struct.error. */
 export class StructError extends PyException {}
@@ -73,6 +76,7 @@ export class Mod2 implements AnyMod {
   dev: Device
   rel: Release
   sections: Map<string, Sec>
+  sharc: SharcPayload | null
   symbols: Map<string, [string, number]>
   exports: string[]
   imports: string[]
@@ -96,7 +100,7 @@ export class Mod2 implements AnyMod {
     this.name = name
     this.sha256 = raw ? sha(raw) : null
     if (!pyEq(formatOf(doc), FORMAT2)) throw new ModError(`${name}: not a format-2 .elemod file`)
-    const more = new Set(['sections', 'symbols', 'exports', 'imports', 'weak', 'relocs', 'collections', 'contribute', 'copied', 'storage'])
+    const more = new Set(['sections', 'symbols', 'exports', 'imports', 'weak', 'relocs', 'collections', 'contribute', 'copied', 'storage', 'sharc'])
     const extra = Object.keys(doc).filter(k => !COMMON.has(k) && !more.has(k)).sort()
     if (extra.length) throw new ModError(`${name}: unknown fields ${repr(extra)}`)
     for (const k of ['id', 'version', 'target', 'sections']) if (!(k in doc)) throw new ModError(`${name}: no "${k}"`)
@@ -126,6 +130,7 @@ export class Mod2 implements AnyMod {
       if (n !== int(get(d, 'len', n), name)) throw new ModError(`${name} ${sec}: parts make ${n} bytes, not ${str(get(d, 'len'))}`)
       this.sections.set(sec, { align: al, parts, len: n })
     }
+    this.sharc = 'sharc' in doc ? modulePayload(doc.sharc, this.rel.sharc, this.sections.has('.boot')) : null
     this.symbols = new Map()
     for (const [nm, v] of items(get(doc, 'symbols', {}))) {
       if (!Array.isArray(v) || v.length !== 2) throw new ModError(`${name}: symbol ${nm}`)
@@ -335,6 +340,11 @@ export function check(mods: Mod2[], image: Uint8Array): string[] {
       if (m.needsCore && cmpVersions(cores[0].version, m.needsCore) < 0)
         bad.push(`${m.label()} needs core ${m.needsCore} or newer, and this build has core ${cores[0].version}`)
   }
+  const sharcApps = mods.filter(m => m.sharc && !m.sections.has('.boot'))
+  if (cores.some(m => m.sharc)) bad.push('SHARC core bridge installation awaits the active-audio gate')
+  if (sharcApps.length > 1) bad.push('only one SHARC application may own the DN2 reservation')
+  if (sharcApps.some(m => m.sharc!.entries !== null))
+    bad.push('active SHARC application requires a qualified matching core bridge')
   const owner = new Map<string, Mod2>()
   for (const m of mods) {
     for (const x of m.exports) {
@@ -479,6 +489,8 @@ export type Layout = {
   blob_len: number; sections: Record<string, number>; ddr_spare: number; fast_spare: number; ddr_size: number; fast_size: number
   reserve?: { units: number; end: number }   // a core sized to the mods: the pages it takes, and where they end
   dsp?: Record<string, DspLayout>              // words: P addresses of each payload's area
+  sharc?: { owner: [number, number]; decoded: number; decoded_sha256: string;
+    stored: number; stored_sha256: string; app: string }
 }
 
 export type Linked = {
@@ -489,6 +501,8 @@ export type Linked = {
   layout: Layout
   store: store.Lock | null                      // a core with mod storage: the new lockfile
   storeNotes: string[]
+  sharcStream: Uint8Array | null
+  sharcStored: Uint8Array | null
 }
 
 /** The linker's area for .run, tables and .bss with a core of this version (devices.py's ddr_for). */
@@ -500,7 +514,8 @@ export function ddrFor(dev: Device, coreVersion: string): Range {
 
 /** The patched main OS, its map, tables and layout, and for a core with mod storage the new lockfile. lock: the
  * build's lockfile, or null for a new one (store.ts). Throws ModError. */
-export function link(mods: Mod2[], image: Uint8Array, lock: store.Lock | null = null): Linked {
+export function link(mods: Mod2[], image: Uint8Array, lock: store.Lock | null = null,
+  sharcStream: Uint8Array | null = null): Linked {
   if (!mods.length) throw new ModError('no mods')
   const dev = mods[0].dev, rel = mods[0].rel
   if (sha(image) !== rel.mainSha256) throw new ModError(`the stock main OS is not ${dev.name} ${rel.version}`)
@@ -511,6 +526,18 @@ export function link(mods: Mod2[], image: Uint8Array, lock: store.Lock | null = 
   const [ddrBase, ddrEnd] = ddrFor(dev, core.version)
   const [fastBase, fastEnd] = dev.sramCode
   const order = [core, ...mods.filter(m => m !== core).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))]
+  const sharcApps = order.filter(m => m.sharc && m !== core)
+  let dspStream: Uint8Array | null = null, dspStored: Uint8Array | null = null
+  if (sharcApps.length) {
+    if (sharcStream === null) throw new ModError('SHARC application needs the stock section-7 stream')
+    if (core.sharc) throw new ModError('SHARC core bridge installation awaits the active-audio gate')
+    const payload = sharcApps[0].sharc!, base = payload.owner[0]
+    dspStream = sharcRecords.insert(sharcStream, rel.sharc!,
+      payload.segments.map(([off, , data]) => [base + off, data]),
+      payload.zero.map(([off, count]) => [base + off, count, 0]))
+    dspStored = syx.packMain(dspStream)
+    if (dspStored.length > rel.sharc!.storedMax) throw new ModError('SHARC stored section exceeds the profile limit')
+  }
   const tables = new Map<string, [Mod2, number]>()
   for (const m of order) for (const [c, e] of m.collections) tables.set(c, [m, e])
 
@@ -847,6 +874,9 @@ export function link(mods: Mod2[], image: Uint8Array, lock: store.Lock | null = 
     blob_len: blob.length, sections, ddr_spare: ddrEnd - bssEnd, fast_spare: fastEnd - fastAt, ddr_size: ddrEnd - ddrBase,
     fast_size: fastEnd - fastBase,
   }
+  if (sharcApps.length) layout.sharc = { owner: sharcApps[0].sharc!.owner,
+    decoded: dspStream!.length, decoded_sha256: sha(dspStream!),
+    stored: dspStored!.length, stored_sha256: sha(dspStored!), app: sharcApps[0].id }
   if (units !== null) layout.reserve = { units, end: ddrBase + units * dev.reserve![0] }   // the reserve the core takes
   if (areas.size) {
     const dspOut: Record<string, DspLayout> = {}
@@ -861,6 +891,7 @@ export function link(mods: Mod2[], image: Uint8Array, lock: store.Lock | null = 
     }
     layout.dsp = dspOut
   }
-  return { image: img, order: order.map(m => m.label()), map, tables: outTables, layout, store: newLock, storeNotes }
+  return { image: img, order: order.map(m => m.label()), map, tables: outTables, layout, store: newLock, storeNotes,
+    sharcStream: dspStream, sharcStored: dspStored }
 }
 

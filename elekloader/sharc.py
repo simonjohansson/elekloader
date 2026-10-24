@@ -7,6 +7,7 @@ synthetic vectors. No external parser code is included. See docs/SHARC-BOOT.md.
 from dataclasses import dataclass
 import functools
 import operator
+import re
 import struct
 
 from .elemod import ModError, sha
@@ -176,3 +177,67 @@ def insert(stream, profile, *, loads=(), fills=()):
                        stream[first.offset + 16:records[-1].offset], inserted, records[-1].raw))
     parse(result, profile)
     return result
+
+
+def module_payload(doc, profile, core=False):
+    """Validate the narrow prelinked format-2 payload; offsets are owner bytes."""
+    if not profile or not profile.get('abi'):
+        raise ModError('SHARC payload has no supported device ABI')
+    if not isinstance(doc, dict) or set(doc) != {'abi', 'segments', 'zero', 'entries', 'stack_bytes'}:
+        raise ModError('SHARC payload needs exactly abi, segments, zero, entries, stack_bytes')
+    if doc['abi'] != profile['abi']:
+        raise ModError('SHARC ABI does not match the device profile')
+    owner = profile['core_range' if core else 'app_range']
+    size = owner[1] - owner[0]
+    spans, segments, zeros = [], [], []
+    if not isinstance(doc['segments'], list) or not doc['segments']:
+        raise ModError('SHARC payload needs code segments')
+    for item in doc['segments']:
+        if not isinstance(item, dict) or set(item) != {'offset_bytes', 'kind', 'hex'}:
+            raise ModError('SHARC segment needs exactly offset_bytes, kind, hex')
+        off, kind, h = item['offset_bytes'], item['kind'], item['hex']
+        if not _uint32(off) or kind not in ('code', 'data') or not isinstance(h, str) or len(h) > size * 2 \
+                or not re.fullmatch(r'(?:[0-9a-fA-F]{2})+', h):
+            raise ModError('SHARC segment has invalid offset, kind or hex bytes')
+        data = bytes.fromhex(h)
+        if off % 4 or len(data) % 4 or off + len(data) > size:
+            raise ModError('SHARC segment is unaligned or exceeds its owner')
+        spans.append((off, off + len(data)))
+        segments.append((off, kind, data))
+    if not any(kind == 'code' for _off, kind, _data in segments):
+        raise ModError('SHARC payload has no code')
+    if not isinstance(doc['zero'], list):
+        raise ModError('SHARC zero ranges must be an array')
+    for item in doc['zero']:
+        if not isinstance(item, dict) or set(item) != {'offset_bytes', 'size_bytes'}:
+            raise ModError('SHARC zero range needs exactly offset_bytes, size_bytes')
+        off, count = item['offset_bytes'], item['size_bytes']
+        if not _uint32(off) or not _uint32(count) or not count or off % 4 or count % 4 or off + count > size:
+            raise ModError('SHARC zero range is unaligned or exceeds its owner')
+        spans.append((off, off + count))
+        zeros.append((off, count))
+    at = 12 if core else 0             # the core's first 12 bytes are consumer-owned binding
+    for lo, hi in sorted(spans):
+        if lo != at:
+            raise ModError('SHARC payload has a gap or overlap in its owner')
+        at = hi
+    if at != size:
+        raise ModError('SHARC payload has a gap or overlap in its owner')
+    entries = doc['entries']
+    if entries is not None:
+        keys = {'hook_offset_bytes'} if core else {'init_offset_bytes', 'render_offset_bytes'}
+        if not isinstance(entries, dict) or set(entries) != keys:
+            raise ModError('SHARC entries do not match core/application role')
+        for off in entries.values():
+            if not _uint32(off) or off % 2 or not any(start <= off < start + len(data)
+                    for start, kind, data in segments if kind == 'code'):
+                raise ModError('SHARC entry is not in owned code')
+    elif core:
+        raise ModError('SHARC core needs a hook entry')
+    stack = doc['stack_bytes']
+    if not _uint32(stack) or stack > profile['stack_max']:
+        raise ModError('SHARC stack contribution exceeds the profile limit')
+    if entries is None and stack:
+        raise ModError('inert SHARC payload must declare zero stack')
+    return {'segments': segments, 'zero': zeros, 'entries': entries, 'stack_bytes': stack,
+            'owner': owner}

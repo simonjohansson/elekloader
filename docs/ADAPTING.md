@@ -64,6 +64,13 @@ the ColdFire toolchain. Authors regenerate the prelinked pair with pinned
 Selache using `examples/sharc-sine/rebuild.py` after source qualification;
 ordinary consumers still use only the three commands above.
 
+[`examples/sharc-sine-asm`](../examples/sharc-sine-asm/README.md) supplies the
+same played sine with a handwritten SHARC kernel. Use its directory and
+`sharc-sine-asm-0.1.elemod` in the same commands. It shares the C example's
+core bridge, note range and gain ramp; choose one sine app per build. Its
+author benchmark compares exact output, code size, stack and executed
+instructions with the C kernel.
+
 ## 2. The rules
 
 The loader checks all of these before it builds anything; each rule says

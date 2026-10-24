@@ -102,6 +102,11 @@ DEVICE = Device(
                                      'zero': ((972, 52),),
                                      'entries': {'init_offset_bytes': 320, 'render_offset_bytes': 382},
                                      'stack_bytes': 128},
+                'active_keyed_asm_app': {'segments': ((0, 'code', 'ebe4ba4d0c3692f1e3f6309403613a7f47f823c4189155e9b4f1c2d9707219a6'),
+                                                       (768, 'data', '32040df54c1330b3325255cf5ad18101caf2dabd697a7a10040a99aa530c40d3')),
+                                         'zero': ((972, 52),),
+                                         'entries': {'init_offset_bytes': 176, 'render_offset_bytes': 238},
+                                         'stack_bytes': 128},
                 'hook': (0x2838489a, '8715ffff78ff', '3e06160006eb'),
             })
     },

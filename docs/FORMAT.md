@@ -86,11 +86,13 @@ must be nonempty, four-byte aligned, disjoint, and together cover every byte
 of the profiled 1 KiB app reservation at loader address
 `[0x282dda00,0x282dde00)`. Offsets are relative to that reservation.
 An inert app may still use `entries:null` and `stack_bytes:0`. The current
-keyed starter declares init/render offsets 320/382 and 128 stack bytes.
+keyed C starter declares init/render offsets 320/382 and 128 stack bytes.
+The assembly kernel variant declares 176/238 with the same conservative
+128-byte stack allowance, data layout and keyed entry wrapper.
 Its matching core supplies a separate 1 KiB bridge artifact with a hook entry
 at offset 12 and 116 stack bytes. The linker binds the two PC16 callback
 addresses itself; neither app may supply core binding bytes or stock patches.
-The profile accepts this exact keyed core/app pair. It also retains the
+The profile accepts either exact keyed app with that core. It also retains the
 earlier fixed-sine pair, whose app declares 320/370 and 84 stack bytes; only
 that historical app permits a four-byte phase-increment edit at code offset
 328 for 220–880 Hz. Core/app pairs cannot be mixed. The source producer

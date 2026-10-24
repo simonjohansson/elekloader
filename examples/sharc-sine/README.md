@@ -30,7 +30,10 @@ firmware.
 The SDK needs no SHARC compiler for these commands. It validates and embeds
 the existing artifacts, and the patcher independently verifies the firmware.
 Source changes require an explicit new qualification; the current linker
-accepts only these exact keyed bytes and the earlier fixed-sine pair.
+accepts these exact keyed bytes, the qualified
+[assembly kernel variant](../sharc-sine-asm/README.md), and the earlier
+fixed-sine pair. The assembly example uses the same entry wrapper and core;
+its author benchmark compares both kernels with identical inputs.
 The checked author host is macOS on Apple silicon with mise Python 3.12.13,
 Rust 1.98.1 and Apple command-line tools. [Install and build Selache](../sharc-sine-probe/README.md#build-and-check)
 at commit `2b26d3b75c53063575bc5c820fa0d38879335187` once, then run:

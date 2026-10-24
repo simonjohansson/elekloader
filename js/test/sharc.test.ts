@@ -33,6 +33,19 @@ test('active DN2 keyed sine and historical fixed pair stay exactly matched', () 
   assert.equal(bad(fixed.core, fixed.app), false)
   assert.equal(bad(bridge, fixed.app), true)
   assert.equal(bad(fixed.core, original), true)
+  const asm = JSON.parse(readFileSync(new URL('../../examples/sharc-sine-asm/sine.sharc.json', import.meta.url), 'utf8'))
+  assert.equal(bad(bridge, asm), false)
+  assert.equal(bad(fixed.core, asm), true)
+  for (const mutation of ['code', 'entry', 'stack']) {
+    const changed = structuredClone(asm)
+    if (mutation === 'code') {
+      const code = bytes(changed.segments[0].hex)
+      code[4] ^= 1
+      changed.segments[0].hex = Buffer.from(code).toString('hex')
+    } else if (mutation === 'entry') changed.entries.render_offset_bytes += 2
+    else changed.stack_bytes -= 4
+    assert.equal(bad(bridge, changed), true, mutation)
+  }
   const changed = structuredClone(original)
   const changedCode = bytes(changed.segments[0].hex)
   changedCode[328] ^= 1

@@ -523,7 +523,8 @@ smaller core-only CO02 build then flashed and booted successfully (below).
 - **SHARC sine gate.** The profile grants loader-byte
   `[0x282dd600,0x282dde00)` for the checked-in 1 KiB core bridge and 1 KiB
   prelinked app in section 7, and separately grants the exact six-byte H1
-  instruction patch. The current keyed core/app pair is byte-exact; the
+  instruction patch. The current keyed core accepts the exact C or
+  [assembly sine app](../examples/sharc-sine-asm/README.md); the
   earlier fixed-tone pair remains accepted with only its bounded 220–880 Hz
   phase increment editable. Mismatched pairs cannot activate the hook.
   The SDK, linker, writer and independent

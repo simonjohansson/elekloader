@@ -360,7 +360,8 @@ def check(mods, image):
         fixed = matches(core.sharc, profile['active_core'])
         if not (keyed or fixed):
             bad.append('%s has unqualified active SHARC core bytes or entry' % core.label())
-        elif not (keyed and matches(app.sharc, profile['active_keyed_app'])
+        elif not (keyed and (matches(app.sharc, profile['active_keyed_app'])
+                            or matches(app.sharc, profile['active_keyed_asm_app']))
                   or fixed and matches(app.sharc, profile['active_app'], adjustable=True)):
             bad.append('%s has unqualified active SHARC app bytes or entry' % app.label())
         if core.sharc['stack_bytes'] + app.sharc['stack_bytes'] > profile['stack_max']:

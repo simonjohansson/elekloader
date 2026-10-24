@@ -7,10 +7,13 @@ page) and takes its input files from environment variables. A test whose
 input files are not given is skipped, not passed: say which ran. Firmware
 files never go in this repository.
 
+`test_units.py` also discovers `test_sharc*.py`. Set `ELEKLOADER_DN2_SYX`
+to include their stock-backed checks and `ELEKLOADER_CROSS` for the active
+bridge build. The toolchain fixture test needs Git and skips without it.
+
 ```bash
-python tests/test_units.py        # needs nothing
+python tests/test_units.py        # includes SHARC; missing optional inputs are reported as skips
 python tests/test_link_refusals.py   # needs nothing: every refusal of the linker, refused and passed
-python -m unittest discover -s tests -p "test_sharc*.py"  # stock-free SHARC checks; optional ELEKLOADER_DN2_SYX
 ELEKLOADER_STOCK=Digitakt_OS1.53.syx ELEKLOADER_MODS=path/to/mods python tests/test_link.py
 ELEKLOADER_STOCK=... ELEKLOADER_STOCK_154=Digitakt_OS1.54.syx ELEKLOADER_MODS=... python tests/test_sdk.py   # the example needs the cross compiler
 ELEKLOADER_RELEASES=folder/of/stock/files python tests/test_releases.py   # every known release, and its cores

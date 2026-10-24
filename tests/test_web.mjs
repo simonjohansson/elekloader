@@ -8,7 +8,7 @@
 //      build refuse to start without a stock file.
 //
 //   node tests/test_web.mjs build/site
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -40,6 +40,19 @@ py.FS.writeFile('/work/tests/test_units.py', read(join(HERE, 'test_units.py')));
 // the linker's and the loader's sources (the zip's) and test_octatrack.py's DSP fixtures
 py.FS.writeFile('/work/tests/test_link_refusals.py', read(join(HERE, 'test_link_refusals.py')));
 py.FS.writeFile('/work/tests/test_octatrack.py', read(join(HERE, 'test_octatrack.py')));
+// The SHARC suite also needs its author-owned fixtures and example checks.
+for (const file of [
+  ...readdirSync(HERE).filter(name => /^test_sharc.*\.py$/.test(name)).map(name => 'tests/' + name),
+  'tests/fixtures/sharc.json', 'tests/fixtures/sharc-fixed-pair.json',
+  'examples/sharc-sine/sine.sharc.json', 'examples/sharc-sine/build.py',
+  'examples/sharc-sine-probe/execute.py', 'examples/sharc-sine-probe/h1_spills.py',
+  'examples/sharc-sine-probe/qualify.py',
+  'mods/core-dn2/bridge.sharc.json',
+  'mods/core-dn2-metrics/bridge.sharc.json',
+]) {
+  py.FS.mkdirTree(dirname('/work/' + file));
+  py.FS.writeFile('/work/' + file, read(join(HERE, '..', file)));
+}
 py.FS.symlink('/elek/elekloader', '/work/elekloader');
 const code = py.runPython(`
 import runpy

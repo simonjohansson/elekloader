@@ -2,6 +2,7 @@
 """The artifact boundary must reject malformed output before firmware builds."""
 import importlib.util
 import os
+import shutil
 import struct
 import sys
 import subprocess
@@ -68,6 +69,7 @@ class ArtifactTests(unittest.TestCase):
         app = artifact(*executable(bytes(704)))
         self.assertEqual(bytes.fromhex(app['segments'][0]['hex'])[-64:], bytes.fromhex('0100') * 32)
 
+    @unittest.skipUnless(shutil.which('git'), 'needs git')
     def test_toolchain_pin_and_clean_source(self):
         with tempfile.TemporaryDirectory() as work:
             repo = Path(work)

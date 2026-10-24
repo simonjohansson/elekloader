@@ -69,6 +69,14 @@ SDK build packages the artifact and does not compile the SHARC sources.
 The pinned Selache rebuild scripts reproduce the reference examples for
 Elekloader development; they are not required for third-party mods.
 
+The experimental `dn2-master-mono32-l2-v1` ABI selects a bounded 32 KiB app
+at loader `[0x20090000,0x20098000)` with the same keyed core and callback
+contract. Existing L1 artifacts keep their original placement. Compile/link
+for L2 and emit offsets relative to its base; changing only the ABI string
+on L1-linked instructions does not relocate them. The linker retains the
+bridge's fixed L1 pitch table. Code guards, full ownership coverage, stack
+and firmware limits still apply. See [L2 evidence and limits](SHARC-L2.md).
+
 [`examples/sharc-sine-asm`](../examples/sharc-sine-asm/README.md) supplies the
 same played sine with a handwritten SHARC kernel. Use its directory and
 `sharc-sine-asm-0.1.elemod` in the same commands. It shares the C example's

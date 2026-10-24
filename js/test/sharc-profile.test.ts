@@ -9,7 +9,7 @@ test('DN2 SHARC profile grants the H1 core and app reservation', () => {
   assert.equal(profile.processor, 'ADSP-21569')
   assert.equal(profile.isa, 'sharc+-visa')
   assert.equal(profile.siliconRevision, null)
-  assert.deepEqual(profile.ownedRanges, [[0x282dd600, 0x282dde00]])
+  assert.deepEqual(profile.ownedRanges, [[0x282dd600, 0x282dde00], [0x20090000, 0x20098000]])
   assert.deepEqual(profile.patchRanges, [[0x2838489a, 0x283848a0]])
   assert.equal(profile.abi, 'dn2-master-mono32-v1')
   assert.deepEqual(DIGITONE_MK2.dspPayloads, {})
@@ -43,4 +43,24 @@ test('DN2 transport, flash, stored and decoded DSP have independent budgets', ()
   assert.equal(DIGITONE_MK2.flashLimit - DIGITONE_MK2.flashAt, 0x300000)
   assert.equal(profile.storedMax - profile.storedLen, 446500)
   assert.equal(profile.decodedMax - profile.decodedLen, 211619)
+})
+
+
+test('bounded L2 apps preserve the L1 ABI and pointer units', async () => {
+  const { modulePayload, pc16, byteSpan } = await import('../src/sharc.ts')
+  const app = { abi: profile.l2Abi, segments: [{ offset_bytes: 0, kind: 'code', hex: '0100'.repeat(34) }],
+    zero: [{ offset_bytes: 68, size_bytes: 32768 - 68 }],
+    entries: { init_offset_bytes: 0, render_offset_bytes: 2 }, stack_bytes: 128 }
+  assert.deepEqual(modulePayload(app, profile).owner, [0x20090000, 0x20098000])
+  assert.throws(() => modulePayload(app, profile, true), /ABI does not match/)
+  const overrun = structuredClone(app)
+  overrun.zero[0].size_bytes += 4
+  assert.throws(() => modulePayload(overrun, profile), /exceeds its owner/)
+  assert.throws(() => modulePayload({ ...app, abi: profile.abi }, profile), /exceeds its owner/)
+  for (const [loader, expected] of [[0x282dda00, 0x16ed00], [0x20090000, 0xbc8000], [0x20097ffe, 0xbcbfff]]) {
+    assert.equal(pc16(profile, loader), expected)
+    assert.equal(byteSpan(profile, expected, 2, 'pc16')[0], loader)
+  }
+  for (const address of [0x20090001, 0x80000000])
+    assert.throws(() => pc16(profile, address), /no aligned PC16 address/)
 })

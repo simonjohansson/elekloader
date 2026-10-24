@@ -79,12 +79,18 @@ the format-2 mod's top-level `sharc` object; no SHARC compiler runs during
 SDK build, lint or patch. See [the starter](../examples/sharc-sine/README.md).
 
 The object has exactly `abi`, `segments`, `zero`, `entries`, and
-`stack_bytes`. `abi` is `dn2-master-mono32-v1`. Each segment has exactly
+`stack_bytes`. `abi` is `dn2-master-mono32-v1` (L1) or
+`dn2-master-mono32-l2-v1` (experimental L2). Each segment has exactly
 `offset_bytes`, `kind` (`code` or `data`), and `hex` (loader-order bytes).
 Each zero range has `offset_bytes` and `size_bytes`. Segments and zero ranges
 must be nonempty, four-byte aligned, disjoint, and together cover every byte
-of the profiled 1 KiB app reservation at loader address
-`[0x282dda00,0x282dde00)`. Offsets are relative to that reservation.
+of the selected app reservation: L1 is 1 KiB at loader
+`[0x282dda00,0x282dde00)`; L2 is 32 KiB at `[0x20090000,0x20098000)`.
+Offsets are relative to that reservation. The bridge always uses the L1 ABI.
+The L2 ABI uses the same callbacks and borrowed stack, not an extra stack.
+The linker translates loader addresses through the profiled L2 PC16 alias
+and installs the fixed pitch table in the retained L1 app reservation.
+Both reservations remain exclusive to the one selected app.
 An inert app may still use `entries:null` and `stack_bytes:0`. The current
 keyed C starter declares init/render offsets 320/382 and 128 stack bytes.
 The assembly kernel variant declares 176/238 with the same conservative
@@ -98,7 +104,8 @@ contribution remain pinned. The linker still requires the ABI, owned ranges,
 alignment, full coverage, callbacks inside owned code and a combined declared
 stack of at most 544 bytes. Each active app code segment ends in a 64-byte
 short-word NOP guard; entries must precede it. With the keyed core, the 48-byte
-pitch table at app offset 920 must match the profile. The
+L1 pitch table at app offset 920 must match the profile; for L2 the
+linker installs those bytes itself and zeroes the rest of the L1 app range. The
 [callback contract](SHARC-DN2-ABI.md) specifies init/render, gate lifecycle,
 register/modifier preservation and the author-declared stack. These packaging
 checks do not prove instruction behavior, actual stack use or audio timing;

@@ -50,6 +50,16 @@ def byte_span(profile, address, size, unit='loader-byte', *, check_protected=Tru
     raise ModError('SHARC byte span is outside the supported address map')
 
 
+def pc16(profile, address):
+    """Map a loader byte address to an instruction pointer, without truncation."""
+    byte_span(profile, address, 2)
+    intervals = [(lo // 2, hi // 2, base) for lo, hi, base in profile['l1_aliases']]
+    for lo, hi, base in intervals + [profile['l2_pc16']]:
+        if base <= address < base + 2 * (hi - lo) and (address - base) % 2 == 0:
+            return lo + (address - base) // 2
+    raise ModError('SHARC callback has no aligned PC16 address')
+
+
 @dataclass(frozen=True)
 class Record:
     offset: int
@@ -202,9 +212,10 @@ def module_payload(doc, profile, core=False):
         raise ModError('SHARC payload has no supported device ABI')
     if not isinstance(doc, dict) or set(doc) != {'abi', 'segments', 'zero', 'entries', 'stack_bytes'}:
         raise ModError('SHARC payload needs exactly abi, segments, zero, entries, stack_bytes')
-    if doc['abi'] != profile['abi']:
+    l2 = not core and profile.get('l2_abi') is not None and doc['abi'] == profile['l2_abi']
+    if doc['abi'] != profile['abi'] and not l2:
         raise ModError('SHARC ABI does not match the device profile')
-    owner = profile['core_range' if core else 'app_range']
+    owner = profile['core_range'] if core else profile['l2_app_range' if l2 else 'app_range']
     size = owner[1] - owner[0]
     spans, segments, zeros = [], [], []
     if not isinstance(doc['segments'], list) or not doc['segments']:

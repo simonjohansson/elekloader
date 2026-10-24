@@ -1,6 +1,7 @@
 # DN2 keyed SHARC callback contract
 
-This is `dn2-master-mono32-v1` with the pinned keyed core on Digitone II
+This covers `dn2-master-mono32-v1` and the experimental
+`dn2-master-mono32-l2-v1`, with the pinned keyed core on Digitone II
 OS 1.12. It provides one exclusive master-output application. It does not
 register a selectable machine, per-voice processor or stereo effect.
 The [artifact envelope](FORMAT.md#digitone-ii-sharc-app) is unchanged.
@@ -66,7 +67,7 @@ mark and the checker cannot infer actual stack use from machine code.
 
 ## Owned bytes and read-ahead
 
-The app owns loader bytes `[0x282dda00,0x282dde00)`, 1 KiB including code,
+The existing L1 app owns loader bytes `[0x282dda00,0x282dde00)`, 1 KiB including code,
 data and zero ranges. The current example layout uses 768 bytes for code and
 256 for data. The last 64 bytes of every active app code segment must be
 repeated short-word NOPs (`0100` in loader order). Callback entries must lie
@@ -74,7 +75,17 @@ before that tail. Thus the example's linked instructions may occupy at most
 704 bytes; padding supplies the guard. Inert apps execute no code and retain
 the earlier envelope rules. The separately pinned core is unchanged.
 
-This 64-byte margin is a conservative contract for these L1 examples, not
+The L2 ABI instead owns `[0x20090000,0x20098000)` (32 KiB); offsets in its
+artifact are relative to that base. Compile code for the L2 PC16 alias
+`0xbc8000` and use L2 byte addresses for data. Its callbacks, guard and stack
+obligations are identical. L2 has no extra stack allowance. The linker also
+retains the L1 app range, installs the fixed bridge table there and zeroes
+its other bytes. L1 and L2 apps cannot be composed. The supplied external
+L2 layout uses 16 KiB for code (including the guard) and 16 KiB for data.
+It accesses data 16 KiB into the reservation; this is not merely larger
+dead padding. See [L2 evidence and limits](SHARC-L2.md).
+
+This 64-byte margin is a conservative policy retained for both ABIs, not
 proof of every cache/prefetch mode or executable. The SHARC+ programming
 reference, revision 1.5, sections 4-5/4-6, describes the VISA alignment buffer,
 in-flight fetches and fetches continuing at memory boundaries:
@@ -84,7 +95,7 @@ instructions or prove that branches and writes remain within the contract.
 
 The keyed bridge reads twelve fixed uint32 phase steps at core-byte
 `0x2ddd98` (app byte offset 920). The linker checks these 48 data bytes against
-the profile. They represent notes 36..47; higher octaves shift the step.
+the profile for L1; it installs them itself for L2. They represent notes 36..47; higher octaves shift the step.
 Other app code and data may change without adding executable hashes. Keep
 state within owned bytes and the supplied output buffer; preserve stock
 memory everywhere else. The bridge's core range, six-byte H1 stock hook,

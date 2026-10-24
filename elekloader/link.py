@@ -363,7 +363,7 @@ def check(mods, image):
         # Keyed callbacks use the validated ABI envelope; the legacy bridge stays exact.
         elif not (keyed or fixed and matches(app.sharc, profile['active_app'], adjustable=True)):
             bad.append('%s has unqualified active SHARC app bytes or entry' % app.label())
-        if keyed:
+        if keyed and app.sharc['owner'] == profile['app_range']:
             at, expected = profile['keyed_pitch_table']
             table = bytes.fromhex(expected)
             if not any(kind == 'data' and off <= at and at + len(table) <= off + len(data)
@@ -559,12 +559,18 @@ def link(mods, image, lock=None, *, sharc_stream=None):
         patches = []
         if payload['entries'] is not None:
             bridge = core.sharc
-            alias_lo, _alias_hi, alias_base = rel.sharc['l1_aliases'][1]
             def pc16(off):
-                return (alias_lo + base + off - alias_base) // 2
+                return sharc.pc16(rel.sharc, base + off)
             binding = struct.pack('<III', pc16(payload['entries']['init_offset_bytes']),
                                   pc16(payload['entries']['render_offset_bytes']), 0)
             core_base = bridge['owner'][0]
+            if payload['owner'] != rel.sharc['app_range']:
+                # The pinned bridge still reads its pitch table from the L1 reservation.
+                lo, hi = rel.sharc['app_range']
+                at, table = rel.sharc['keyed_pitch_table']
+                table = bytes.fromhex(table)
+                loads.append((lo + at, table))
+                fills += [(lo, at, 0), (lo + at + len(table), hi - lo - at - len(table), 0)]
             loads = [(core_base, binding)] + [(core_base + off, data) for off, _kind, data in bridge['segments']] + loads
             fills = [(core_base + off, count, 0) for off, count in bridge['zero']] + fills
             site, old, new = rel.sharc['hook']

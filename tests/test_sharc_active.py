@@ -136,6 +136,26 @@ class ActiveSineTests(unittest.TestCase):
             with self.assertRaisesRegex(elemod.ModError, 'active SHARC application needs the fixed keyed pitch table'):
                 link.link([core, link.Mod2(bad_table, 'bad-table')], image, sharc_stream=stock.section(7))
 
+            l2doc = copy.deepcopy(app.doc)
+            a = l2doc['sharc']
+            a['abi'] = rel.sharc['l2_abi']
+            a['segments'][1]['offset_bytes'] = 16384
+            a['zero'] = [{'offset_bytes': 768, 'size_bytes': 16384 - 768},
+                         {'offset_bytes': 16588, 'size_bytes': 32768 - 16588}]
+            l2app = link.Mod2(l2doc, 'l2-app')
+            linked_l2 = link.link([core, l2app], image, sharc_stream=stock.section(7))
+            records = sharc.parse(linked_l2.sharc_stream, rel.sharc)
+            binding = next(r for r in records if r.target == rel.sharc['core_range'][0])
+            import struct
+            self.assertEqual(binding.raw[16:], struct.pack('<III', 0xbc80a0, 0xbc80bf, 0))
+            table_at, table = rel.sharc['keyed_pitch_table']
+            table_record = next(r for r in records if r.target == rel.sharc['app_range'][0] + table_at)
+            self.assertEqual(table_record.raw[16:].hex(), table)
+            self.assertIn('only one SHARC application may own the DN2 reservation',
+                          link.check([core, app, l2app], image))
+            with self.assertRaisesRegex(elemod.ModError, 'unqualified active SHARC app'):
+                link.link([fixed_core, l2app], image, sharc_stream=stock.section(7))
+
             for selected in (app, asm):
                 linked = link.link([core, selected], image, sharc_stream=stock.section(7))
                 profile = rel.sharc

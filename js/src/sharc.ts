@@ -36,6 +36,17 @@ export function byteSpan(profile: SharcProfile, address: number, size: number, u
   throw new ModError('SHARC byte span is outside the supported address map')
 }
 
+/** Map a loader byte address to an instruction pointer, without truncation. */
+export function pc16(profile: SharcProfile, address: number): number {
+  byteSpan(profile, address, 2)
+  const intervals: [number, number, number][] = profile.l1Aliases.map(([lo, hi, base]) => [lo / 2, hi / 2, base])
+  for (const [lo, hi, base] of [...intervals, profile.l2Pc16]) {
+    if (base <= address && address < base + 2 * (hi - lo) && (address - base) % 2 === 0)
+      return lo + (address - base) / 2
+  }
+  throw new ModError('SHARC callback has no aligned PC16 address')
+}
+
 export type Record = { offset: number; flags: number; target: number; count: number; argument: number; raw: Uint8Array }
 
 /** Read an ordered stream without normalizing headers, loads or overlaps. */
@@ -172,8 +183,9 @@ export function modulePayload(doc: any, profile: SharcProfile | undefined, core 
   const keys = ['abi', 'entries', 'segments', 'stack_bytes', 'zero']
   if (!doc || typeof doc !== 'object' || Array.isArray(doc) || Object.keys(doc).sort().join(',') !== keys.join(','))
     throw new ModError('SHARC payload needs exactly abi, segments, zero, entries, stack_bytes')
-  if (doc.abi !== profile.abi) throw new ModError('SHARC ABI does not match the device profile')
-  const owner = core ? profile.coreRange! : profile.appRange!
+  const l2 = !core && profile.l2Abi !== undefined && doc.abi === profile.l2Abi
+  if (doc.abi !== profile.abi && !l2) throw new ModError('SHARC ABI does not match the device profile')
+  const owner = core ? profile.coreRange! : l2 ? profile.l2AppRange! : profile.appRange!
   const size = owner[1] - owner[0]
   const spans: [number, number][] = [], segments: SharcPayload['segments'] = [], zero: [number, number][] = []
   if (!Array.isArray(doc.segments) || !doc.segments.length) throw new ModError('SHARC payload needs code segments')

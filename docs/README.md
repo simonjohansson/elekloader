@@ -120,6 +120,8 @@ docs match its code.
 
 - **[DN2 SHARC evidence](SHARC-DN2.md)**: the pinned stock identity, memory
   views, independent size limits and runtime ownership still to qualify.
+- **[Bounded DN2 L2 apps](SHARC-L2.md)**: the experimental 32 KiB reservation,
+  address units and the remaining ownership/cache limits.
 - **[DN2 SHARC runtime evidence](SHARC-CONTEXT.md)**: reset-data provenance,
   coupled emulator checks and the remaining context/ownership boundaries.
 - **[DT2 SHARC preparation](SHARC-DT2.md)**: exact 1.17 stock checks,

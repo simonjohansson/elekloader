@@ -374,7 +374,7 @@ export function check(mods: Mod2[], image: Uint8Array): string[] {
     // Keyed callbacks use the validated ABI envelope; the legacy bridge stays exact.
     else if (!(keyed || fixed && matches(app.sharc!, profile.activeApp!, true)))
       bad.push(`${app.label()} has unqualified active SHARC app bytes or entry`)
-    if (keyed) {
+    if (keyed && app.sharc!.owner[0] === profile.appRange![0]) {
       const [at, expected] = profile.keyedPitchTable!
       const table = hexBytes(expected, 'SHARC keyed pitch table')
       if (!app.sharc!.segments.some(([off, kind, data]) => kind === 'data' && off <= at && at + table.length <= off + data.length
@@ -574,12 +574,17 @@ export function link(mods: Mod2[], image: Uint8Array, lock: store.Lock | null = 
     let patches: [number, Uint8Array, Uint8Array][] = []
     if (payload.entries !== null) {
       const bridge = core.sharc!
-      const [aliasLo, , aliasBase] = rel.sharc!.l1Aliases[1]
-      const pc16 = (off: number) => Math.floor((aliasLo + base + off - aliasBase) / 2)
+      const pc16 = (off: number) => sharcRecords.pc16(rel.sharc!, base + off)
       const binding = new Uint8Array(12), words = new DataView(binding.buffer)
       words.setUint32(0, pc16(payload.entries.init_offset_bytes), true)
       words.setUint32(4, pc16(payload.entries.render_offset_bytes), true)
       const coreBase = bridge.owner[0]
+      if (payload.owner[0] !== rel.sharc!.appRange![0]) {
+        const [lo, hi] = rel.sharc!.appRange!, [at, expected] = rel.sharc!.keyedPitchTable!
+        const table = hexBytes(expected, 'SHARC keyed pitch table')
+        loads.push([lo + at, table])
+        fills.push([lo, at, 0], [lo + at + table.length, hi - lo - at - table.length, 0])
+      }
       loads = [[coreBase, binding], ...bridge.segments.map(([off, , data]) => [coreBase + off, data] as [number, Uint8Array]), ...loads]
       fills = [...bridge.zero.map(([off, count]) => [coreBase + off, count, 0] as [number, number, number]), ...fills]
       const [site, old, replacement] = rel.sharc!.hook!

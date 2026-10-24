@@ -129,7 +129,7 @@ class SharcTests(unittest.TestCase):
         spans = [sharc.byte_span(PROFILE, r.target, r.count, check_protected=False)
                  for r in records if r.flags in (sharc.LOAD, sharc.FILL)]
         self.assertEqual(sum(a < d and c < b for i, (a, b) in enumerate(spans) for c, d in spans[i+1:]), 15)
-        self.refusal(lambda: sharc.insert(decoded, PROFILE, fills=[(0x20090000, 4, 0)]),
+        self.refusal(lambda: sharc.insert(decoded, PROFILE, fills=[(0x20098000, 4, 0)]),
                      'SHARC new load or fill is outside the profile-owned ranges')
         patched = sharc.insert(decoded, PROFILE, patches=[
             (0x2838489a, bytes.fromhex('8715ffff78ff'), bytes.fromhex('3e06160006eb'))])
@@ -159,6 +159,31 @@ class SharcTests(unittest.TestCase):
             bad = copy.deepcopy(artifact)
             change(bad)
             self.refusal(lambda: sharc.module_payload(bad, PROFILE), message)
+
+    def test_l2_envelope_and_instruction_addresses(self):
+        artifact = {'abi': PROFILE['l2_abi'],
+                    'segments': [{'offset_bytes': 0, 'kind': 'code', 'hex': '0100' * 34}],
+                    'zero': [{'offset_bytes': 68, 'size_bytes': 32768 - 68}],
+                    'entries': {'init_offset_bytes': 0, 'render_offset_bytes': 2}, 'stack_bytes': 128}
+        self.assertEqual(sharc.module_payload(artifact, PROFILE)['owner'], (0x20090000, 0x20098000))
+        self.refusal(lambda: sharc.module_payload(artifact, PROFILE, core=True),
+                     'SHARC ABI does not match the device profile')
+        bad = copy.deepcopy(artifact)
+        bad['zero'][0]['size_bytes'] += 4
+        self.refusal(lambda: sharc.module_payload(bad, PROFILE),
+                     'SHARC zero range is unaligned or exceeds its owner')
+        bad = copy.deepcopy(artifact)
+        bad['abi'] = PROFILE['abi']
+        self.refusal(lambda: sharc.module_payload(bad, PROFILE),
+                     'SHARC zero range is unaligned or exceeds its owner')
+        for loader, expected in ((0x282dda00, 0x16ed00), (0x20090000, 0xbc8000),
+                                 (0x20097ffe, 0xbcbfff)):
+            self.assertEqual(sharc.pc16(PROFILE, loader), expected)
+            self.assertEqual(sharc.byte_span(PROFILE, expected, 2, 'pc16')[0], loader)
+        self.refusal(lambda: sharc.pc16(PROFILE, 0x20090001),
+                     'SHARC callback has no aligned PC16 address')
+        self.refusal(lambda: sharc.pc16(PROFILE, 0x80000000),
+                     'SHARC callback has no aligned PC16 address')
 
     def test_active_code_guard_and_callback_boundary(self):
         artifact = json.loads((Path(__file__).parents[1] / 'examples/sharc-sine/sine.sharc.json').read_text())

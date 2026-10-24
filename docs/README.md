@@ -122,6 +122,8 @@ docs match its code.
   views, independent size limits and runtime ownership still to qualify.
 - **[DN2 SHARC runtime evidence](SHARC-CONTEXT.md)**: reset-data provenance,
   coupled emulator checks and the remaining context/ownership boundaries.
+- **[DT2 SHARC preparation](SHARC-DT2.md)**: exact 1.17 stock checks,
+  independently recovered runtime context and the remaining sine-port gates.
 - **[SHARC boot records](SHARC-BOOT.md)**: ordered parsing and bounded synthetic
   insertion, with shared Python/TypeScript refusal cases.
 - **[SHARC sine compiler and execution probe](../examples/sharc-sine-probe/README.md)**:

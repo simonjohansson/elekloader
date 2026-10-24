@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Synthetic placement only: neither range is reserved in a DN2 firmware.
+ARCHITECTURE(ADSP-21569)
+$OBJECTS = $COMMAND_LINE_OBJECTS;
+MEMORY {
+ code { TYPE(BW RAM) START(0x00300000) END(0x00307fff) WIDTH(8) }
+ data { TYPE(BW RAM) START(0x002c0000) END(0x002c7fff) WIDTH(8) }
+}
+PROCESSOR p0 {
+ OUTPUT($COMMAND_LINE_OUTPUT_FILE)
+ SECTIONS {
+  probe_code SW { INPUT_SECTION_ALIGN(2) INPUT_SECTIONS($OBJECTS(seg_swco)) } > code
+  probe_data BW { INPUT_SECTION_ALIGN(4) INPUT_SECTIONS($OBJECTS(seg_dmda))
+                  INPUT_SECTION_ALIGN(4) INPUT_SECTIONS($OBJECTS(seg_l2)) } > data
+ }
+}

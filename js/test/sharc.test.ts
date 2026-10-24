@@ -202,7 +202,7 @@ test('SHARC owner-stock exact no-op', { skip: !process.env.ELEKLOADER_DN2_SYX },
   const spans = records.filter(r => r.flags === sharc.LOAD || r.flags === sharc.FILL)
     .map(r => sharc.byteSpan(profile, r.target, r.count, 'loader-byte', false))
   assert.equal(spans.reduce((n, [a, b], i) => n + spans.slice(i+1).filter(([c, d]) => a < d && c < b).length, 0), 15)
-  refusal(() => sharc.insert(decoded, profile, [], [[0x20090000, 4, 0]]), 'SHARC new load or fill is outside the profile-owned ranges')
+  refusal(() => sharc.insert(decoded, profile, [], [[0x20098000, 4, 0]]), 'SHARC new load or fill is outside the profile-owned ranges')
   const patched = sharc.insert(decoded, profile, [], [], [[0x2838489a, bytes('8715ffff78ff'), bytes('3e06160006eb')]])
   const changed = [...decoded.keys()].filter(i => decoded[i] !== patched[i])
   assert.equal(changed.length, 6)

@@ -77,6 +77,14 @@ on L1-linked instructions does not relocate them. The linker retains the
 bridge's fixed L1 pitch table. Code guards, full ownership coverage, stack
 and firmware limits still apply. See [L2 evidence and limits](SHARC-L2.md).
 
+For optional render-callback measurement, use the same L2 program with
+`dn2-master-mono32-l2-metrics-v1` and `mods/core-dn2-metrics`. This pair
+preserves the L2 reservation and gross stack limit, reducing the app's
+declared stack ceiling to 420 bytes. The owner's DigiHealth 1.5 reads the
+result; absent/stale snapshots are unavailable. Ordinary builds keep their
+current core and workflow. Read the [measurement contract](SHARC-DN2-METRICS.md)
+before interpreting raw ticks as hardware timing.
+
 [`examples/sharc-sine-asm`](../examples/sharc-sine-asm/README.md) supplies the
 same played sine with a handwritten SHARC kernel. Use its directory and
 `sharc-sine-asm-0.1.elemod` in the same commands. It shares the C example's

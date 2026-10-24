@@ -212,10 +212,11 @@ def module_payload(doc, profile, core=False):
         raise ModError('SHARC payload has no supported device ABI')
     if not isinstance(doc, dict) or set(doc) != {'abi', 'segments', 'zero', 'entries', 'stack_bytes'}:
         raise ModError('SHARC payload needs exactly abi, segments, zero, entries, stack_bytes')
-    l2 = not core and profile.get('l2_abi') is not None and doc['abi'] == profile['l2_abi']
-    if doc['abi'] != profile['abi'] and not l2:
+    metrics = profile.get('metrics_abi') is not None and doc['abi'] == profile['metrics_abi']
+    l2 = not core and (metrics or profile.get('l2_abi') is not None and doc['abi'] == profile['l2_abi'])
+    if doc['abi'] != profile['abi'] and not l2 and not metrics:
         raise ModError('SHARC ABI does not match the device profile')
-    owner = profile['core_range'] if core else profile['l2_app_range' if l2 else 'app_range']
+    owner = profile['metrics_core_range' if metrics else 'core_range'] if core else profile['l2_app_range' if l2 else 'app_range']
     size = owner[1] - owner[0]
     spans, segments, zeros = [], [], []
     if not isinstance(doc['segments'], list) or not doc['segments']:
@@ -262,6 +263,8 @@ def module_payload(doc, profile, core=False):
                 raise ModError('SHARC entry is not in owned code')
     elif core:
         raise ModError('SHARC core needs a hook entry')
+    elif metrics:
+        raise ModError('SHARC measurement ABI needs active callbacks')
     if entries is not None and not core:
         guard = profile['code_guard_bytes']
         for start, kind, data in segments:
@@ -277,4 +280,4 @@ def module_payload(doc, profile, core=False):
     if entries is None and stack:
         raise ModError('inert SHARC payload must declare zero stack')
     return {'segments': segments, 'zero': zeros, 'entries': entries, 'stack_bytes': stack,
-            'owner': owner}
+            'owner': owner, 'metrics': metrics}

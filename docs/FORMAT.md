@@ -80,13 +80,14 @@ SDK build, lint or patch. See [the starter](../examples/sharc-sine/README.md).
 
 The object has exactly `abi`, `segments`, `zero`, `entries`, and
 `stack_bytes`. `abi` is `dn2-master-mono32-v1` (L1) or
-`dn2-master-mono32-l2-v1` (experimental L2). Each segment has exactly
+`dn2-master-mono32-l2-v1` (experimental L2), with the optional measured L2
+variant described below. Each segment has exactly
 `offset_bytes`, `kind` (`code` or `data`), and `hex` (loader-order bytes).
 Each zero range has `offset_bytes` and `size_bytes`. Segments and zero ranges
 must be nonempty, four-byte aligned, disjoint, and together cover every byte
 of the selected app reservation: L1 is 1 KiB at loader
 `[0x282dda00,0x282dde00)`; L2 is 32 KiB at `[0x20090000,0x20098000)`.
-Offsets are relative to that reservation. The bridge always uses the L1 ABI.
+Offsets are relative to that reservation. The ordinary bridge uses the L1 ABI.
 The L2 ABI uses the same callbacks and borrowed stack, not an extra stack.
 The linker translates loader addresses through the profiled L2 PC16 alias
 and installs the fixed pitch table in the retained L1 app reservation.
@@ -116,12 +117,23 @@ code offset 328 may vary, for 220–880 Hz. The reference producers reproduce
 the checked-in artifacts; a mod author may supply an artifact from any
 compatible compiler or assembler without running those development scripts.
 Only one SHARC app may be selected. The linker checks stock section 7 by
-hash before adding the app's and core's ordered LOAD/FILL records. The active
+hash before adding the app's and core's ordered LOAD/FILL records. The ordinary active
 path additionally replaces one exact six-byte H1 instruction inside its
 existing stock LOAD; the independent
 writer verifier checks the decoded stream, section sizes, HMAC, all outer
 budgets, and unchanged stock sections. A mod without `sharc` retains the
 existing byte-exact build path.
+
+The optional `dn2-master-mono32-l2-metrics-v1` ABI uses the same L2 app
+reservation and five artifact keys, paired with `mods/core-dn2-metrics`.
+That pinned core owns `[0x282dd600,0x282ddd98)` inside the existing L1
+reservation, declares 124 stack bytes and leaves at most 420 for the app.
+It installs the fixed pitch table while reusing the preceding L1 gap for
+measurement code/state, and adds one exact six-byte tail hook. Both measured
+roles must agree; measured apps require active callbacks. The linker reserves
+`sharc:reply-header:2` for this core even if its declaration is omitted.
+Unmeasured builds retain their prior bytes and checks. See the
+[measurement contract and limits](SHARC-DN2-METRICS.md).
 
 ### The linker
 

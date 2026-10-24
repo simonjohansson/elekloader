@@ -185,7 +185,8 @@ class Mod2:
         `image` is the stock main OS the mod is for: a descriptor's bytes may be stock parts. A
         descriptor this cannot read (outside the mod's own bytes, or relocated there) claims
         nothing. check() adds them to the mod's names."""
-        out = []
+        out = ([self.rel.sharc['metrics_resource']]
+               if self.sharc and self.sharc['metrics'] and '.boot' in self.sections else [])
         for table, at, count, prefix in self.dev.slot_claims:
             for c in self.contribute:
                 if c['to'] != table:
@@ -358,10 +359,14 @@ def check(mods, image):
 
         keyed = matches(core.sharc, profile['active_keyed_core'])
         fixed = matches(core.sharc, profile['active_core'])
-        if not (keyed or fixed):
+        measured = (core.sharc['metrics'] and bool(profile.get('active_metrics_core'))
+                    and matches(core.sharc, profile['active_metrics_core']))
+        if core.sharc['metrics'] != app.sharc['metrics']:
+            bad.append('active SHARC measurement requires a matching measurement core and L2 application')
+        elif not (keyed or fixed or measured):
             bad.append('%s has unqualified active SHARC core bytes or entry' % core.label())
         # Keyed callbacks use the validated ABI envelope; the legacy bridge stays exact.
-        elif not (keyed or fixed and matches(app.sharc, profile['active_app'], adjustable=True)):
+        elif not (keyed or measured or fixed and matches(app.sharc, profile['active_app'], adjustable=True)):
             bad.append('%s has unqualified active SHARC app bytes or entry' % app.label())
         if keyed and app.sharc['owner'] == profile['app_range']:
             at, expected = profile['keyed_pitch_table']
@@ -561,20 +566,33 @@ def link(mods, image, lock=None, *, sharc_stream=None):
             bridge = core.sharc
             def pc16(off):
                 return sharc.pc16(rel.sharc, base + off)
-            binding = struct.pack('<III', pc16(payload['entries']['init_offset_bytes']),
-                                  pc16(payload['entries']['render_offset_bytes']), 0)
             core_base = bridge['owner'][0]
+            render = pc16(payload['entries']['render_offset_bytes'])
+            measured = payload['metrics']
+            bound_render = (sharc.pc16(rel.sharc, core_base + rel.sharc['metrics_render_offset_bytes'])
+                            if measured else render)
+            binding = struct.pack('<III', pc16(payload['entries']['init_offset_bytes']), bound_render, 0)
             if payload['owner'] != rel.sharc['app_range']:
                 # The pinned bridge still reads its pitch table from the L1 reservation.
                 lo, hi = rel.sharc['app_range']
                 at, table = rel.sharc['keyed_pitch_table']
                 table = bytes.fromhex(table)
                 loads.append((lo + at, table))
-                fills += [(lo, at, 0), (lo + at + len(table), hi - lo - at - len(table), 0)]
-            loads = [(core_base, binding)] + [(core_base + off, data) for off, _kind, data in bridge['segments']] + loads
+                if not measured:
+                    fills.append((lo, at, 0))
+                fills.append((lo + at + len(table), hi - lo - at - len(table), 0))
+            core_loads = []
+            for off, _kind, data in bridge['segments']:
+                if measured and off == rel.sharc['metrics_callback_offset_bytes']:
+                    data = struct.pack('<I', render) + data[4:]
+                core_loads.append((core_base + off, data))
+            loads = [(core_base, binding)] + core_loads + loads
             fills = [(core_base + off, count, 0) for off, count in bridge['zero']] + fills
             site, old, new = rel.sharc['hook']
             patches = [(site, bytes.fromhex(old), bytes.fromhex(new))]
+            if measured:
+                site, old, new = rel.sharc['metrics_hook']
+                patches.append((site, bytes.fromhex(old), bytes.fromhex(new)))
         dsp_stream = sharc.insert(sharc_stream, rel.sharc,
                                   loads=loads, fills=fills, patches=patches)
         dsp_stored = syx.pack_main(dsp_stream)

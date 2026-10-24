@@ -209,7 +209,7 @@ export class Mod2 implements AnyMod {
    * this cannot read (outside the mod's own bytes, or relocated there) claims nothing. check() adds them to the
    * mod's names. link.Mod2.implied_names. */
   impliedNames(image: Uint8Array): string[] {
-    const out: string[] = []
+    const out: string[] = this.sharc?.metrics && this.sections.has('.boot') ? [this.rel.sharc!.metricsResource!] : []
     for (const [table, at, count, prefix] of this.dev.slotClaims) {
       for (const c of this.contribute) {
         if (c.to !== table) continue
@@ -370,9 +370,12 @@ export function check(mods: Mod2[], image: Uint8Array): string[] {
     }
     const keyed = matches(core.sharc, profile.activeKeyedCore!)
     const fixed = matches(core.sharc, profile.activeCore!)
-    if (!keyed && !fixed) bad.push(`${core.label()} has unqualified active SHARC core bytes or entry`)
+    const measured = core.sharc.metrics && profile.activeMetricsCore !== undefined && matches(core.sharc, profile.activeMetricsCore)
+    if (core.sharc.metrics !== app.sharc!.metrics)
+      bad.push('active SHARC measurement requires a matching measurement core and L2 application')
+    else if (!keyed && !fixed && !measured) bad.push(`${core.label()} has unqualified active SHARC core bytes or entry`)
     // Keyed callbacks use the validated ABI envelope; the legacy bridge stays exact.
-    else if (!(keyed || fixed && matches(app.sharc!, profile.activeApp!, true)))
+    else if (!(keyed || measured || fixed && matches(app.sharc!, profile.activeApp!, true)))
       bad.push(`${app.label()} has unqualified active SHARC app bytes or entry`)
     if (keyed && app.sharc!.owner[0] === profile.appRange![0]) {
       const [at, expected] = profile.keyedPitchTable!
@@ -577,18 +580,32 @@ export function link(mods: Mod2[], image: Uint8Array, lock: store.Lock | null = 
       const pc16 = (off: number) => sharcRecords.pc16(rel.sharc!, base + off)
       const binding = new Uint8Array(12), words = new DataView(binding.buffer)
       words.setUint32(0, pc16(payload.entries.init_offset_bytes), true)
-      words.setUint32(4, pc16(payload.entries.render_offset_bytes), true)
+      const render = pc16(payload.entries.render_offset_bytes)
       const coreBase = bridge.owner[0]
+      words.setUint32(4, payload.metrics ? sharcRecords.pc16(rel.sharc!, coreBase + rel.sharc!.metricsRenderOffsetBytes!) : render, true)
       if (payload.owner[0] !== rel.sharc!.appRange![0]) {
         const [lo, hi] = rel.sharc!.appRange!, [at, expected] = rel.sharc!.keyedPitchTable!
         const table = hexBytes(expected, 'SHARC keyed pitch table')
         loads.push([lo + at, table])
-        fills.push([lo, at, 0], [lo + at + table.length, hi - lo - at - table.length, 0])
+        if (!payload.metrics) fills.push([lo, at, 0])
+        fills.push([lo + at + table.length, hi - lo - at - table.length, 0])
       }
-      loads = [[coreBase, binding], ...bridge.segments.map(([off, , data]) => [coreBase + off, data] as [number, Uint8Array]), ...loads]
+      const bridgeLoads = bridge.segments.map(([off, , bytes]): [number, Uint8Array] => {
+        let data = bytes
+        if (payload.metrics && off === rel.sharc!.metricsCallbackOffsetBytes!) {
+          data = Uint8Array.from(bytes)
+          new DataView(data.buffer).setUint32(0, render, true)
+        }
+        return [coreBase + off, data]
+      })
+      loads = [[coreBase, binding], ...bridgeLoads, ...loads]
       fills = [...bridge.zero.map(([off, count]) => [coreBase + off, count, 0] as [number, number, number]), ...fills]
       const [site, old, replacement] = rel.sharc!.hook!
       patches = [[site, hexBytes(old, 'SHARC stock hook'), hexBytes(replacement, 'SHARC bridge hook')]]
+      if (payload.metrics) {
+        const [at, original, replacement] = rel.sharc!.metricsHook!
+        patches.push([at, hexBytes(original, 'SHARC stock metrics hook'), hexBytes(replacement, 'SHARC metrics hook')])
+      }
     }
     dspStream = sharcRecords.insert(sharcStream, rel.sharc!,
       loads, fills, patches)

@@ -175,6 +175,7 @@ export type SharcPayload = {
   entries: Record<string, number> | null
   stackBytes: number
   owner: [number, number]
+  metrics: boolean
 }
 
 /** Validate the narrow prelinked format-2 payload; offsets are owner bytes. */
@@ -183,9 +184,10 @@ export function modulePayload(doc: any, profile: SharcProfile | undefined, core 
   const keys = ['abi', 'entries', 'segments', 'stack_bytes', 'zero']
   if (!doc || typeof doc !== 'object' || Array.isArray(doc) || Object.keys(doc).sort().join(',') !== keys.join(','))
     throw new ModError('SHARC payload needs exactly abi, segments, zero, entries, stack_bytes')
-  const l2 = !core && profile.l2Abi !== undefined && doc.abi === profile.l2Abi
-  if (doc.abi !== profile.abi && !l2) throw new ModError('SHARC ABI does not match the device profile')
-  const owner = core ? profile.coreRange! : l2 ? profile.l2AppRange! : profile.appRange!
+  const metrics = profile.metricsAbi !== undefined && doc.abi === profile.metricsAbi
+  const l2 = !core && (metrics || profile.l2Abi !== undefined && doc.abi === profile.l2Abi)
+  if (doc.abi !== profile.abi && !l2 && !metrics) throw new ModError('SHARC ABI does not match the device profile')
+  const owner = core ? (metrics ? profile.metricsCoreRange! : profile.coreRange!) : l2 ? profile.l2AppRange! : profile.appRange!
   const size = owner[1] - owner[0]
   const spans: [number, number][] = [], segments: SharcPayload['segments'] = [], zero: [number, number][] = []
   if (!Array.isArray(doc.segments) || !doc.segments.length) throw new ModError('SHARC payload needs code segments')
@@ -226,6 +228,7 @@ export function modulePayload(doc: any, profile: SharcProfile | undefined, core 
         kind === 'code' && start <= (off as number) && (off as number) < start + data.length))
         throw new ModError('SHARC entry is not in owned code')
   } else if (core) throw new ModError('SHARC core needs a hook entry')
+  if (metrics && entries === null) throw new ModError('SHARC measurement ABI needs active callbacks')
   if (entries !== null && !core) {
     const guard = profile.codeGuardBytes!
     for (const [start, kind, data] of segments) {
@@ -239,5 +242,5 @@ export function modulePayload(doc: any, profile: SharcProfile | undefined, core 
   const stack = doc.stack_bytes
   if (!uint32(stack) || stack > profile.stackMax!) throw new ModError('SHARC stack contribution exceeds the profile limit')
   if (entries === null && stack) throw new ModError('inert SHARC payload must declare zero stack')
-  return { segments, zero, entries, stackBytes: stack, owner }
+  return { segments, zero, entries, stackBytes: stack, owner, metrics }
 }

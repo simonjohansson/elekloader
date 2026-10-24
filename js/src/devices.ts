@@ -26,6 +26,7 @@ export type SharcProfile = {
   patchRanges?: Range[]                        // exact stock instruction intervals
   activeCore?: { segments: [number, string, string][], zero: [number, number][], entries: Record<string, number>, stackBytes: number }
   activeApp?: { segments: [number, string, string][], zero: [number, number][], entries: Record<string, number>, stackBytes: number }
+  activeMetricsCore?: { segments: [number, string, string][], zero: [number, number][], entries: Record<string, number>, stackBytes: number }
   activeKeyedCore?: { segments: [number, string, string][], zero: [number, number][], entries: Record<string, number>, stackBytes: number }
   activeKeyedApp?: { segments: [number, string, string][], zero: [number, number][], entries: Record<string, number>, stackBytes: number }
   activeKeyedAsmApp?: { segments: [number, string, string][], zero: [number, number][], entries: Record<string, number>, stackBytes: number }
@@ -35,6 +36,12 @@ export type SharcProfile = {
   appRange?: Range
   l2Abi?: string
   l2AppRange?: Range
+  metricsAbi?: string
+  metricsCoreRange?: Range
+  metricsRenderOffsetBytes?: number
+  metricsCallbackOffsetBytes?: number
+  metricsHook?: [number, string, string]
+  metricsResource?: string
   coreRange?: Range
   stackMax?: number
   codeGuardBytes?: number
@@ -246,10 +253,18 @@ export const DIGITONE_MK2: Device = {
           [0x2839c000, 0x283a0000, 'L1 block 3 cache']],
         abi: 'dn2-master-mono32-v1', appRange: [0x282dda00, 0x282dde00],
         l2Abi: 'dn2-master-mono32-l2-v1', l2AppRange: [0x20090000, 0x20098000],
+        metricsAbi: 'dn2-master-mono32-l2-metrics-v1', metricsCoreRange: [0x282dd600, 0x282ddd98],
+        metricsRenderOffsetBytes: 1024, metricsCallbackOffsetBytes: 1792,
+        metricsHook: [0x28393cbe, '01112600388a', '3e0616004aed'],
+        metricsResource: 'sharc:reply-header:2',
+        activeMetricsCore: { segments: [[12, 'code', 'af2f375dc58a8ccd4b8abd89b1fb526441baa6fb5da9266c2b664e69d90fc829'],
+          [1024, 'code', '188e5305b5856b4cef5a62ffe632126403df21018bd0c630ee32e8dc33804514'],
+          [1792, 'data', '85ada57e1f601e962d705f389285adb4e74f450bc00672240dfef7399d82457f']],
+          zero: [[1008, 16]], entries: { hook_offset_bytes: 12 }, stackBytes: 124 },
         coreRange: [0x282dd600, 0x282dda00], stackMax: 544, codeGuardBytes: 64,
         keyedPitchTable: [920, '314d5900969c5e00d23c6400b1326a004c837000073477009b4a7e0015cd8500e1c18d00c92f9600031e9f002e94a800'],
         ownedRanges: [[0x282dd600, 0x282dde00], [0x20090000, 0x20098000]],
-        patchRanges: [[0x2838489a, 0x283848a0]],
+        patchRanges: [[0x2838489a, 0x283848a0], [0x28393cbe, 0x28393cc4]],
         activeCore: { segments: [[12, 'code', 'f4ed9cb989f57e603433d7efa650129e81776effacca150433716edfac71a806']], zero: [],
           entries: { hook_offset_bytes: 12 }, stackBytes: 116 },
         activeApp: { segments: [[0, 'code', 'a8d3c376c72083c7ac290482c5ae6fe472d7e279e903cf27c5321f213ea70246'],

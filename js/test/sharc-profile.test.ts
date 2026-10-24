@@ -10,7 +10,7 @@ test('DN2 SHARC profile grants the H1 core and app reservation', () => {
   assert.equal(profile.isa, 'sharc+-visa')
   assert.equal(profile.siliconRevision, null)
   assert.deepEqual(profile.ownedRanges, [[0x282dd600, 0x282dde00], [0x20090000, 0x20098000]])
-  assert.deepEqual(profile.patchRanges, [[0x2838489a, 0x283848a0]])
+  assert.deepEqual(profile.patchRanges, [[0x2838489a, 0x283848a0], [0x28393cbe, 0x28393cc4]])
   assert.equal(profile.abi, 'dn2-master-mono32-v1')
   assert.deepEqual(DIGITONE_MK2.dspPayloads, {})
   assert.deepEqual(devices().flatMap(d => d.releases.filter(r => r.sharc).map(r => [d.key, r.version])),

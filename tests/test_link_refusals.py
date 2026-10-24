@@ -159,6 +159,8 @@ external('check', 'active SHARC application needs the fixed keyed pitch table', 
          'active SHARC application needs the fixed keyed pitch table')
 external('check', 'active SHARC stack exceeds the profile limit', 'tests/test_sharc_active.py',
          'active SHARC stack exceeds the profile limit')
+external('check', 'active SHARC measurement requires a matching measurement core and L2 application',
+         'tests/test_sharc_metrics.py', 'active SHARC measurement requires a matching measurement core and L2 application')
 external('link', 'SHARC application needs the stock section-7 stream', 'tests/test_sharc_active.py',
          'SHARC application needs the stock section-7 stream')
 external('link', 'SHARC stored section exceeds the profile limit', 'tests/test_sharc_active.py',

@@ -5,6 +5,9 @@ This covers `dn2-master-mono32-v1` and the experimental
 OS 1.12. It provides one exclusive master-output application. It does not
 register a selectable machine, per-voice processor or stereo effect.
 The [artifact envelope](FORMAT.md#digitone-ii-sharc-app) is unchanged.
+The optional [measured L2 variant](SHARC-DN2-METRICS.md) has the same callback
+obligations with a matching measurement core and a 420-byte app stack ceiling.
+The ordinary ABIs below retain their existing 428-byte ceiling.
 
 ## Calls and audio
 

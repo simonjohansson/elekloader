@@ -83,6 +83,28 @@ qualification. The tested host is macOS on Apple silicon, with mise Python
 3.12.13, Rust 1.98.1, Apple command-line tools and m68k-elf-gcc 16.2.0.
 Other author hosts are not yet qualified.
 
+## Source-workflow verification
+
+The workflow at `a104483` was checked on 24 October 2026. A clean clone at
+another path, including spaces, reproduced all four firmware files byte for
+byte with the same stock, compiler and DigiHealth 1.5 inputs. C and ASM phase
+edits also built there and reproduced the previously qualified edited
+external artifacts, without changing Elekloader's checks.
+
+Fresh coupled Digikit runs checked each ordinary L1/L2 build's installed
+code, callback bindings and data. All four produced identical 99,904-frame
+PCM captures, tracked notes 60/69/72 and released to silence, with finite
+equal stereo channels, peak 0.125 and no modeled halt or missing block.
+These are emulator checks; this preparation pass did not flash hardware.
+
+Validation passed 35 Python units, 35 SHARC tests (including the example
+producer), five linker-refusal tests, 27 stock-backed DN2 tests and 149
+TypeScript tests, with no skips. Python/TypeScript parity matched four fresh
+builds and 23 refusal cases. Local reports remain under ignored
+`out/sharc-pr-preparation-20261024/` at the repository root. Physical evidence
+and its narrower workload limits are recorded separately below and in
+[the L2 record](../../docs/SHARC-L2.md).
+
 ## Package or reproduce the reference artifact
 
 The ordinary SDK can also package the checked-in application artifact without

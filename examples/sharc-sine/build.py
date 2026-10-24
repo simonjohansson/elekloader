@@ -97,13 +97,14 @@ def sha(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('kind', choices=('c', 'asm'))
-    parser.add_argument('--l2', action='store_true', help='use the bounded 32 KiB L2 app ABI')
+    parser.add_argument('--l1', dest='l2', action='store_false',
+                        help='maintainer regression: use the original 1 KiB layout')
     parser.add_argument('--stock', default=os.environ.get('DN2_STOCK'))
     parser.add_argument('--selache', default=os.environ.get('SELACHE'))
     parser.add_argument('--digihealth', default=os.environ.get('DN2_DIGIHEALTH'),
                         help='optional DN2 DigiHealth module for remote controls')
     args = parser.parse_args()
-    name = args.kind + ('-l2' if args.l2 else '')
+    name = args.kind + ('' if args.l2 else '-l1')
     out = HERE / 'out' / name
     require(not out.is_symlink(), 'output directory must not be a symlink')
     if out.exists():

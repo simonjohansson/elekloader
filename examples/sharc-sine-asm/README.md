@@ -13,17 +13,17 @@ then run from `examples/sharc-sine`:
 
 ```sh
 mise run build-asm
-# Or the experimental 32 KiB L2 placement:
-mise run build-asm-l2
 ```
 
-These commands assemble this directory's current `sine.s`, compile the shared
-`entry.c`, and build verified firmware through Elekloader's normal SDK, lint
-and patcher. No per-code allowlist update or development qualification helper
-is needed. Outputs are `../sharc-sine/out/asm/firmware.syx` and
-`../sharc-sine/out/asm-l2/firmware.syx`. Select either C or ASM; two applications
-cannot own the same output/reservation. Each source change still needs runtime
-qualification within the [callback contract](../../docs/SHARC-DN2-ABI.md).
+This command assembles this directory's current `sine.s`, compiles the shared
+`entry.c`, and builds verified firmware through Elekloader's normal SDK, lint
+and patcher. It selects the bounded 32 KiB layout automatically and writes
+`../sharc-sine/out/asm/firmware.syx`. No memory-location choice, per-code
+allowlist update or development qualification helper is needed. Select either
+C or ASM; two applications cannot own the same output/reservation. Each source
+change still needs runtime qualification within the
+[callback contract](../../docs/SHARC-DN2-ABI.md). The original 1 KiB layout is
+available through the shared [maintainer regression tasks](../sharc-sine/README.md#maintainer-regression-checks).
 
 To package the existing reference artifact without a SHARC compiler, use the
 normal SDK from the Elekloader checkout root with a matching built core:

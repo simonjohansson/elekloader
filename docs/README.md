@@ -25,8 +25,9 @@ docs match its code.
   definition of done. Coding agents: start with [AGENTS.md](../AGENTS.md).
 - **[DN2 SHARC C/ASM starter](../examples/sharc-sine/README.md)**: compile
   current source and build experimental Digitone II OS 1.12 firmware with
-  the ordinary SDK. The [callback contract](SHARC-DN2-ABI.md) covers the
-  exclusive master output, 1 KiB L1 or 32 KiB L2 placement and stack limits.
+  the ordinary SDK and a default 32 KiB code/data layout. The
+  [callback contract](SHARC-DN2-ABI.md) covers the exclusive master output
+  and stack limits.
 - **[Growing the core](CORE-CONTRIBUTING.md)**: when what your mod needs
   belongs in the core, how to build it so it can move there, and how to
   propose it. Pull requests to the core are welcome and encouraged.

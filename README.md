@@ -79,9 +79,9 @@ Find mods in the web page's shop, or write your own:
 
 For experimental **Digitone II SHARC mods**, start with the
 [C and assembly sine workflow](examples/sharc-sine/README.md). It compiles
-current source and builds firmware through the ordinary SDK, with 1 KiB L1
-or 32 KiB L2 code/data placement. The [callback contract](docs/SHARC-DN2-ABI.md)
-provides one exclusive mono master-output processor, copied to stereo;
+current source and builds firmware through the ordinary SDK, using the
+bounded 32 KiB code/data layout by default. The
+[callback contract](docs/SHARC-DN2-ABI.md) provides one exclusive mono master-output processor, copied to stereo;
 selectable machines and per-track processing remain future work.
 
 **Contributions are welcome and encouraged.** The core grows from what mods

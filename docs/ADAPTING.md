@@ -51,16 +51,17 @@ Start with the [C/ASM source workflow](../examples/sharc-sine/README.md).
 After its one-time toolchain and stock-file setup, `mise run build-c` or
 `mise run build-asm` compiles the current source, generates its prelinked
 artifact, builds the core and mod, lints them and writes verified firmware.
-The `build-c-l2` and `build-asm-l2` tasks use the bounded 32 KiB L2 placement.
-The ordinary L1 tasks retain the original 1 KiB app area. These commands run
-from `examples/sharc-sine`; they do not use the maintainer qualification
-scripts or a checked-in app artifact as a build input.
+Both commands select the bounded 32 KiB layout automatically and run from
+`examples/sharc-sine`; no memory-location choice is required. They do not use
+the maintainer qualification scripts or a checked-in app artifact as a build
+input. The original 1 KiB layout remains available for
+[maintainer regression checks](../examples/sharc-sine/README.md#maintainer-regression-checks).
 
 The callback processes one exclusive master-output block: 32 mono floats at
 48 kHz, copied to stereo. It does not add a selectable sound/filter machine,
-per-track routing or a polyphonic voice interface. Both ordinary placements
-allow at most 428 declared app stack bytes; more code/data does not add
-stack. Follow the [DN2 callback contract](SHARC-DN2-ABI.md), including register
+per-track routing or a polyphonic voice interface. The ordinary callback
+contract allows at most 428 declared app stack bytes; more code/data does
+not add stack. Follow the [DN2 callback contract](SHARC-DN2-ABI.md), including register
 preservation, guard padding, pitch/gate behavior and actual stack bounds.
 
 Elekloader remains compiler-independent. Authors may use their own compiler

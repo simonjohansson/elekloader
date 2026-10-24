@@ -17,7 +17,8 @@ artifact, build the normal DN2 core, lint the modules, and build and independent
 verify firmware. They accept source edits without changing Elekloader's core or
 application allowlist. They use no development qualification helper or
 checked-in application artifact. Elekloader itself remains compiler-independent;
-Selache is this example's compiler and assembler.
+Selache is this example's compiler and assembler. Both commands use the
+bounded 32 KiB layout automatically; authors do not select memory locations.
 
 Install [mise](https://mise.jdx.dev/) and the normal
 [ColdFire cross tools](../../docs/ADAPTING.md#1-what-you-need) for building
@@ -42,9 +43,6 @@ mise trust
 mise install
 mise run build-c
 mise run build-asm
-# Same current sources in the experimental 32 KiB L2 reservation:
-mise run build-c-l2
-mise run build-asm-l2
 ```
 
 `DN2_STOCK` must be your own exact Digitone II OS 1.12 file (SHA-256
@@ -60,8 +58,6 @@ remain a separate optional workflow.
 |---|---|---|
 | `mise run build-c` | `sine.c` | `out/c/firmware.syx` |
 | `mise run build-asm` | `../sharc-sine-asm/sine.s` | `out/asm/firmware.syx` |
-| `mise run build-c-l2` | `sine.c` | `out/c-l2/firmware.syx` |
-| `mise run build-asm-l2` | `../sharc-sine-asm/sine.s` | `out/asm-l2/firmware.syx` |
 
 Both kernels share `entry.c`. Every build replaces its output directory before
 compilation, so a failed compile cannot leave a previous firmware there.
@@ -72,10 +68,10 @@ extracted stock belongs in Git. `mise run test` checks the producer's bounds,
 malformed-output refusals, compiler pin and stale-output handling without
 firmware or external compilers.
 
-L1 permits 704 linked instruction bytes plus a 64-byte NOP guard and 256 data
-bytes. The L2 layout permits 16,320 linked instruction bytes plus the guard
-and 16 KiB data. Both examples declare 128 bytes of app stack; L2 supplies no
-extra stack. Follow the [callback contract](../../docs/SHARC-DN2-ABI.md),
+The default layout permits 16,320 linked instruction bytes plus a 64-byte
+NOP guard and 16 KiB data. Both examples declare 128 bytes of app stack;
+the larger code/data area supplies no extra stack. Follow the
+[callback contract](../../docs/SHARC-DN2-ABI.md),
 [artifact format](../../docs/FORMAT.md#digitone-ii-sharc-app) and
 [L2 limits](../../docs/SHARC-L2.md). A successful build checks the declared
 envelope; each changed program still needs execution and hardware
@@ -83,13 +79,31 @@ qualification. The tested host is macOS on Apple silicon, with mise Python
 3.12.13, Rust 1.98.1, Apple command-line tools and m68k-elf-gcc 16.2.0.
 Other author hosts are not yet qualified.
 
+## Maintainer regression checks
+
+The original 1 KiB layout remains available for compatibility checks:
+
+```sh
+mise run build-c-l1
+mise run build-asm-l1
+```
+
+These tasks pass `--l1` to `build.py` and write `out/c-l1/firmware.syx` and
+`out/asm-l1/firmware.syx`. The original layout permits 704 linked instruction
+bytes plus the 64-byte guard and 256 data bytes. The callback and stack
+contract is unchanged. Ordinary mod development uses `build-c` or `build-asm`.
+
 ## Source-workflow verification
 
-The workflow at `a104483` was checked on 24 October 2026. A clean clone at
-another path, including spaces, reproduced all four firmware files byte for
-byte with the same stock, compiler and DigiHealth 1.5 inputs. C and ASM phase
+The workflow at `a104483` was checked on 24 October 2026, before the
+32 KiB layout became the default. Its L2 variants are now the ordinary
+`build-c`/`build-asm` commands; L1 variants use the maintainer tasks above.
+A clean clone at another path, including spaces, reproduced all four firmware
+files byte for byte with the same stock, compiler and DigiHealth 1.5 inputs. C and ASM phase
 edits also built there and reproduced the previously qualified edited
 external artifacts, without changing Elekloader's checks.
+After changing the default, both ordinary builds and both L1 maintainer
+builds reproduced those same previously tested firmware files byte for byte.
 
 Fresh coupled Digikit runs checked each ordinary L1/L2 build's installed
 code, callback bindings and data. All four produced identical 99,904-frame

@@ -366,3 +366,47 @@ strict/limited analyzers and reports are under
 `LC03/LA03-midi-control-report.json` records the isolated controls;
 `stock-canary/report.json` records the separate modeled memory check.
 No firmware or captures are committed.
+
+
+### Project-load check with DigiHealth 1.4
+
+A later C-only check uses the same SHARC section with the owner's
+[DigiHealth 1.4 measurement increment](https://github.com/simonjohansson/digihealth/commit/9a1b23e27232a865ebc37154534744d38e57859c).
+Candidate `HC14` SHA-256 is
+`199d648d7d792e853b7d1c282d1ae425bd37c1cdf6659825e919cb98af021f35`;
+it has 163,304 decoded-update bytes spare. Its SHARC section is byte-identical
+to the qualified C L2 candidate. The 7,512 immutable runtime bytes match
+the linked candidate through read-only device checks; remote keys and FRAME
+continue to work. The new CF block counter measures 1,500.0102 interrupts
+per host second across 10.37 seconds. Relative CPU windows, raw handler spans
+and fault-free heap walks respond. These are **not** total DSP load, callback
+cost or an absolute CPU/SHARC-clock calibration. The
+[fork's physical finding](https://github.com/simonjohansson/digihealth/commit/8e91048558012b6cede66393298b05d9d65419cd)
+states the separate measurement limits.
+
+Before loading a project, the previous working state was saved into the
+verified-empty slot 128 (`NEW PROJECT`) and exported to an integrity-checked
+local recovery package. Neither original saved project was overwritten.
+Loading factory `PRESETS` in slot 1 changes the observed track-1 machine from
+FM Tone to WaveTone. The six-note C sine capture then passes: 18.0053 seconds,
+1,688 buffers, zero drops, identical stereo, peak 0.17857146, nominal-clock
+pitch error at most 0.0813 cent and final silence. Loading the recovery copy
+restores the FM Tone working state; a further six-note capture passes with
+zero drops and nominal-clock pitch error at most 0.0813 cent. No effect
+parameters were changed. This is a bounded C/project-load check; ASM with the
+new helper, heavy FX and repeated long project-load stress remain unqualified.
+The first screen request during factory loading timed out waiting for a fresh
+draw; the load was not replayed. Subsequent fresh readback established the
+returned project menu and the newly loaded machine independently.
+
+The unit is left on `HC14`, DigiHealth 1.4 responding, the restored working
+copy in slot 128, A01 selected, transport stopped and requested notes released.
+The extra recovery project is retained. Its local package is
+`out/sharc56-stock-project-20261024/NEW PROJECT.dn2prj` (SHA-256
+`564c028114cc1fb2ddd1762d29dc30b48d05af0eee419a9653591f8dc4a9991c`).
+Private preflash, runtime/readback, cadence, audio and restoration evidence is
+under `out/digihealth14-20261024/`; the backup identity is in
+`out/sharc56-stock-project-20261024/recovery-backup.json`. Neither the backup
+nor firmware/captures are committed. #56 remains open for the stated wider
+workload; actual DSP callback timing is the separately proposed
+[DigiHealth #11](https://github.com/simonjohansson/digihealth/issues/11).

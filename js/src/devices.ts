@@ -35,6 +35,8 @@ export type SharcProfile = {
   appRange?: Range
   coreRange?: Range
   stackMax?: number
+  codeGuardBytes?: number
+  keyedPitchTable?: [number, string]
 }
 
 export type Release = {
@@ -241,7 +243,8 @@ export const DIGITONE_MK2: Device = {
           [0x282ec000, 0x282f0000, 'L1 block 1 cache'], [0x2831c000, 0x28320000, 'L1 block 2 cache'],
           [0x2839c000, 0x283a0000, 'L1 block 3 cache']],
         abi: 'dn2-master-mono32-v1', appRange: [0x282dda00, 0x282dde00],
-        coreRange: [0x282dd600, 0x282dda00], stackMax: 544,
+        coreRange: [0x282dd600, 0x282dda00], stackMax: 544, codeGuardBytes: 64,
+        keyedPitchTable: [920, '314d5900969c5e00d23c6400b1326a004c837000073477009b4a7e0015cd8500e1c18d00c92f9600031e9f002e94a800'],
         ownedRanges: [[0x282dd600, 0x282dde00]],
         patchRanges: [[0x2838489a, 0x283848a0]],
         activeCore: { segments: [[12, 'code', 'f4ed9cb989f57e603433d7efa650129e81776effacca150433716edfac71a806']], zero: [],

@@ -251,6 +251,15 @@ def module_payload(doc, profile, core=False):
                 raise ModError('SHARC entry is not in owned code')
     elif core:
         raise ModError('SHARC core needs a hook entry')
+    if entries is not None and not core:
+        guard = profile['code_guard_bytes']
+        for start, kind, data in segments:
+            if kind != 'code':
+                continue
+            if len(data) < guard or data[-guard:] != b'\x01\x00' * (guard // 2):
+                raise ModError('SHARC application code needs its profiled NOP read-ahead guard')
+            if any(start + len(data) - guard <= off < start + len(data) for off in entries.values()):
+                raise ModError('SHARC entry is in the instruction read-ahead guard')
     stack = doc['stack_bytes']
     if not _uint32(stack) or stack > profile['stack_max']:
         raise ModError('SHARC stack contribution exceeds the profile limit')

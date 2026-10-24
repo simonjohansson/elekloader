@@ -32,7 +32,7 @@ test('active DN2 keyed callbacks accept bounded apps; the legacy pair stays exac
   const original = JSON.parse(readFileSync(new URL('../../examples/sharc-sine/sine.sharc.json', import.meta.url), 'utf8'))
   assert.equal(bad(bridge, original), false)
   assert.equal(bad(fixed.core, fixed.app), false)
-  assert.equal(bad(bridge, fixed.app), false)
+  assert(problems(bridge, fixed.app).includes('active SHARC application needs the fixed keyed pitch table'))
   assert.equal(bad(fixed.core, original), true)
   const asm = JSON.parse(readFileSync(new URL('../../examples/sharc-sine-asm/sine.sharc.json', import.meta.url), 'utf8'))
   assert.equal(bad(bridge, asm), false)
@@ -56,6 +56,11 @@ test('active DN2 keyed callbacks accept bounded apps; the legacy pair stays exac
     else changed.stack_bytes -= 4
     assert(problems(changed, original).some(p => p.includes('unqualified active SHARC core bytes or entry')), mutation)
   }
+  const badTable = structuredClone(original)
+  const data = bytes(badTable.segments[1].hex)
+  data[152] ^= 1
+  badTable.segments[1].hex = Buffer.from(data).toString('hex')
+  assert(problems(bridge, badTable).includes('active SHARC application needs the fixed keyed pitch table'))
   const large = structuredClone(original)
   large.stack_bytes = profile.stackMax
   assert(problems(bridge, large).includes('active SHARC stack exceeds the profile limit'))
@@ -80,6 +85,20 @@ test('active DN2 keyed callbacks accept bounded apps; the legacy pair stays exac
     artifact.segments[0].hex = Buffer.from(code).toString('hex')
     assert.equal(bad(fixed.core, artifact), true, `${hz} Hz with neighboring byte changed`)
   }
+})
+
+test('active code guard excludes callback entries; inert payloads execute no code', () => {
+  assert.equal(profile.codeGuardBytes, 64)
+  const original = JSON.parse(readFileSync(new URL('../../examples/sharc-sine/sine.sharc.json', import.meta.url), 'utf8'))
+  const badTail = structuredClone(original)
+  badTail.segments[0].hex = badTail.segments[0].hex.slice(0, -2) + '01'
+  refusal(() => sharc.modulePayload(badTail, profile), 'SHARC application code needs its profiled NOP read-ahead guard')
+  badTail.entries = null; badTail.stack_bytes = 0
+  sharc.modulePayload(badTail, profile)
+  original.entries.render_offset_bytes = 704
+  refusal(() => sharc.modulePayload(original, profile), 'SHARC entry is in the instruction read-ahead guard')
+  original.entries.render_offset_bytes = 702
+  sharc.modulePayload(original, profile)
 })
 
 test('prelinked inert payload covers only its DN2 owner', () => {

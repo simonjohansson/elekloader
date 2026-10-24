@@ -99,7 +99,8 @@ class ActiveSineTests(unittest.TestCase):
             fixed_core = link.Mod2(fixed_core_doc, 'fixed-core')
             fixed_app = link.Mod2(fixed_app_doc, 'fixed-app')
             self.assertEqual(link.check([fixed_core, fixed_app], image), [])
-            self.assertEqual(link.check([core, fixed_app], image), [])
+            self.assertIn('active SHARC application needs the fixed keyed pitch table',
+                          link.check([core, fixed_app], image))
             with self.assertRaisesRegex(elemod.ModError, 'unqualified active SHARC app bytes or entry'):
                 link.link([fixed_core, app], image, sharc_stream=stock.section(7))
             self.assertTrue(any('unqualified active SHARC app' in p for p in
@@ -127,6 +128,13 @@ class ActiveSineTests(unittest.TestCase):
             relocated['sharc']['zero'][0]['size_bytes'] -= 4
             with self.assertRaisesRegex(elemod.ModError, 'gap or overlap'):
                 link.Mod2(relocated, 'relocated')
+
+            bad_table = copy.deepcopy(app.doc)
+            data = bytearray.fromhex(bad_table['sharc']['segments'][1]['hex'])
+            data[152] ^= 1
+            bad_table['sharc']['segments'][1]['hex'] = data.hex()
+            with self.assertRaisesRegex(elemod.ModError, 'active SHARC application needs the fixed keyed pitch table'):
+                link.link([core, link.Mod2(bad_table, 'bad-table')], image, sharc_stream=stock.section(7))
 
             for selected in (app, asm):
                 linked = link.link([core, selected], image, sharc_stream=stock.section(7))

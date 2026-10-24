@@ -1,5 +1,8 @@
 # Proposed DN2 SHARC sine contract (#36)
 
+This is the historical fixed-tone proposal. The current keyed init argument,
+lifecycle and preservation rules are in [the callback contract](SHARC-DN2-ABI.md).
+
 This records the original fixed-tone gate. The current played starter is
 [here](../examples/sharc-sine/README.md); the owner ranges and ABI stay the same.
 

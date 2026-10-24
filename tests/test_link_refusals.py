@@ -155,6 +155,8 @@ external('check', '<> has unqualified active SHARC core bytes or entry', 'tests/
          'unqualified active SHARC core bytes or entry')
 external('check', '<> has unqualified active SHARC app bytes or entry', 'tests/test_sharc_active.py',
          'unqualified active SHARC app bytes or entry')
+external('check', 'active SHARC application needs the fixed keyed pitch table', 'tests/test_sharc_active.py',
+         'active SHARC application needs the fixed keyed pitch table')
 external('check', 'active SHARC stack exceeds the profile limit', 'tests/test_sharc_active.py',
          'active SHARC stack exceeds the profile limit')
 external('link', 'SHARC application needs the stock section-7 stream', 'tests/test_sharc_active.py',

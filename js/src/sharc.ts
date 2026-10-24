@@ -214,6 +214,16 @@ export function modulePayload(doc: any, profile: SharcProfile | undefined, core 
         kind === 'code' && start <= (off as number) && (off as number) < start + data.length))
         throw new ModError('SHARC entry is not in owned code')
   } else if (core) throw new ModError('SHARC core needs a hook entry')
+  if (entries !== null && !core) {
+    const guard = profile.codeGuardBytes!
+    for (const [start, kind, data] of segments) {
+      if (kind !== 'code') continue
+      if (data.length < guard || !data.slice(-guard).every((b, i) => b === (i % 2 ? 0 : 1)))
+        throw new ModError('SHARC application code needs its profiled NOP read-ahead guard')
+      if (Object.values(entries).some(off => start + data.length - guard <= (off as number) && (off as number) < start + data.length))
+        throw new ModError('SHARC entry is in the instruction read-ahead guard')
+    }
+  }
   const stack = doc.stack_bytes
   if (!uint32(stack) || stack > profile.stackMax!) throw new ModError('SHARC stack contribution exceeds the profile limit')
   if (entries === null && stack) throw new ModError('inert SHARC payload must declare zero stack')

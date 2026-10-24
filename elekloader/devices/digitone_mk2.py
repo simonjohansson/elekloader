@@ -83,6 +83,8 @@ DEVICE = Device(
                 'app_range': (0x282dda00, 0x282dde00),
                 'core_range': (0x282dd600, 0x282dda00),
                 'stack_max': 544,
+                'code_guard_bytes': 64,
+                'keyed_pitch_table': (920, '314d5900969c5e00d23c6400b1326a004c837000073477009b4a7e0015cd8500e1c18d00c92f9600031e9f002e94a800'),
                 'owned_ranges': ((0x282dd600, 0x282dde00),),
                 'patch_ranges': ((0x2838489a, 0x283848a0),),
                 'active_core': {'segments': ((12, 'code', 'f4ed9cb989f57e603433d7efa650129e81776effacca150433716edfac71a806'),),

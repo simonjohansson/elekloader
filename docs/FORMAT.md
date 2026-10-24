@@ -96,9 +96,11 @@ With the keyed core, application code, data and callback offsets may change
 without a byte allowlist update. The core bridge's bytes, entry and stack
 contribution remain pinned. The linker still requires the ABI, owned ranges,
 alignment, full coverage, callbacks inside owned code and a combined declared
-stack of at most 544 bytes. The author must honor the bridge's calling
-convention, pitch table and gate layout in `mods/core-dn2/sharc-bridge.s` and
-`examples/sharc-sine/entry.c`, and declare sufficient stack. These packaging
+stack of at most 544 bytes. Each active app code segment ends in a 64-byte
+short-word NOP guard; entries must precede it. With the keyed core, the 48-byte
+pitch table at app offset 920 must match the profile. The
+[callback contract](SHARC-DN2-ABI.md) specifies init/render, gate lifecycle,
+register/modifier preservation and the author-declared stack. These packaging
 checks do not prove instruction behavior, actual stack use or audio timing;
 qualify each compiled program separately.
 The earlier fixed bridge remains restricted to its historical app, which

@@ -374,6 +374,13 @@ export function check(mods: Mod2[], image: Uint8Array): string[] {
     // Keyed callbacks use the validated ABI envelope; the legacy bridge stays exact.
     else if (!(keyed || fixed && matches(app.sharc!, profile.activeApp!, true)))
       bad.push(`${app.label()} has unqualified active SHARC app bytes or entry`)
+    if (keyed) {
+      const [at, expected] = profile.keyedPitchTable!
+      const table = hexBytes(expected, 'SHARC keyed pitch table')
+      if (!app.sharc!.segments.some(([off, kind, data]) => kind === 'data' && off <= at && at + table.length <= off + data.length
+        && table.every((b, i) => data[at - off + i] === b)))
+        bad.push('active SHARC application needs the fixed keyed pitch table')
+    }
     if (core.sharc.stackBytes + app.sharc!.stackBytes > profile.stackMax!) bad.push('active SHARC stack exceeds the profile limit')
   }
   const owner = new Map<string, Mod2>()

@@ -363,7 +363,15 @@ def check(mods, image):
         # Keyed callbacks use the validated ABI envelope; the legacy bridge stays exact.
         elif not (keyed or fixed and matches(app.sharc, profile['active_app'], adjustable=True)):
             bad.append('%s has unqualified active SHARC app bytes or entry' % app.label())
+        if keyed:
+            at, expected = profile['keyed_pitch_table']
+            table = bytes.fromhex(expected)
+            if not any(kind == 'data' and off <= at and at + len(table) <= off + len(data)
+                       and data[at - off:at - off + len(table)] == table
+                       for off, kind, data in app.sharc['segments']):
+                bad.append('active SHARC application needs the fixed keyed pitch table')
         if core.sharc['stack_bytes'] + app.sharc['stack_bytes'] > profile['stack_max']:
+
             bad.append('active SHARC stack exceeds the profile limit')
     owner = {}
     for m in mods:

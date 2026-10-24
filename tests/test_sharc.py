@@ -160,6 +160,22 @@ class SharcTests(unittest.TestCase):
             change(bad)
             self.refusal(lambda: sharc.module_payload(bad, PROFILE), message)
 
+    def test_active_code_guard_and_callback_boundary(self):
+        artifact = json.loads((Path(__file__).parents[1] / 'examples/sharc-sine/sine.sharc.json').read_text())
+        self.assertEqual(PROFILE['code_guard_bytes'], 64)
+        for change, message in (
+                (lambda a: a['segments'][0].update(hex=a['segments'][0]['hex'][:-2] + '01'),
+                 'SHARC application code needs its profiled NOP read-ahead guard'),
+                (lambda a: a['entries'].update(render_offset_bytes=704),
+                 'SHARC entry is in the instruction read-ahead guard')):
+            bad = copy.deepcopy(artifact)
+            change(bad)
+            self.refusal(lambda: sharc.module_payload(bad, PROFILE), message)
+            bad['entries'], bad['stack_bytes'] = None, 0
+            sharc.module_payload(bad, PROFILE)  # Inert payloads execute no code.
+        artifact['entries']['render_offset_bytes'] = 702
+        sharc.module_payload(artifact, PROFILE)
+
     @unittest.skipUnless(STOCK, 'missing ELEKLOADER_DN2_SYX')
     def test_inert_section_round_trip_keeps_other_sections(self):
         stock, dev, _rel = formats.load(STOCK)

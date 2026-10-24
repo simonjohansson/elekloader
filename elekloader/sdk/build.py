@@ -525,6 +525,11 @@ def build(mdir, stock_path, out_dir=None, extra=None):
     weak = list(mod.get('weak', []))
     imports |= set(weak)
 
+    source_hashes = {}
+    for s in srcs + dsrcs:
+        with open(s, 'rb') as fh:
+            source_hashes[os.path.basename(s)] = sha(fh.read())
+
     doc = {
         'elemod': 2, 'id': mid, 'version': version,
         'title': mod.get('title', mid), 'description': mod.get('description', ''),
@@ -539,8 +544,7 @@ def build(mdir, stock_path, out_dir=None, extra=None):
         'contribute': contrib, 'copied': mod.get('copied', []),
         'resources': resources,
         'requires': mod.get('requires', []), 'conflicts': mod.get('conflicts', []),
-        'build': {'sources': {os.path.basename(s): sha(open(s, 'rb').read())
-                              for s in srcs + dsrcs}},
+        'build': {'sources': source_hashes},
         'signature': None,
     }
     if sharc_doc is not None:

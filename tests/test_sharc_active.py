@@ -7,6 +7,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from elekloader import elemod, formats, link, sharc  # noqa: E402
@@ -54,6 +55,26 @@ class ActiveSineTests(unittest.TestCase):
             code['hex'] = ('00' if code['hex'][:2] != '00' else '01') + code['hex'][2:]
             self.assertTrue(any('unqualified active SHARC app' in problem for problem in
                                 link.check([core, link.Mod2(mutated, 'mutated')], image)))
+            bad_core = copy.deepcopy(core.doc)
+            code = bad_core['sharc']['segments'][0]
+            code['hex'] = ('00' if code['hex'][:2] != '00' else '01') + code['hex'][2:]
+            large_stack = copy.deepcopy(app.doc)
+            large_stack['sharc']['stack_bytes'] = rel.sharc['stack_max']
+            for message, mods in (
+                ('only one SHARC application may own the DN2 reservation', [core, app, asm]),
+                ('active SHARC application requires a qualified matching core bridge',
+                 [link.Mod2(old_core, 'old-core'), app]),
+                ('unqualified active SHARC core bytes or entry',
+                 [link.Mod2(bad_core, 'bad-core'), app]),
+                ('unqualified active SHARC app bytes or entry',
+                 [core, link.Mod2(mutated, 'mutated')]),
+                ('active SHARC stack exceeds the profile limit',
+                 [core, link.Mod2(large_stack, 'large-stack')]),
+            ):
+                with self.subTest(refusal=message), self.assertRaisesRegex(elemod.ModError, message):
+                    link.link(mods, image, sharc_stream=stock.section(7))
+            with self.assertRaisesRegex(elemod.ModError, 'SHARC application needs the stock section-7 stream'):
+                link.link([core, app], image)
             fixed = json.loads((ROOT / 'tests/fixtures/sharc-fixed-pair.json').read_text())
             fixed_core_doc = copy.deepcopy(core.doc)
             fixed_core_doc['sharc'] = fixed['core']
@@ -93,6 +114,9 @@ class ActiveSineTests(unittest.TestCase):
             for selected in (app, asm):
                 linked = link.link([core, selected], image, sharc_stream=stock.section(7))
                 profile = rel.sharc
+                with patch.dict(profile, stored_max=len(linked.sharc_stored) - 1):
+                    with self.assertRaisesRegex(elemod.ModError, 'SHARC stored section exceeds the profile limit'):
+                        link.link([core, selected], image, sharc_stream=stock.section(7))
                 records = sharc.parse(linked.sharc_stream, profile)
                 self.assertEqual(len(records), profile['record_count'] + 6)
                 self.assertEqual(linked.layout['sharc']['hook'], profile['hook'][0])

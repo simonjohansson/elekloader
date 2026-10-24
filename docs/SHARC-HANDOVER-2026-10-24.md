@@ -7,13 +7,14 @@ disconnected. The current focus is the sine and issues #34, #40 and #41;
 resume ModelDigi only after that work. DT2 is unavailable; prepare it offline.
 
 - Worktree remains `/Users/simonjohansson/src/elekloader-sharc`, branch
-  `sharc`, based on `origin/digitone-2-support`. Commit directly and linearly;
+  `sharc`, rebased onto `main` at `b9006bf` after upstream merged DN2 support.
+  Commit directly and linearly;
   no PRs. Use `gh -R simonjohansson/elekloader` because the default is upstream.
-  DT2 offline evidence was committed and pushed as `867cbd1`; see
+  DT2 offline evidence is now commit `99d6d4f` (previously `867cbd1`); see
   `docs/SHARC-DT2.md` and `out/sharc-dt2-probe/LOCAL-REPRO.md`.
 - `examples/sharc-sine-asm/README.md` records the assembly example, exact
   artifact, reproducible C comparison and successful physical `SA01` capture
-  committed as `b9fa0fb`.
+  committed as `5dc72cd` (previously `b9fa0fb`).
   The last completed update transfer/confirmation was `SA01`, including
   DigiHealth 1.3. Audio and DigiHealth responded; a final installed-version
   query was not obtained before disconnection. No device command is pending.
@@ -32,6 +33,11 @@ resume ModelDigi only after that work. DT2 is unavailable; prepare it offline.
 - Additional DT2 bridge experiments are private under ignored
   `out/sharc-dt2-probe/`. They do not grant a DT2 profile or physical support.
   Preserve this evidence during cleanup; do not commit firmware or captures.
+
+The pre-rebase branch is preserved locally at
+`refs/backups/sharc-before-main-20261024-ae17e05`. Historical evidence may
+refer to those original commit IDs. The commit comparison is saved at
+`/private/tmp/sharc-rebase-20261024/range-diff.txt`.
 
 ModelDigi inputs below are retained for later work.
 

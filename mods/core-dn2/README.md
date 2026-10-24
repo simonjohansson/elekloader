@@ -16,8 +16,8 @@ on the DSP).
 installs it and the exact six-byte stock hook only when a qualified active
 SHARC app is selected. Core-only and inert-app builds leave stock DSP audio
 unchanged. The first active app is
-[the fixed sine](../../examples/sharc-sine/README.md); physical audio
-qualification is tracked in #41. Building this core still needs only its
+[the fixed sine](../../examples/sharc-sine/README.md), which has a measured
+physical USB run in #41. Building this core still needs only its
 normal ColdFire toolchain, not a SHARC compiler.
 
 - **At boot** (the OS entry's call at 0x40000538, which called 0x400019b0,

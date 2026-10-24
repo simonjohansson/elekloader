@@ -56,8 +56,8 @@ python -m elekloader.patch --stock "$DN2_STOCK" --mod "$DN2_CORE" --mod examples
 
 The first build prints `BUILT`, lint reports `"ok": true`, and patch prints
 `verified: sections 2, 4, 5, 8, byte for byte`. The checked-in artifact
-connects the fixed sine to the SHARC master block; physical audio qualification
-is tracked in #41. [The starter](../examples/sharc-sine/README.md) explains
+connects the fixed sine to the SHARC master block; its physical USB result
+is recorded in #41. [The starter](../examples/sharc-sine/README.md) explains
 its source and producer. A matching core `.elemod` remains necessary, as for
 other format-2 mods; building that core from source uses the ColdFire toolchain.
 

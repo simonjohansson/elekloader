@@ -1,9 +1,10 @@
 # Proposed DN2 SHARC sine contract (#36)
 
 **Approved contract, 24 October 2026. The inert app slice was implemented in
-#37; #41 now has a fixed active bridge and sine candidate, while device audio
-qualification remains open.** This replaces the older synthetic sizing and
-incoming-R4 assumptions retained in [#36](https://github.com/simonjohansson/elekloader/issues/36).
+#37; #41 has a fixed active bridge and a measured physical USB sine, while
+timing and broader route qualification remain open.** This replaces the older
+synthetic sizing and incoming-R4 assumptions retained in
+[#36](https://github.com/simonjohansson/elekloader/issues/36).
 The first target is DN2 OS 1.12 and one fixed, key-independent 440 Hz sine.
 Playback on hardware is a separate gate, [#41](https://github.com/simonjohansson/elekloader/issues/41).
 

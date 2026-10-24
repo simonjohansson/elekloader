@@ -527,7 +527,8 @@ smaller core-only CO02 build then flashed and booted successfully (below).
   declarations can activate the hook. The SDK, linker, writer and independent
   verifier check the stock DSP stream, coverage, budgets, HMAC and untouched
   sections. The [starter](../examples/sharc-sine/README.md) uses no SHARC
-  compiler during build; physical audio remains [#41](https://github.com/simonjohansson/elekloader/issues/41).
+  compiler during build; its measured physical USB sine is recorded in
+  [#41](https://github.com/simonjohansson/elekloader/issues/41).
 - **Staging.** The bootstrap is the Digitakt II 1.17's code instruction for
   instruction, at the same addresses: the loader `0x80000596` reads section
   3 from flash at its container offset + `0x80000` to `0x40400000`, and the

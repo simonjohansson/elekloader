@@ -4,8 +4,8 @@ This ordinary format-2 mod carries a fixed 440 Hz, 0.125-peak sine for the
 Digitone II OS 1.12. The core's H1 bridge replaces the 32-float master block
 and copies it to the right channel. It needs no note, UI wiring or SHARC
 compiler at build time. The active path is limited to this exact bridge and
-sine artifact while [issue #41](https://github.com/simonjohansson/elekloader/issues/41)
-checks physical playback.
+sine artifact. [Issue #41](https://github.com/simonjohansson/elekloader/issues/41)
+tracks its physical qualification.
 
 Set `DN2_STOCK` to your own exact OS 1.12 file and `DN2_CORE` to a matching
 `core-dn2` `.elemod`. Then use the normal module commands:
@@ -34,3 +34,18 @@ prelinked artifact reflects changed source; this first active gate refuses
 other code hashes. [The format](../../docs/FORMAT.md#digitone-ii-sharc-app)
 has the exact envelope and limits. No firmware, extracted section or generated
 `.elemod` belongs in Git.
+
+On a physical DN2, the `SS01` build (stock OS 1.12, core 0.1, DigiHealth
+fork 1.3 and this sine 0.1; firmware SHA-256
+`89f2cf3b2e0a9c8bfb3d83b50a2f03e51ee896dd729b95dcba153d62ebe30a4a`)
+produced a stable 439.999 Hz tone on both USB master channels for 6 seconds,
+then 30 seconds after a reinstall. At 48 kHz the measured peak was 0.178571
+and RMS 0.126269 per channel: the [DN2 USB pack](https://github.com/ElekLabs/digikit/blob/9dee5d56c328e7091babdfd2c1d363657db78b96/docs/findings/55-fx-adapter.md#L44-L52)
+scales the 0.125-peak master buffer by 1.428571. The pre-update baseline and
+an `SI01` build carrying the same SHARC data with its callbacks disabled were
+both exactly silent. The 30-second capture had no dropped buffers, non-finite
+samples or clipping. Its changing samples across the two-page ring rule out a
+frozen short-loop replay.
+Captures and firmware remain local under ignored `out/`, outside Git. This
+qualifies the USB master route for this fixed candidate, not the DAC, other
+routes, arbitrary SHARC code or physical timing margin.

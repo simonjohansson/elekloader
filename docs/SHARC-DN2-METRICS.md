@@ -67,9 +67,9 @@ experimental; project/FX/cache/interrupt qualification is separate.
 
 Offline checks cover pinned artifact reproduction, register/stack fixtures,
 actual C/ASM callbacks, coherent coupled transport/audio, legacy remote
-controls, refusal boundaries and Python/TypeScript parity. Physical
-installation, callback clock/overhead calibration and measured-core project/
-effects checks remain acceptance gates. [#41](https://github.com/simonjohansson/elekloader/issues/41)
+controls, refusal boundaries and Python/TypeScript parity. Physical installation and the bounded raised-send workload below pass.
+Callback clock/overhead calibration and wider measured-core project/
+effects coverage remain acceptance gates. [#41](https://github.com/simonjohansson/elekloader/issues/41)
 owns timing and [#56](https://github.com/simonjohansson/elekloader/issues/56)
 owns the bounded stock-project workload. Whole-DSP idle/busy and physical
 stack high-water remain separate work.
@@ -83,3 +83,33 @@ absent control stays unavailable while CF blocks advance. Compiled receiver
 checks reject frozen/replayed/expired/incomplete/CRC-invalid records. The
 DigiHealth host suite passes 49 tests, skipping eight missing-input tests.
 These checks do not replace the physical gates above.
+
+## Physical checkpoint — 24 October 2026
+
+The same coupled-tested C `MC15` and ASM `MA15` candidates were installed
+on the DN2 with DigiHealth 1.5. Installed versions, remote controls and
+8,708 immutable ColdFire runtime bytes matched each candidate after reboot;
+this is not direct SHARC memory readback. Firmware SHA-256 values:
+
+- C: `cb98ce33bd2bfe7f5ccf76446461f15ba44adb62b0ce9afe18dc94eb9d433105`
+- ASM: `0fcd3798c5aa4bb219bcf85441c2a14a03351b1c6459d4e75f04efff86347e21`
+
+Each completed the same 90.005-second raised chorus/delay/reverb-send
+workload: 36 note rounds, 576 requested note pairs across MIDI channels,
+page changes and release to silence. Each USB capture contained 4,320,256
+frames, with zero dropped capture buffers, finite identical stereo samples
+and correct pitch in the analyzed note regions. These requests do not
+establish an active-voice count or qualify stock effect sound quality under
+the master-output replacement. DigiHealth reported no heap faults.
+
+Each run supplied 50 fresh advancing snapshots (49 valid intervals), with
+zero CRC errors or transport drops. Median interval-average callback spans
+were 4,586.83 raw ticks for C and 2,904.39 for ASM. This is one run per
+variant, includes the timing bracket/call/read cost and supplies no
+calibrated microseconds, whole-DSP utilization or spare-capacity claim.
+The empty-callback control has not been run on hardware. A later factory-
+project capture was retained but not analyzed; it is not a passing result.
+
+Reports and captures remain local under ignored
+`out/sharc-metrics-device-20261024/`. Ordinary C/ASM build instructions do
+not depend on this optional measurement core or its outstanding calibration.

@@ -6,8 +6,27 @@ note initialization and the 32-sample gain ramp; the same core bridge selects
 the note and copies mono to stereo. The two versions use identical table
 values, phase accumulation, 0.125 peak amplitude, note range and output route.
 
-Build with the ordinary module workflow, supplying your own DN2 OS 1.12 and
-matching core:
+## Build the current assembly source
+
+Follow the shared [C/ASM setup](../sharc-sine/README.md#build-the-current-c-or-assembly-source),
+then run from `examples/sharc-sine`:
+
+```sh
+mise run build-asm
+# Or the experimental 32 KiB L2 placement:
+mise run build-asm-l2
+```
+
+These commands assemble this directory's current `sine.s`, compile the shared
+`entry.c`, and build verified firmware through Elekloader's normal SDK, lint
+and patcher. No per-code allowlist update or development qualification helper
+is needed. Outputs are `../sharc-sine/out/asm/firmware.syx` and
+`../sharc-sine/out/asm-l2/firmware.syx`. Select either C or ASM; two applications
+cannot own the same output/reservation. Each source change still needs runtime
+qualification within the [callback contract](../../docs/SHARC-DN2-ABI.md).
+
+To package the existing reference artifact without a SHARC compiler, use the
+normal SDK from the Elekloader checkout root with a matching built core:
 
 ```sh
 python -m elekloader.sdk.build examples/sharc-sine-asm --stock "$DN2_STOCK"
@@ -15,12 +34,10 @@ python -m elekloader.lint examples/sharc-sine-asm/out/sharc-sine-asm-0.1.elemod 
 python -m elekloader.patch --stock "$DN2_STOCK" --mod "$DN2_CORE" --mod examples/sharc-sine-asm/out/sharc-sine-asm-0.1.elemod --out sine-asm.syx --version SA01
 ```
 
-Select either the C or assembly sine; two applications cannot own the same
-reservation. These consumer commands need no SHARC compiler. The checked-in
-`sine.sharc.json` contains only author-owned bytes, not firmware. It uses the
-same 1 KiB app area, keyed core and artifact format as the C example.
+Those commands embed the checked-in author-owned `sine.sharc.json`; they do
+not assemble edited source. The artifact uses the original 1 KiB app area.
 
-## Rebuild and compare
+## Reproduce and compare the reference
 
 Use the [pinned Selache tools](../sharc-sine-probe/README.md#build-and-check),
 including `selload`, and the PX-fixed Digikit checkout at
@@ -100,7 +117,7 @@ measurements and other output routes remain pending.
 
 ## Instruction and device boundary
 
-The producer pins all final code/data bytes and rejects unresolved symbols,
+The reference producer pins all final code/data bytes and rejects unresolved symbols,
 relocations, moved entries, changed attributes and illegal same-DAG stores.
 The new short AND/XOR/add/decrement and register-shift fields are checked
 against [ADI's SHARC+ Core Programming Reference, revision 1.5](https://www.analog.com/media/en/dsp-documentation/processor-manuals/sc58x-2158x-prm.pdf),

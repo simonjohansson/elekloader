@@ -1,10 +1,23 @@
-# SHARC/DN2 handover — 24 October 2026
+# Historical SHARC/DN2 handover — 24 October 2026
 
-## Current checkpoint
+This is an archived checkpoint from before the ordinary third-party C/ASM
+workflow and 32 KiB L2 support were completed. Its device state, local paths,
+issue statuses and proposed next actions describe that earlier session;
+they are not current operating instructions. Do not infer the connected
+hardware or installed firmware from this document.
 
-Research and implementation are paused at the owner's request. The DN2 is
-disconnected. The current focus is the sine and issues #34, #40 and #41;
-resume ModelDigi only after that work. DT2 is unavailable; prepare it offline.
+For current work, use the [source build workflow](../examples/sharc-sine/README.md),
+[callback contract](SHARC-DN2-ABI.md) and [L2 qualification record](SHARC-L2.md).
+The supported experimental scope is DN2 OS 1.12, one exclusive mono
+master-output app, with ordinary 1 KiB L1 or 32 KiB L2 placement and at most
+428 declared app stack bytes. Optional [callback measurements](SHARC-DN2-METRICS.md)
+are separate. ModelDigi and DT2 remain later work.
+
+## Earlier checkpoint
+
+At this checkpoint, research and implementation had paused at the owner's
+request and the DN2 was disconnected. The focus was the sine and issues
+#34, #40 and #41, with ModelDigi deferred and DT2 available only for offline work.
 
 - Worktree remains `/Users/simonjohansson/src/elekloader-sharc`, branch
   `sharc`, rebased onto `main` at `b9006bf` after upstream merged DN2 support.
@@ -41,7 +54,7 @@ refer to those original commit IDs. The commit comparison is saved at
 
 ModelDigi inputs below are retained for later work.
 
-## Goal and issue order
+## Earlier goal and issue order
 
 The overarching [#29](https://github.com/simonjohansson/elekloader/issues/29) is to make the DN2 SHARC path simple for mod authors, prove a keyed sine first, then port the DSP section of ModelDigi, with DT2 following independently. Normal consumers should build a module with the same SDK/patch flow as DN/DT mk1 and should not need a compiler installed when a mod supplies a qualified SHARC artifact. Prefer free/open author tooling; document proprietary fallback.
 
@@ -55,7 +68,7 @@ The overarching [#29](https://github.com/simonjohansson/elekloader/issues/29) is
 - ModelDigi source: `/Users/simonjohansson/src/ModelDigi`, pinned at `c412bdf2ab3b0b5b62484e8195c2f880d1964c67`. Original oscillator files are under `/Users/simonjohansson/src/ModelDigi/dsp/`. The target uses integer Q31 mono at 48 kHz with six samples of algorithmic latency. Keep the commercial oscillator reference named only `REFERENCE`.
 - Elekloader probe and instructions: `/Users/simonjohansson/src/elekloader-sharc/examples/modeldigi-sharc-probe/README.md`, `probe.py`, `driver.c`, `div.c`, `synthetic.ldf` in the same directory. Run from the worktree: `mise exec python@3.12.13 -- python examples/modeldigi-sharc-probe/probe.py /Users/simonjohansson/src/ModelDigi /private/tmp/elekloader-sharc-selache /private/tmp/digikit-sharc-px`.
 - Free compiler/toolchain: `/private/tmp/elekloader-sharc-selache`, pinned at `2b26d3b75c53063575bc5c820fa0d38879335187`, built tools in `/private/tmp/elekloader-sharc-selache/target/release/` (`selcc`, `selas`, `seld`, `seldump`, `selload`). Emulator: PX-fixed `/private/tmp/digikit-sharc-px`, pinned at `ded547e14e63977c1a6e808812d46243e13c43d0`; native emulator `/private/tmp/digikit-sharc-px/out/native/target-wt/digikit-sharc-px/generic/release/digi-emud`. Do not assume an upstream Digikit runner without the PX fix passes.
-- Last successful probe output: `/var/folders/78/v3nf7bhn69ncpf3qdj8ppybc0000gn/T/modeldigi-sharc-13fu1d8l/report.json`; its executable SHA-256 was `37fba952ddf1886a9fc629e70632d923302deb6b87aafbe114c510cbacfb3e58`. Synthetic code 12,106 bytes, loaded data 9,952 bytes, observed maximum stack drop 1,204 bytes, all 2,960 emitted instructions decoded confidently. The current DN2 H1 bridge/app reservation is only 2,048 bytes, so a qualified L2 application area and revised stack allowance are needed for ModelDigi. The probe's local compiler adaptations are documented in [#42](https://github.com/simonjohansson/elekloader/issues/42#issuecomment-6382360083), including a real Selache `modulate` miscompile workaround and a local GPL-2.0-or-later 32-bit divide helper.
+- Last successful probe output: `/var/folders/78/v3nf7bhn69ncpf3qdj8ppybc0000gn/T/modeldigi-sharc-13fu1d8l/report.json`; its executable SHA-256 was `37fba952ddf1886a9fc629e70632d923302deb6b87aafbe114c510cbacfb3e58`. Synthetic code 12,106 bytes, loaded data 9,952 bytes, observed maximum stack drop 1,204 bytes, all 2,960 emitted instructions decoded confidently. At this checkpoint, the DN2 H1 bridge/app reservation was only 2,048 bytes. The later 32 KiB L2 ABI addresses code/data capacity; this observed 1,204-byte stack drop still exceeds the ordinary 428-byte app allowance. The probe's local compiler adaptations are documented in [#42](https://github.com/simonjohansson/elekloader/issues/42#issuecomment-6382360083), including a real Selache `modulate` miscompile workaround and a local GPL-2.0-or-later 32-bit divide helper.
 - Target code must still get a checked Q31-to-float adapter, mono routing, init/render binding, and safe owned placement. Do not treat an inert L2 load or synthetic linker map as proof of those. Existing SDK format/qualification is intentionally narrow: `/Users/simonjohansson/src/elekloader-sharc/elekloader/sharc.py`, `/Users/simonjohansson/src/elekloader-sharc/elekloader/link.py`, `/Users/simonjohansson/src/elekloader-sharc/elekloader/devices/digitone_mk2.py`, `/Users/simonjohansson/src/elekloader-sharc/js/src/`, and `/Users/simonjohansson/src/elekloader-sharc/docs/FORMAT.md`. Python/TypeScript parity, device checks, and docs must move together if artifact behavior changes. Read the supplied `AGENTS.md` instructions: public/schema/format changes need a concrete scope decision first. The latest user gave broad authority to make decisions, but do not silently widen safety gates.
 
 ## Private firmware and physical evidence (never commit these)

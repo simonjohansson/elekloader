@@ -23,6 +23,10 @@ docs match its code.
 - **[Adapting your mod](ADAPTING.md)**: the path to take, the rules, every
   command with the output it should print, every refusal with its fix, and a
   definition of done. Coding agents: start with [AGENTS.md](../AGENTS.md).
+- **[DN2 SHARC C/ASM starter](../examples/sharc-sine/README.md)**: compile
+  current source and build experimental Digitone II OS 1.12 firmware with
+  the ordinary SDK. The [callback contract](SHARC-DN2-ABI.md) covers the
+  exclusive master output, 1 KiB L1 or 32 KiB L2 placement and stack limits.
 - **[Growing the core](CORE-CONTRIBUTING.md)**: when what your mod needs
   belongs in the core, how to build it so it can move there, and how to
   propose it. Pull requests to the core are welcome and encouraged.
@@ -119,18 +123,20 @@ docs match its code.
 ## Maintaining elekloader
 
 - **[DN2 SHARC evidence](SHARC-DN2.md)**: the pinned stock identity, memory
-  views, independent size limits and runtime ownership still to qualify.
+  views and independent size limits, with links to current runtime evidence.
 - **[Bounded DN2 L2 apps](SHARC-L2.md)**: the experimental 32 KiB reservation,
   address units and the remaining ownership/cache limits.
 - **[DN2 SHARC runtime evidence](SHARC-CONTEXT.md)**: reset-data provenance,
   coupled emulator checks and the remaining context/ownership boundaries.
+- **[Optional DN2 callback measurements](SHARC-DN2-METRICS.md)**: a separate
+  experimental core and readback path; ordinary C/ASM builds do not need it.
 - **[DT2 SHARC preparation](SHARC-DT2.md)**: exact 1.17 stock checks,
   independently recovered runtime context and the remaining sine-port gates.
 - **[SHARC boot records](SHARC-BOOT.md)**: ordered parsing and bounded synthetic
   insertion, with shared Python/TypeScript refusal cases.
 - **[SHARC sine compiler and execution probe](../examples/sharc-sine-probe/README.md)**:
-  firmware-free qualification of a pinned open toolchain and executed sine; not yet
-  an installable DN2/DT2 module.
+  maintainer-only compiler and execution checks, separate from the author
+  build workflow above. The probe itself is not an installable module.
 - **[Releasing](RELEASING.md)**: the version, the core files a release
   carries, the workflows that build the apps, the kit and the site, and
   pre-releases.

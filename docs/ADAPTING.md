@@ -45,8 +45,30 @@ monolithic build; section 4 says how to go from A to B.
   Octatrack's core, `mods/core-ot`, has a hook bus of its own from 0.2, with the Octatrack's events ("The hook bus on the
   Octatrack" below).
 
-For the Digitone II SHARC starter, the source author supplies a prelinked
-artifact in the mod folder. Building the mod needs no SHARC compiler:
+### Digitone II SHARC (experimental, OS 1.12)
+
+Start with the [C/ASM source workflow](../examples/sharc-sine/README.md).
+After its one-time toolchain and stock-file setup, `mise run build-c` or
+`mise run build-asm` compiles the current source, generates its prelinked
+artifact, builds the core and mod, lints them and writes verified firmware.
+The `build-c-l2` and `build-asm-l2` tasks use the bounded 32 KiB L2 placement.
+The ordinary L1 tasks retain the original 1 KiB app area. These commands run
+from `examples/sharc-sine`; they do not use the maintainer qualification
+scripts or a checked-in app artifact as a build input.
+
+The callback processes one exclusive master-output block: 32 mono floats at
+48 kHz, copied to stereo. It does not add a selectable sound/filter machine,
+per-track routing or a polyphonic voice interface. Both ordinary placements
+allow at most 428 declared app stack bytes; more code/data does not add
+stack. Follow the [DN2 callback contract](SHARC-DN2-ABI.md), including register
+preservation, guard padding, pitch/gate behavior and actual stack bounds.
+
+Elekloader remains compiler-independent. Authors may use their own compiler
+or assembler and supply the [artifact envelope](FORMAT.md#digitone-ii-sharc-app).
+The keyed core accepts changed app bytes and callback offsets without a
+per-program allowlist update. The source workflow uses pinned Selache;
+Elekloader's SDK only packages its result. A consumer who already has the
+artifact needs no SHARC compiler:
 
 ```sh
 python -m elekloader.sdk.build examples/sharc-sine --stock "$DN2_STOCK"
@@ -55,42 +77,27 @@ python -m elekloader.patch --stock "$DN2_STOCK" --mod "$DN2_CORE" --mod examples
 ```
 
 The first build prints `BUILT`, lint reports `"ok": true`, and patch prints
-`verified: sections 2, 4, 5, 8, byte for byte`. The checked-in artifact
-connects the played sine to the SHARC master block.
-[The starter](../examples/sharc-sine/README.md) explains its source,
-fixed ramp and qualified MIDI note range. A matching core `.elemod` remains
-necessary, as for other format-2 mods; building that core from source uses
-the ColdFire toolchain. Mod authors may compile C or assembly with their own
-tools and supply the [existing artifact envelope](FORMAT.md#digitone-ii-sharc-app).
-The keyed core accepts changed app bytes and callback offsets without a
-per-program allowlist update. Follow the [DN2 callback contract](SHARC-DN2-ABI.md),
-including the NOP read-ahead guard and fixed pitch table. Regenerate the artifact after a source edit:
-SDK build packages the artifact and does not compile the SHARC sources.
-The pinned Selache rebuild scripts reproduce the reference examples for
-Elekloader development; they are not required for third-party mods.
+`verified: sections 2, 4, 5, 8, byte for byte`. These commands package the
+checked-in reference artifact; they do not recompile an edited source file.
+A matching core `.elemod` remains necessary, as for other format-2 mods;
+building that core from source uses the ColdFire toolchain. The
+[assembly example](../examples/sharc-sine-asm/README.md) shares the core,
+note range and gain ramp; choose one app per build. The separate `rebuild.py`
+scripts reproduce pinned reference artifacts for Elekloader development.
 
-The experimental `dn2-master-mono32-l2-v1` ABI selects a bounded 32 KiB app
-at loader `[0x20090000,0x20098000)` with the same keyed core and callback
-contract. Existing L1 artifacts keep their original placement. Compile/link
-for L2 and emit offsets relative to its base; changing only the ABI string
-on L1-linked instructions does not relocate them. The linker retains the
-bridge's fixed L1 pitch table. Code guards, full ownership coverage, stack
-and firmware limits still apply. See [L2 evidence and limits](SHARC-L2.md).
+The L2 ABI selects loader `[0x20090000,0x20098000)` with the same keyed core.
+Compile/link for L2 and emit offsets relative to its base; changing only the
+ABI string on L1-linked instructions does not relocate them. The linker
+retains the bridge's fixed L1 pitch table. Code guards, full ownership
+coverage, stack and firmware limits still apply. Packaging checks these
+bounds; it does not prove arbitrary instructions, runtime writes or audio
+deadlines. Both C and ASM have bounded emulator and physical evidence,
+including ten-minute note sweeps and project/effects checks; see
+[L2 evidence and remaining limits](SHARC-L2.md).
 
-For optional render-callback measurement, use the same L2 program with
-`dn2-master-mono32-l2-metrics-v1` and `mods/core-dn2-metrics`. This pair
-preserves the L2 reservation and gross stack limit, reducing the app's
-declared stack ceiling to 420 bytes. The owner's DigiHealth 1.5 reads the
-result; absent/stale snapshots are unavailable. Ordinary builds keep their
-current core and workflow. Read the [measurement contract](SHARC-DN2-METRICS.md)
-before interpreting raw ticks as hardware timing.
-
-[`examples/sharc-sine-asm`](../examples/sharc-sine-asm/README.md) supplies the
-same played sine with a handwritten SHARC kernel. Use its directory and
-`sharc-sine-asm-0.1.elemod` in the same commands. It shares the C example's
-core bridge, note range and gain ramp; choose one sine app per build. Its
-author benchmark compares exact output, code size, stack and executed
-instructions with the C kernel.
+Optional callback measurements use a separate core and ABI, documented in
+[the measurement contract](SHARC-DN2-METRICS.md). They are not a prerequisite
+for this ordinary author workflow or a measurement of total DSP utilization.
 
 ## 2. The rules
 

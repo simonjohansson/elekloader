@@ -10,8 +10,84 @@ bridge copies the 32-float master block to the right channel. No UI or new
 control transport is involved. [Issue #47](https://github.com/simonjohansson/elekloader/issues/47)
 tracks the device proof.
 
-Set `DN2_STOCK` to your own exact OS 1.12 file and `DN2_CORE` to a matching
-`core-dn2` `.elemod`. Then use the normal module commands:
+## Build the current C or assembly source
+
+These example commands compile the current source, export its bounded SHARC
+artifact, build the normal DN2 core, lint the modules, and build and independently
+verify firmware. They accept source edits without changing Elekloader's core or
+application allowlist. They use no development qualification helper or
+checked-in application artifact. Elekloader itself remains compiler-independent;
+Selache is this example's compiler and assembler.
+
+Install [mise](https://mise.jdx.dev/) and the normal
+[ColdFire cross tools](../../docs/ADAPTING.md#1-what-you-need) for building
+core-dn2. Build the pinned free [Selache](https://github.com/js216/selache)
+tools once in a new directory:
+
+```sh
+git clone https://github.com/js216/selache.git "$HOME/src/selache"
+cd "$HOME/src/selache"
+git switch --detach 2b26d3b75c53063575bc5c820fa0d38879335187
+mise exec rust@1.98.1 -- cargo build --release --locked -p selcc -p selas -p seld -p seldump
+```
+
+Return to this Elekloader checkout, then configure your own stock OS and compiler
+paths. Python 3.12.13 is managed by mise; no Python packages are required.
+
+```sh
+cd examples/sharc-sine
+cp mise.local.example.toml mise.local.toml
+# Edit DN2_STOCK and SELACHE in mise.local.toml.
+mise trust
+mise install
+mise run build-c
+mise run build-asm
+# Same current sources in the experimental 32 KiB L2 reservation:
+mise run build-c-l2
+mise run build-asm-l2
+```
+
+`DN2_STOCK` must be your own exact Digitone II OS 1.12 file (SHA-256
+`7e5b8a733d4ab1fdf7e5d22757f7d8eddaa3cbf71d0858874a791844c02ceb35`).
+`SELACHE` must contain that clean pinned checkout and its four release tools.
+`ELEKLOADER_CROSS` selects the ColdFire prefix; the template uses `m68k-elf-`.
+To include remote buttons and diagnostics, set optional `DN2_DIGIHEALTH` to a
+DN2 DigiHealth `.elemod`. All recorded physical checks included the owner's
+DigiHealth fork. These commands use ordinary core-dn2; callback measurements
+remain a separate optional workflow.
+
+| Command | Kernel | Output below this example directory |
+|---|---|---|
+| `mise run build-c` | `sine.c` | `out/c/firmware.syx` |
+| `mise run build-asm` | `../sharc-sine-asm/sine.s` | `out/asm/firmware.syx` |
+| `mise run build-c-l2` | `sine.c` | `out/c-l2/firmware.syx` |
+| `mise run build-asm-l2` | `../sharc-sine-asm/sine.s` | `out/asm-l2/firmware.syx` |
+
+Both kernels share `entry.c`. Every build replaces its output directory before
+compilation, so a failed compile cannot leave a previous firmware there.
+`out/<variant>/build-report.json` records the source/input/output hashes,
+compiler revision and binary hashes, Elekloader revision, and host/Python
+versions. Outputs and local configuration remain ignored; no firmware or
+extracted stock belongs in Git. `mise run test` checks the producer's bounds,
+malformed-output refusals, compiler pin and stale-output handling without
+firmware or external compilers.
+
+L1 permits 704 linked instruction bytes plus a 64-byte NOP guard and 256 data
+bytes. The L2 layout permits 16,320 linked instruction bytes plus the guard
+and 16 KiB data. Both examples declare 128 bytes of app stack; L2 supplies no
+extra stack. Follow the [callback contract](../../docs/SHARC-DN2-ABI.md),
+[artifact format](../../docs/FORMAT.md#digitone-ii-sharc-app) and
+[L2 limits](../../docs/SHARC-L2.md). A successful build checks the declared
+envelope; each changed program still needs execution and hardware
+qualification. The tested host is macOS on Apple silicon, with mise Python
+3.12.13, Rust 1.98.1, Apple command-line tools and m68k-elf-gcc 16.2.0.
+Other author hosts are not yet qualified.
+
+## Package or reproduce the reference artifact
+
+The ordinary SDK can also package the checked-in application artifact without
+a SHARC compiler. From the Elekloader checkout root, with `DN2_CORE` naming a
+matching built core-dn2 module:
 
 ```sh
 python -m elekloader.sdk.build examples/sharc-sine --stock "$DN2_STOCK"
@@ -19,40 +95,20 @@ python -m elekloader.lint examples/sharc-sine/out/sharc-sine-0.1.elemod --stock 
 python -m elekloader.patch --stock "$DN2_STOCK" --mod "$DN2_CORE" --mod examples/sharc-sine/out/sharc-sine-0.1.elemod --out sine.syx --version SK02
 ```
 
-The core build uses the normal ColdFire cross compiler; its checked-in
-`bridge.sharc.json` supplies the SHARC code. `sine.c`, `entry.c` and
-`mods/core-dn2/sharc-bridge.s` are the author source for the two prelinked
-artifacts. The pinned Selache producer checks exact executable sections,
-equal-tempered phase steps, full-width register spills and the existing 2 KiB
-reservation before replacing either artifact. No artifact contains stock
-firmware.
-
-The SDK needs no SHARC compiler for these commands. It validates and embeds
-the existing artifacts, and the patcher independently verifies the firmware.
-The keyed core accepts newly compiled app bytes and callback offsets within
-the [existing ABI envelope](../../docs/FORMAT.md#digitone-ii-sharc-app), without
-updating an allowlist. Regenerate the artifact after changing source; SDK
-build does not compile SHARC code. Each new program still needs runtime
-qualification. The [assembly variant](../sharc-sine-asm/README.md) uses the
-same entry wrapper and core; its author benchmark compares both kernels.
-The checked author host is macOS on Apple silicon with mise Python 3.12.13,
-Rust 1.98.1 and Apple command-line tools. [Install and build Selache](../sharc-sine-probe/README.md#build-and-check)
-at commit `2b26d3b75c53063575bc5c820fa0d38879335187` once, then run:
+Those SDK commands embed an existing artifact; they do not compile `sine.c`.
+The checked-in app and core artifacts contain author-owned bytes, not stock
+firmware. For development audits, `rebuild.py` and `keyed.py` reproduce the
+qualified reference pair with exact code, table and full-width spill checks:
 
 ```sh
 mise exec python@3.12.13 -- python examples/sharc-sine/rebuild.py /path/to/selache
 ```
 
-The producer is `rebuild.py` plus
-[`keyed.py`](keyed.py), reusing the verified sine-kernel and spill checks.
-The [format](../../docs/FORMAT.md#digitone-ii-sharc-app) records the exact
-envelope and limits. No firmware, extracted section or generated `.elemod`
-belongs in Git.
+That reference check intentionally rejects source changes. Use `build.py`
+through the mise tasks above for editing either example. Other compiler and
+artifact producers can use the same normal SDK/lint/patch path.
 
-This producer reproduces the qualified reference pair and deliberately
-rejects different code. Third-party authors may use their own compiler and
-artifact producer, then run the ordinary three module commands above.
-Other author hosts and arbitrary SHARC programs are not yet qualified.
+## Recorded reference qualification
 
 The `SK02` candidate was built from stock OS 1.12 SHA-256
 `7e5b8a733d4ab1fdf7e5d22757f7d8eddaa3cbf71d0858874a791844c02ceb35`,

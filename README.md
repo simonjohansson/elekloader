@@ -22,7 +22,7 @@ file on your own machine, and you flash it the way you flash any OS update.
 | Digitakt (mk1) | 1.53, 1.54 | supported |
 | Digitakt II | 1.17 | experimental: whole builds (format-1 mods) and linkable mods with its own core (the hook bus's tick, draw, key and encoder events), sealed as the unit checks them; boots in digikit's emulator; core with a key-swap mod works on a unit (Transfer over USB) |
 | Digitone (mk1) and Digitone Keys | 1.43, 1.44 | supported |
-| Digitone II | 1.12 | experimental: whole builds and linkable mods with core 0.1; sealed as the unit checks them; the six UI events, remote input, DigiHealth and a played SHARC sine checked on a unit; longer project/audio qualification pending ([evidence and limits](docs/DEVICES.md#the-digitone-ii-112)) |
+| Digitone II | 1.12 | experimental: whole builds, linkable mods and bounded SHARC C/ASM apps; UI events, remote input and both sine variants checked on a unit, including ten-minute note sweeps and bounded project/effects checks ([device evidence](docs/DEVICES.md#the-digitone-ii-112), [DSP evidence and limits](docs/SHARC-L2.md)) |
 | Octatrack (MKI and MKII) | 1.40C | supported: whole builds (format-1 mods); linkable mods with its own core: boots on an MKII, not yet run on an MKI |
 | Model:Cycles, Model:Samples | 1.13 | supported: linkable mods with their own core (the hook bus's tick, draw, key and encoder events); builds work on both units (Transfer over USB) |
 | Analog Rytm MKII | 1.74 | supported: linkable mods with its own core (the hook bus's tick, draw, key, encoder, SETTINGS and render events); builds with the core work on a unit (Transfer over USB) |
@@ -76,6 +76,13 @@ Menu, where you pick what your mods add ([docs/CORES.md](docs/CORES.md)):
 
 Find mods in the web page's shop, or write your own:
 [docs/ADAPTING.md](docs/ADAPTING.md) takes you from the first build to done.
+
+For experimental **Digitone II SHARC mods**, start with the
+[C and assembly sine workflow](examples/sharc-sine/README.md). It compiles
+current source and builds firmware through the ordinary SDK, with 1 KiB L1
+or 32 KiB L2 code/data placement. The [callback contract](docs/SHARC-DN2-ABI.md)
+provides one exclusive mono master-output processor, copied to stereo;
+selectable machines and per-track processing remain future work.
 
 **Contributions are welcome and encouraged.** The core grows from what mods
 need: when yours needs an event, a table or a firmware address the core

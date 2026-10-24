@@ -135,8 +135,8 @@ def _header(flags, target, count, argument):
 def insert(stream, profile, *, loads=(), fills=()):
     """Insert once before FINAL; load tuples are (address, bytes), fills (address, count, word).
 
-    Only profile-owned loader-byte ranges are eligible. The real DN2 profile has
-    none until its runtime ownership gate passes; synthetic profiles test this code.
+    Only profile-owned loader-byte ranges are eligible. DN2 currently grants
+    the inert app interval; the bridge and hook remain outside that grant.
     """
     records = parse(stream, profile)
     if sha(stream) != profile['decoded_sha256']:

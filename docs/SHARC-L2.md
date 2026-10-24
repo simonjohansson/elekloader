@@ -408,3 +408,57 @@ under `out/digihealth14-20261024/`; the private backup metadata is under
 firmware/captures are committed. #56 remains open for the stated wider
 workload; actual DSP callback timing is the separately proposed
 [DigiHealth #11](https://github.com/simonjohansson/digihealth/issues/11).
+
+
+### Raised effects sends and ASM project loading
+
+The next #56 check keeps the C/ASM L2 programs unchanged and includes the
+owner's DigiHealth 1.4 in both candidates. C remains `HC14` above. ASM `HA14`
+SHA-256 is
+`7c88506f8bbf1693cb1970a8e2ad847099785407e7a15d7fb040469557a9bad8`;
+its SHARC section matches `LA03` byte for byte. Protected sections remain
+stock and HA14 has 163,336 decoded-update bytes spare. Remote confirmation,
+rebooted version, helper and screen readback were checked.
+
+After saving the working state into a verified-empty recovery slot and
+exporting an integrity-checked local package, chorus/delay/reverb send
+CC29/30/31 values of 96 were requested on all 16 MIDI channels. Independent
+track-1 numeric screen readback shows 95 for each send. Both candidates run
+the same stopped-transport A01 workload: 36 six-note rounds, 576 note pairs
+across 16 channel requests and six SYN/FLTR/AMP/FX/MOD page stages.
+
+| Candidate | Duration | Capture buffers / dropped | Maximum nominal-clock pitch error |
+|---|---:|---:|---:|
+| C `HC14` | 90.0053 s | 8,438 / 0 | 0.0586 cent |
+| ASM `HA14` | 90.0053 s | 8,438 / 0 | 0.0431 cent |
+
+Both pass finite/sample-identical stereo, active RMS, adjacent-sample,
+36-region pitch and final-five-second-silence checks, with zero reported
+heap faults. Wrong-note and injected 20 ms dropout negatives are rejected.
+The separate unmodified-stock emulator canary stays intact at 44 checkpoints
+over 5,136 blocks with analogous send/channel/page requests and deliberate
+one-byte corruption detected. It uses the default emulator project; canaries
+still miss reads, same-value writes, overwrite/restore and physical caches.
+
+Loading the recovery copy restores the original track-1 sends, independently
+screen-checked. ASM then loads factory PRESETS, with WaveTone observed, and
+returns to the FM Tone recovery state. Six-note captures after each load pass:
+18.0053 seconds, 1,688 buffers, zero drops and nominal-clock pitch error at
+most 0.0813 cent. One fresh-screen request during factory loading timed out;
+the action was not replayed, and subsequent readback confirmed the load.
+The first effects-restore attempt was cancelled at the discard-changes prompt;
+only the subsequently confirmed load and restored readback count as evidence.
+
+The prior working state is restored, transport stopped, notes released and
+DigiHealth 1.4 responding. Saved originals were not overwritten; recovery
+identifiers and hashes remain in ignored local metadata. Required Python
+units pass, 35/35. Captures, checks and reports are under
+`out/sharc56-effects-20261024/validation-report.json` and adjacent files.
+No firmware, project data or captures are committed.
+
+#56 remains open for wider sustained workloads. These are raised-send checks,
+not maximum-FX or counted-voice qualification. The replaced master output
+cannot expose underlying stock effects quality. No calibrated DSP margin,
+physical cache/interrupt proof or new measured core is claimed. Callback
+measurement is the separately approved DigiHealth #11 integration; whole-DSP
+load and peak-stack measurement remain separate work.

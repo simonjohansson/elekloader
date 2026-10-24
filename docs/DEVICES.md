@@ -523,10 +523,12 @@ smaller core-only CO02 build then flashed and booted successfully (below).
 - **SHARC sine gate.** The profile grants loader-byte
   `[0x282dd600,0x282dde00)` for the checked-in 1 KiB core bridge and 1 KiB
   prelinked app in section 7, and separately grants the exact six-byte H1
-  instruction patch. The current keyed core accepts the exact C or
-  [assembly sine app](../examples/sharc-sine-asm/README.md); the
-  earlier fixed-tone pair remains accepted with only its bounded 220–880 Hz
-  phase increment editable. Mismatched pairs cannot activate the hook.
+  instruction patch. The current keyed core accepts prelinked apps within
+  the [existing ABI and ownership envelope](FORMAT.md#digitone-ii-sharc-app),
+  including changed C or assembly code; the bridge remains pinned. The
+  earlier fixed bridge accepts only its historical app with its bounded
+  220–880 Hz phase increment editable. Compiled app behavior and timing
+  require separate qualification.
   The SDK, linker, writer and independent
   verifier check the stock DSP stream, coverage, budgets, HMAC and untouched
   sections. The [starter](../examples/sharc-sine/README.md) uses no SHARC

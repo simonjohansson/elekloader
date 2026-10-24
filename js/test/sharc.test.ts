@@ -19,38 +19,56 @@ inertArtifact.stack_bytes = 0
 const synthetic = { ...profile, decodedSha256: sha(original), ownedRanges: [[0x20002000, 0x20002020] as [number, number]] }
 const refusal = (fn: () => unknown, error: string) => assert.throws(fn, e => e instanceof ModError && e.message === error)
 
-test('active DN2 keyed sine and historical fixed pair stay exactly matched', () => {
+test('active DN2 keyed callbacks accept bounded apps; the legacy pair stays exact', () => {
   const rel = DIGITONE_MK2.releases[0], target = targetOf(DIGITONE_MK2, rel)
   const bridge = JSON.parse(readFileSync(new URL('../../mods/core-dn2/bridge.sharc.json', import.meta.url), 'utf8'))
   const fixed = JSON.parse(readFileSync(new URL('../../tests/fixtures/sharc-fixed-pair.json', import.meta.url), 'utf8'))
   const core = (artifact: unknown) => new Mod2({ elemod: 2, id: 'core', version: '0.1', target,
     sections: { '.boot': { align: 4, parts: [['hex', '00000000']] } }, sharc: artifact }, 'core')
   const image = new Uint8Array(rel.mainLen)
-  const bad = (bridgeArtifact: unknown, artifact: unknown) => check([core(bridgeArtifact), new Mod2({ elemod: 2, id: 'sine', version: '0.1', target,
-    sections: {}, sharc: artifact }, 'sine')], image).some(p => p.includes('unqualified active SHARC app'))
+  const problems = (bridgeArtifact: unknown, artifact: unknown) => check([core(bridgeArtifact), new Mod2({ elemod: 2, id: 'sine', version: '0.1', target,
+    sections: {}, sharc: artifact }, 'sine')], image)
+  const bad = (bridgeArtifact: unknown, artifact: unknown) => problems(bridgeArtifact, artifact).some(p => p.includes('unqualified active SHARC app'))
   const original = JSON.parse(readFileSync(new URL('../../examples/sharc-sine/sine.sharc.json', import.meta.url), 'utf8'))
   assert.equal(bad(bridge, original), false)
   assert.equal(bad(fixed.core, fixed.app), false)
-  assert.equal(bad(bridge, fixed.app), true)
+  assert.equal(bad(bridge, fixed.app), false)
   assert.equal(bad(fixed.core, original), true)
   const asm = JSON.parse(readFileSync(new URL('../../examples/sharc-sine-asm/sine.sharc.json', import.meta.url), 'utf8'))
   assert.equal(bad(bridge, asm), false)
   assert.equal(bad(fixed.core, asm), true)
-  for (const mutation of ['code', 'entry', 'stack']) {
-    const changed = structuredClone(asm)
-    if (mutation === 'code') {
-      const code = bytes(changed.segments[0].hex)
-      code[4] ^= 1
-      changed.segments[0].hex = Buffer.from(code).toString('hex')
+  // Packaging acceptance does not qualify these synthetic bytes for execution.
+  for (const source of [original, asm]) for (const mutation of ['code', 'data', 'entry', 'stack']) {
+    const changed = structuredClone(source)
+    if (mutation === 'code' || mutation === 'data') {
+      const segment = changed.segments[mutation === 'data' ? 1 : 0]
+      const data = bytes(segment.hex)
+      data[4] ^= 1
+      segment.hex = Buffer.from(data).toString('hex')
     } else if (mutation === 'entry') changed.entries.render_offset_bytes += 2
     else changed.stack_bytes -= 4
-    assert.equal(bad(bridge, changed), true, mutation)
+    assert.deepEqual(problems(bridge, changed), [], mutation)
+  }
+  for (const mutation of ['code', 'entry', 'stack']) {
+    const changed = structuredClone(bridge)
+    if (mutation === 'code') changed.segments[0].hex = '0000' + changed.segments[0].hex.slice(4)
+    else if (mutation === 'entry') changed.entries.hook_offset_bytes += 2
+    else changed.stack_bytes -= 4
+    assert(problems(changed, original).some(p => p.includes('unqualified active SHARC core bytes or entry')), mutation)
+  }
+  const large = structuredClone(original)
+  large.stack_bytes = profile.stackMax
+  assert(problems(bridge, large).includes('active SHARC stack exceeds the profile limit'))
+  for (const [entry, offset] of [['render_offset_bytes', 768], ['init_offset_bytes', 1]] as const) {
+    const changed = structuredClone(original)
+    changed.entries[entry] = offset
+    refusal(() => sharc.modulePayload(changed, profile), 'SHARC entry is not in owned code')
   }
   const changed = structuredClone(original)
   const changedCode = bytes(changed.segments[0].hex)
   changedCode[328] ^= 1
   changed.segments[0].hex = Buffer.from(changedCode).toString('hex')
-  assert.equal(bad(bridge, changed), true)
+  assert.deepEqual(problems(bridge, changed), [])
   for (const [hz, accepted] of [[220, true], [660, true], [880, true], [219, false], [881, false]] as const) {
     const artifact = structuredClone(fixed.app)
     const code = bytes(artifact.segments[0].hex)

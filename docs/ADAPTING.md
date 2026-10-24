@@ -60,9 +60,13 @@ connects the played sine to the SHARC master block.
 [The starter](../examples/sharc-sine/README.md) explains its source,
 fixed ramp and qualified MIDI note range. A matching core `.elemod` remains
 necessary, as for other format-2 mods; building that core from source uses
-the ColdFire toolchain. Authors regenerate the prelinked pair with pinned
-Selache using `examples/sharc-sine/rebuild.py` after source qualification;
-ordinary consumers still use only the three commands above.
+the ColdFire toolchain. Mod authors may compile C or assembly with their own
+tools and supply the [existing artifact envelope](FORMAT.md#digitone-ii-sharc-app).
+The keyed core accepts changed app bytes and callback offsets without a
+per-program allowlist update. Regenerate the artifact after a source edit:
+SDK build packages the artifact and does not compile the SHARC sources.
+The pinned Selache rebuild scripts reproduce the reference examples for
+Elekloader development; they are not required for third-party mods.
 
 [`examples/sharc-sine-asm`](../examples/sharc-sine-asm/README.md) supplies the
 same played sine with a handwritten SHARC kernel. Use its directory and

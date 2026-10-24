@@ -36,7 +36,9 @@ The producer assembles `sine.s`, compiles the existing
 checks the inspected final sections and entrypoints before replacing the
 artifact. The C wrapper and core source are shared, not copied. The artifact
 keeps the existing conservative 128-byte stack contribution; measured use
-for the listed synthetic cases is lower.
+for the listed synthetic cases is lower. This development producer reproduces
+the reference binary and rejects changes; third-party authors can supply
+newly compiled artifacts within the [same ABI envelope](../../docs/FORMAT.md#digitone-ii-sharc-app).
 
 The comparison executes both actual binaries and checks every binary32
 sample and both state words against an independent host calculation. It

@@ -32,19 +32,21 @@ class ActiveSineTests(unittest.TestCase):
             self.assertIsNone(link.link([core], image).sharc_stream)
             self.assertEqual(link.check([core, app], image), [])
             self.assertEqual(link.check([core, asm], image), [])
-            for mutation in ('code', 'entry', 'stack'):
-                changed = copy.deepcopy(asm.doc)
-                artifact = changed['sharc']
-                if mutation == 'code':
-                    code = bytearray.fromhex(artifact['segments'][0]['hex'])
-                    code[4] ^= 1
-                    artifact['segments'][0]['hex'] = code.hex()
-                elif mutation == 'entry':
-                    artifact['entries']['render_offset_bytes'] += 2
-                else:
-                    artifact['stack_bytes'] -= 4
-                self.assertTrue(any('unqualified active SHARC app' in p for p in
-                                    link.check([core, link.Mod2(changed, mutation)], image)))
+            # Packaging acceptance does not qualify these synthetic bytes for execution.
+            for selected in (app, asm):
+                for mutation in ('code', 'data', 'entry', 'stack'):
+                    changed = copy.deepcopy(selected.doc)
+                    artifact = changed['sharc']
+                    if mutation in ('code', 'data'):
+                        segment = artifact['segments'][1 if mutation == 'data' else 0]
+                        data = bytearray.fromhex(segment['hex'])
+                        data[4] ^= 1
+                        segment['hex'] = data.hex()
+                    elif mutation == 'entry':
+                        artifact['entries']['render_offset_bytes'] += 2
+                    else:
+                        artifact['stack_bytes'] -= 4
+                    self.assertEqual(link.check([core, link.Mod2(changed, mutation)], image), [])
 
             old_core = copy.deepcopy(core.doc)
             old_core.pop('sharc')
@@ -53,8 +55,24 @@ class ActiveSineTests(unittest.TestCase):
             mutated = copy.deepcopy(app.doc)
             code = mutated['sharc']['segments'][0]
             code['hex'] = ('00' if code['hex'][:2] != '00' else '01') + code['hex'][2:]
-            self.assertTrue(any('unqualified active SHARC app' in problem for problem in
-                                link.check([core, link.Mod2(mutated, 'mutated')], image)))
+            self.assertEqual(link.check([core, link.Mod2(mutated, 'mutated')], image), [])
+            for mutation in ('entry', 'stack'):
+                changed = copy.deepcopy(core.doc)
+                if mutation == 'entry':
+                    changed['sharc']['entries']['hook_offset_bytes'] += 2
+                else:
+                    changed['sharc']['stack_bytes'] -= 4
+                self.assertTrue(any('unqualified active SHARC core bytes or entry' in p for p in
+                                    link.check([link.Mod2(changed, mutation), app], image)))
+            for change, message in (
+                    (lambda a: a['entries'].update(render_offset_bytes=768), 'entry is not in owned code'),
+                    (lambda a: a['entries'].update(init_offset_bytes=1), 'entry is not in owned code'),
+                    (lambda a: a['segments'][0].update(offset_bytes=4), 'gap or overlap'),
+                    (lambda a: a['zero'][0].update(size_bytes=56), 'exceeds its owner')):
+                changed = copy.deepcopy(app.doc)
+                change(changed['sharc'])
+                with self.assertRaisesRegex(elemod.ModError, message):
+                    link.Mod2(changed, 'invalid-envelope')
             bad_core = copy.deepcopy(core.doc)
             code = bad_core['sharc']['segments'][0]
             code['hex'] = ('00' if code['hex'][:2] != '00' else '01') + code['hex'][2:]
@@ -66,8 +84,6 @@ class ActiveSineTests(unittest.TestCase):
                  [link.Mod2(old_core, 'old-core'), app]),
                 ('unqualified active SHARC core bytes or entry',
                  [link.Mod2(bad_core, 'bad-core'), app]),
-                ('unqualified active SHARC app bytes or entry',
-                 [core, link.Mod2(mutated, 'mutated')]),
                 ('active SHARC stack exceeds the profile limit',
                  [core, link.Mod2(large_stack, 'large-stack')]),
             ):
@@ -83,8 +99,9 @@ class ActiveSineTests(unittest.TestCase):
             fixed_core = link.Mod2(fixed_core_doc, 'fixed-core')
             fixed_app = link.Mod2(fixed_app_doc, 'fixed-app')
             self.assertEqual(link.check([fixed_core, fixed_app], image), [])
-            self.assertTrue(any('unqualified active SHARC app' in p for p in
-                                link.check([core, fixed_app], image)))
+            self.assertEqual(link.check([core, fixed_app], image), [])
+            with self.assertRaisesRegex(elemod.ModError, 'unqualified active SHARC app bytes or entry'):
+                link.link([fixed_core, app], image, sharc_stream=stock.section(7))
             self.assertTrue(any('unqualified active SHARC app' in p for p in
                                 link.check([fixed_core, app], image)))
             self.assertTrue(any('unqualified active SHARC app' in p for p in

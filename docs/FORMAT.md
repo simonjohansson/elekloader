@@ -92,13 +92,20 @@ The assembly kernel variant declares 176/238 with the same conservative
 Its matching core supplies a separate 1 KiB bridge artifact with a hook entry
 at offset 12 and 116 stack bytes. The linker binds the two PC16 callback
 addresses itself; neither app may supply core binding bytes or stock patches.
-The profile accepts either exact keyed app with that core. It also retains the
-earlier fixed-sine pair, whose app declares 320/370 and 84 stack bytes; only
-that historical app permits a four-byte phase-increment edit at code offset
-328 for 220–880 Hz. Core/app pairs cannot be mixed. The source producer
-checks the linked executable before writing artifacts, and the linker
-requires their qualified hashes without a compiler. Other active code is
-refused pending its own qualification.
+With the keyed core, application code, data and callback offsets may change
+without a byte allowlist update. The core bridge's bytes, entry and stack
+contribution remain pinned. The linker still requires the ABI, owned ranges,
+alignment, full coverage, callbacks inside owned code and a combined declared
+stack of at most 544 bytes. The author must honor the bridge's calling
+convention, pitch table and gate layout in `mods/core-dn2/sharc-bridge.s` and
+`examples/sharc-sine/entry.c`, and declare sufficient stack. These packaging
+checks do not prove instruction behavior, actual stack use or audio timing;
+qualify each compiled program separately.
+The earlier fixed bridge remains restricted to its historical app, which
+declares 320/370 and 84 stack bytes; only its four-byte phase increment at
+code offset 328 may vary, for 220–880 Hz. The reference producers reproduce
+the checked-in artifacts; a mod author may supply an artifact from any
+compatible compiler or assembler without running those development scripts.
 Only one SHARC app may be selected. The linker checks stock section 7 by
 hash before adding the app's and core's ordered LOAD/FILL records. The active
 path additionally replaces one exact six-byte H1 instruction inside its

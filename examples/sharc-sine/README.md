@@ -29,11 +29,12 @@ firmware.
 
 The SDK needs no SHARC compiler for these commands. It validates and embeds
 the existing artifacts, and the patcher independently verifies the firmware.
-Source changes require an explicit new qualification; the current linker
-accepts these exact keyed bytes, the qualified
-[assembly kernel variant](../sharc-sine-asm/README.md), and the earlier
-fixed-sine pair. The assembly example uses the same entry wrapper and core;
-its author benchmark compares both kernels with identical inputs.
+The keyed core accepts newly compiled app bytes and callback offsets within
+the [existing ABI envelope](../../docs/FORMAT.md#digitone-ii-sharc-app), without
+updating an allowlist. Regenerate the artifact after changing source; SDK
+build does not compile SHARC code. Each new program still needs runtime
+qualification. The [assembly variant](../sharc-sine-asm/README.md) uses the
+same entry wrapper and core; its author benchmark compares both kernels.
 The checked author host is macOS on Apple silicon with mise Python 3.12.13,
 Rust 1.98.1 and Apple command-line tools. [Install and build Selache](../sharc-sine-probe/README.md#build-and-check)
 at commit `2b26d3b75c53063575bc5c820fa0d38879335187` once, then run:
@@ -48,9 +49,10 @@ The [format](../../docs/FORMAT.md#digitone-ii-sharc-app) records the exact
 envelope and limits. No firmware, extracted section or generated `.elemod`
 belongs in Git.
 
-For a focused contribution, change the source, qualify and regenerate both
-artifacts, then run the ordinary three module commands above. Other author
-hosts and arbitrary SHARC programs are not yet qualified.
+This producer reproduces the qualified reference pair and deliberately
+rejects different code. Third-party authors may use their own compiler and
+artifact producer, then run the ordinary three module commands above.
+Other author hosts and arbitrary SHARC programs are not yet qualified.
 
 The `SK02` candidate was built from stock OS 1.12 SHA-256
 `7e5b8a733d4ab1fdf7e5d22757f7d8eddaa3cbf71d0858874a791844c02ceb35`,

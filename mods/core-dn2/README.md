@@ -13,9 +13,11 @@ qualified, so there is no `.fast` area) and no `render.s` (the audio renders
 on the DSP).
 
 `bridge.sharc.json` is the checked-in prelinked H1 audio bridge. The linker
-installs it and the exact six-byte stock hook only when a qualified active
-SHARC app is selected. Core-only and inert-app builds leave stock DSP audio
-unchanged. The current pair is [the played sine](../../examples/sharc-sine/README.md),
+installs it and the exact six-byte stock hook only when an active SHARC app
+passes the [ABI and ownership checks](../../docs/FORMAT.md#digitone-ii-sharc-app).
+The keyed bridge stays pinned while app code and callback offsets may change.
+Core-only and inert-app builds leave stock DSP audio unchanged.
+The reference app is [the played sine](../../examples/sharc-sine/README.md),
 with its slot and pitch reader in `sharc-bridge.s`. The earlier fixed-tone
 pair remains accepted by the linker only as a matching historical pair.
 Building this core still needs only its normal ColdFire toolchain, not a

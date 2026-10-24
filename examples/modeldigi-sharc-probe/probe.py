@@ -73,6 +73,21 @@ def loaded_read(runner, address, size):
     return bytes(result)
 
 
+def named_state(raw):
+    words = struct.unpack('<29I', raw)
+
+    def signed(value):
+        return value - 0x100000000 if value & 0x80000000 else value
+
+    return {'phase': list(words[0:3]), 'last': list(words[3:6]),
+            'tail': [signed(value) for value in words[6:17]],
+            'frame': words[17], 'seed': words[18],
+            'wander': [signed(value) for value in words[19:22]],
+            'drift': [signed(value) for value in words[22:25]],
+            'mix_in': signed(words[25]), 'mix_residue': signed(words[26]),
+            'dc_in': signed(words[27]), 'dc_out': signed(words[28])}
+
+
 def run_case(modules, memory, symbols, name, host, frames, mutation=False):
     sharc_run, _, state = modules
     regs = {f'R{i}': 0x12340000 + i for i in range(16)}
@@ -135,7 +150,8 @@ def run_case(modules, memory, symbols, name, host, frames, mutation=False):
                 f'{name} wrote outside state, output, parameters and stack at {address:#x}')
     return {'case': name, 'frames': frames, 'instructions': runner.instructions,
             'stack_bytes': STACK - low, 'output_sha256': sha(output),
-            'state_sha256': sha(actual_state), 'mutated': mutation}
+            'state_sha256': sha(actual_state), 'state': named_state(actual_state),
+            'mutated': mutation}
 
 
 def main():

@@ -52,8 +52,8 @@ pointer targets into `0x20088240..0x200f9fff`. It resolved 2,979 propagated
 pointer rows and left 192 unknown; this analysis covers only a subset of
 25,878 indirect accesses. It cannot establish global memory ownership. The private database records
 `tool_commit=38dfbe4a`; this corrects the earlier prose source attribution
-to `9dee5d56`. A later Type3d width discrepancy also limits its footprint
-claims; see [#53](https://github.com/simonjohansson/elekloader/issues/53).
+to `9dee5d56`. That version-16 index had a Type3d width/stride defect; the
+[corrected audit below](#corrected-static-audit) supersedes its derived facts.
 The exact DSP hash is registered there under 1.11; matching DSP bytes does
 not prove the surrounding 1.12 runtime configuration is identical.
 
@@ -69,7 +69,7 @@ interrupt or memory-controller configuration. The 64-byte NOP tail is a
 conservative packaging policy, not a cache/fetch proof for arbitrary code.
 A ten-minute note sweep extends the physical evidence below, but sustained
 heavy stock-project stress, all indirect users, interrupt interleavings
-and physical cycle budgets remain separate qualification work in #41/#51.
+and physical cycle budgets remain separate qualification work in #41/#56.
 ModelDigi's measured 1,204-byte stack drop still needs #42.
 
 ## Normal-build qualification on 24 October 2026
@@ -142,8 +142,8 @@ Reports/events/CAF files and the invalid early C capture stay in the private
 evidence directory above. The device was left running `LA03`, with DigiHealth
 responding and the last note released. These short USB tests do not qualify
 all L2 users, sustained stock-project stress, DAC behavior, hardware cycle
-margin or ModelDigi. #51 retains the incomplete memory audit, including #53; #41 retains
-physical timing/context work, and #42 retains the larger stack.
+margin or ModelDigi. The corrected static audit is recorded below; #56 retains stock-project
+qualification, #41 physical timing/context work, and #42 the larger stack.
 
 ## The apparent DDR pointer has a halfword data consumer
 
@@ -177,10 +177,9 @@ Its comments and existing executor tests explain the encoding; the static
 width function/test retain the earlier interpretation. Its pointer
 propagation also advances I0 by four for this example, rather than the
 executed two. This affects derived addresses, not just display labels.
-#53 tracks aligning width and modifier scaling and redoing the static audit. No DigiKit code
-or Elekloader acceptance check was changed to make this probe pass.
-Until that is reconciled, the existing index is supporting evidence, not
-a complete access-footprint proof. The all-indirect-users limitation remains.
+This became #53. The later approved DigiKit correction and rebuilt index
+are recorded below. The original consumer probe required no change to
+DigiKit or Elekloader acceptance. The all-indirect-users limitation remains.
 
 Private source scripts, watch logs and mutation results are in
 `out/sharc51-sustained-20261024/ddr-consumer-proof.json` and the copied
@@ -200,7 +199,7 @@ modeled DSP progressed with no reported halt or missing block. This is
 bounded stock-emulator evidence, not a verified 16-voice physical workload.
 Checkpoint comparison cannot detect reads, same-value writes, or values
 written and restored between checks, and it does not model real cache
-coherency. It does not resolve #53's static pointer-scale discrepancy.
+coherency. It is independent of the static pointer-scale correction below.
 
 Private report: `out/sharc51-sustained-20261024/stock-canary/report.json`;
 probe: `sharc51-stock-canary.py` beside the other private scripts. Native
@@ -250,3 +249,49 @@ Private captures, events, strict analyzer and complete results are in
 canary, descriptor/halfword mutations, tool/source pins and 35 passing
 Python unit tests plus five passing linker-refusal suites. This increment
 changes documentation/evidence only; the tested firmware bytes are unchanged.
+
+
+## Corrected static audit
+
+The approved [DigiKit fix](https://github.com/simonjohansson/digikit/commit/3ed5849c1fe55a7c1926c023e5617a51a1564989)
+resolves [#53](https://github.com/simonjohansson/elekloader/issues/53): Type3d
+ACCESS widths match the executor, indexed byte/short modifiers scale by
+1/2, unknown banked post-modifies invalidate their base, and overlap queries
+use byte/short/long footprints. Long-word stride remains 4 with footprint 8.
+Cache version 17 invalidates earlier derived facts without changing SQLite
+columns or DDL. Execution semantics and Elekloader validation are unchanged.
+
+A fresh exact-stock index records `tool_commit=3ed5849c`, version 17 and the
+section-7 hash above. It has 138,299 instructions, 1,078 functions, 13,356
+datarefs, 27,324 memory accesses and 3,171 pointer rows. Of these, 2,979
+pointer addresses resolve and 192 remain unknown, against 25,878 indirect
+accesses. The correction changes 395 pointer rows; 33 have a changed base
+or address, including 32 changed target addresses. None targets the app.
+The known consumer at PC16 `0x1c78b9` now has signed-halfword width and
+an index increment of two.
+
+Both `[0x20090000,0x20098000)` and `[0x20088240,0x200fa000)` still have zero
+datarefs, direct access overlaps, resolved pointer overlaps, readers and
+writers in this analysis. A second reader independently checked the input
+bytes/hash, source pin, unchanged DDL, counts, changed rows and queries.
+The second index invocation reused the new cache as expected.
+
+This supports completing #51's bounded first delivery. Byte-coordinate/NW32
+assumptions, the four-byte unknown-width fallback and incomplete indirect,
+SIMD, circular and runtime propagation prevent a complete footprint or
+ownership proof. The reservation stays experimental and exactly 32 KiB.
+[Stock-project/cache/interrupt qualification #56](https://github.com/simonjohansson/elekloader/issues/56)
+is a separate small increment; hardware timing stays #41 and stack #42.
+
+DigiKit database tests: 72 passed, 32 missing-input skips, 16 subtests passed.
+Changed-file lint/format and types pass. Its wider routed tests reported
+247 passed, one failed, 127 skipped; the pre-check remains blocked by two
+reproduced main-branch problems: host-specific object provenance hashes
+([#54](https://github.com/simonjohansson/elekloader/issues/54)) and stale path
+references ([#55](https://github.com/simonjohansson/elekloader/issues/55)).
+No generated object or safety check was changed to hide them.
+
+Private index, before/after rows, cache logs and `audit-report.json` live in
+`/Users/simonjohansson/src/elekloader-sharc/out/sharc53-20261024/`.
+This correction changes analysis and documentation only. Firmware bytes
+remain unchanged; no new emulator audio run or device flash was needed.

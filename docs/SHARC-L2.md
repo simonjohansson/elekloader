@@ -295,3 +295,74 @@ Private index, before/after rows, cache logs and `audit-report.json` live in
 `/Users/simonjohansson/src/elekloader-sharc/out/sharc53-20261024/`.
 This correction changes analysis and documentation only. Firmware bytes
 remain unchanged; no new emulator audio run or device flash was needed.
+
+
+## Multichannel and pattern workload, first #56 increment
+
+The unchanged C `LC03` and ASM `LA03` candidates above were exercised with
+16-channel MIDI requests, six transport/page/pattern stages, and fresh
+DigiHealth heap/readback observations. Each stage requests all six notes
+48/60/69/72/81/84 on all 16 channels: 576 note-on/off pairs per candidate.
+Patterns A01/A02/A03 and SYN/FLTR/AMP/FX/MOD pages are visited. No project is
+saved, loaded or overwritten, and no synthesis/effect parameter is edited.
+Sending on 16 channels does not prove 16 simultaneous allocated voices.
+
+The first mixed-playback C capture failed the proposed isolated-note oracle:
+43 active regions appeared instead of the 36 external-note rounds. A01 has
+its own sequencer notes, which also select/release the one global newest-slot
+sine. A separate 24-second C capture produces sequenced audio with **zero
+external note-ons**; stopping transport removes that competition. The failed
+oracle is retained rather than counted as a complete mixed-playback pass.
+ASM mixed playback similarly has 44 active regions. Their differing counts
+do not establish a C/ASM defect: transport phase and external-note timing
+are not synchronized between runs.
+
+Both mixed captures have finite, sample-identical stereo, peak 0.17857146,
+zero dropped capture buffers, zero reported heap-walk faults and final five
+seconds of silence. The isolated-note oracle applies only to the 18 unopposed
+A02/A03 intervals in each capture, checking their pitch, active 10 ms RMS
+windows and bounded adjacent sample changes. Maximum nominal-clock pitch
+errors are 0.0395 cent C and 0.0445 cent ASM. A fitted event-to-capture offset
+is an alignment aid, not a sample-clock calibration.
+
+A separate transport-stopped control repeats all 36 rounds per candidate,
+including the pattern/page changes, to qualify the external-note case
+without competing sequencer gates. Each capture lasts approximately 90
+seconds; producer firmware hashes remain the already qualified values above.
+The analyzer rejects a wrong-note oracle and a deliberately inserted
+20 ms active-window dropout. Both controls have finite, identical stereo,
+peak 0.17857146, zero reported heap faults and final five-second silence.
+
+| Control | Duration | Capture buffers / dropped | Maximum nominal-clock pitch error |
+|---|---:|---:|---:|
+| C `LC03` | 90.0053 s | 8,438 / 0 | 0.0586 cent |
+| ASM `LA03` | 90.0160 s | 8,439 / 0 | 0.0407 cent |
+
+The final verified unit state for this increment is `LA03`, DigiHealth 1.3
+responding, A01 selected, transport stopped and all requested notes released.
+The final read-only buddy-heap snapshot has zero faults. These observations
+are not a heap-leak proof or a measured count of sounding stock voices.
+
+An independent **unmodified-stock** coupled emulator run exercises analogous
+16-channel bursts, transport/pattern/page changes and the full 32 KiB canary.
+The window stays intact at 44 checkpoints across 4,590 DSP blocks, with no
+reported halt or missing audio block; deliberate one-byte corruption is
+detected. This emulator uses its default project, not a captured physical
+project. Checkpoint comparisons still miss reads, same-value writes,
+overwrite/restore and physical cache behavior.
+
+[#56](https://github.com/simonjohansson/elekloader/issues/56) remains open:
+this first increment does not qualify heavy effect settings, project
+save/load, all memory users, physical cycle margin, direct exception
+telemetry or DAC output. The sine replaces the master output, so its USB
+capture cannot verify the underlying stock voices/effects audibly. DigiHealth
+1.3 heap observations cover one ColdFire allocator, not SHARC free memory;
+its unavailable CPU/DSP counters are not evidence of zero load.
+
+Private captures, screens, exact events, controls, candidate verification,
+strict/limited analyzers and reports are under
+`/Users/simonjohansson/src/elekloader-sharc/out/sharc56-stock-project-20261024/`.
+`LC03/LA03-mixed-report.json` records the limited mixed claim;
+`LC03/LA03-midi-control-report.json` records the isolated controls;
+`stock-canary/report.json` records the separate modeled memory check.
+No firmware or captures are committed.

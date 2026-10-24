@@ -95,6 +95,24 @@ class SharcTests(unittest.TestCase):
         result = sharc.insert(data, profile, loads=[(0x20002000, b'\x11\x22\x33\x44')])
         self.assertEqual(sharc.parse(result, profile)[1].raw, data[16:36])
 
+    def test_instruction_patch_requires_exact_unique_stock_load(self):
+        case = next(c for c in CORPUS['parse_cases'] if c['name'] == 'original_protected_load')
+        data = bytes.fromhex(case['hex'])
+        profile = dict(SYNTHETIC, decoded_sha256=sha(data),
+                       patch_ranges=((0x20001000, 0x20001004),))
+        patched = sharc.insert(data, profile, patches=[(0x20001000, b'\x05\x06', b'\xaa\xbb')])
+        self.assertEqual(patched[84:88], b'\xaa\xbb\x07\x08')
+        self.assertEqual(patched[:84] + patched[88:], data[:84] + data[88:])
+        self.refusal(lambda: sharc.insert(data, profile,
+                     patches=[(0x20001000, b'\x00\x06', b'\xaa\xbb')]),
+                     'SHARC patch stock instruction does not match')
+        self.refusal(lambda: sharc.insert(data, dict(profile, patch_ranges=()),
+                     patches=[(0x20001000, b'\x05\x06', b'\xaa\xbb')]),
+                     'SHARC patch is outside the profile patch range')
+        self.refusal(lambda: sharc.insert(ORIGINAL, dict(profile, decoded_sha256=sha(ORIGINAL)),
+                     patches=[(0x20001000, b'\x05\x06', b'\xaa\xbb')]),
+                     'SHARC patch needs one unambiguous stock load')
+
     @unittest.skipUnless(STOCK, 'missing ELEKLOADER_DN2_SYX')
     def test_owner_stock_exact_noop(self):
         raw = Path(STOCK).read_bytes()
@@ -113,6 +131,11 @@ class SharcTests(unittest.TestCase):
         self.assertEqual(sum(a < d and c < b for i, (a, b) in enumerate(spans) for c, d in spans[i+1:]), 15)
         self.refusal(lambda: sharc.insert(decoded, PROFILE, fills=[(0x20090000, 4, 0)]),
                      'SHARC new load or fill is outside the profile-owned ranges')
+        patched = sharc.insert(decoded, PROFILE, patches=[
+            (0x2838489a, bytes.fromhex('8715ffff78ff'), bytes.fromhex('3e06160006eb'))])
+        changed = [i for i, (a, b) in enumerate(zip(decoded, patched)) if a != b]
+        self.assertEqual(len(changed), 6)
+        self.assertEqual(patched[changed[0]:changed[0] + 6], bytes.fromhex('3e06160006eb'))
         outputs = formats.write(parsed, parsed.stored[device.main_section], device)
         self.assertEqual(outputs['syx'], raw)
         formats.verify(outputs, parsed, formats.main_image(parsed, device), device)

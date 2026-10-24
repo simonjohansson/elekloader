@@ -89,6 +89,19 @@ test('SHARC preserves a historical protected load during insertion elsewhere', (
   assert.deepEqual(sharc.parse(result, p)[1].raw, data.slice(16, 36))
 })
 
+test('SHARC instruction patch requires exact unique stock load', () => {
+  const data = bytes(corpus.parse_cases.find((c: {name: string}) => c.name === 'original_protected_load').hex)
+  const p = { ...synthetic, decodedSha256: sha(data), patchRanges: [[0x20001000, 0x20001004] as [number, number]] }
+  const patched = sharc.insert(data, p, [], [], [[0x20001000, bytes('0506'), bytes('aabb')]])
+  assert.equal(Buffer.from(patched.subarray(84, 88)).toString('hex'), 'aabb0708')
+  refusal(() => sharc.insert(data, p, [], [], [[0x20001000, bytes('0006'), bytes('aabb')]]),
+    'SHARC patch stock instruction does not match')
+  refusal(() => sharc.insert(data, { ...p, patchRanges: [] }, [], [], [[0x20001000, bytes('0506'), bytes('aabb')]]),
+    'SHARC patch is outside the profile patch range')
+  refusal(() => sharc.insert(original, { ...p, decodedSha256: sha(original) }, [], [], [[0x20001000, bytes('0506'), bytes('aabb')]]),
+    'SHARC patch needs one unambiguous stock load')
+})
+
 test('SHARC owner-stock exact no-op', { skip: !process.env.ELEKLOADER_DN2_SYX }, async () => {
   const raw = readFileSync(process.env.ELEKLOADER_DN2_SYX!)
   const [parsed, device, release] = await formats.load(raw)
@@ -105,6 +118,10 @@ test('SHARC owner-stock exact no-op', { skip: !process.env.ELEKLOADER_DN2_SYX },
     .map(r => sharc.byteSpan(profile, r.target, r.count, 'loader-byte', false))
   assert.equal(spans.reduce((n, [a, b], i) => n + spans.slice(i+1).filter(([c, d]) => a < d && c < b).length, 0), 15)
   refusal(() => sharc.insert(decoded, profile, [], [[0x20090000, 4, 0]]), 'SHARC new load or fill is outside the profile-owned ranges')
+  const patched = sharc.insert(decoded, profile, [], [], [[0x2838489a, bytes('8715ffff78ff'), bytes('3e06160006eb')]])
+  const changed = [...decoded.keys()].filter(i => decoded[i] !== patched[i])
+  assert.equal(changed.length, 6)
+  assert.equal(Buffer.from(patched.subarray(changed[0], changed[0] + 6)).toString('hex'), '3e06160006eb')
   const outputs = formats.write(parsed, parsed.stored.get(device.mainSection)!, device)
   assert.deepEqual(Buffer.from(outputs.syx), raw)
   formats.verify(outputs, parsed, formats.mainImage(parsed, device), device)

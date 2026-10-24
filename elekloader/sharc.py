@@ -132,11 +132,11 @@ def _header(flags, target, count, argument):
     return bytes(raw)
 
 
-def insert(stream, profile, *, loads=(), fills=()):
+def insert(stream, profile, *, loads=(), fills=(), patches=()):
     """Insert once before FINAL; load tuples are (address, bytes), fills (address, count, word).
 
-    Only profile-owned loader-byte ranges are eligible. DN2 currently grants
-    the inert app interval; the bridge and hook remain outside that grant.
+    New records use owned ranges; an exact stock instruction may be replaced
+    only at a separately qualified patch range.
     """
     records = parse(stream, profile)
     if sha(stream) != profile['decoded_sha256']:
@@ -152,8 +152,25 @@ def insert(stream, profile, *, loads=(), fills=()):
             raise ModError('SHARC fill word must be uint32')
         spans.append((target, count))
         additions.append((FILL, target, count, word, b''))
-    if not additions:
+    if not additions and not patches:
         return bytes(stream)
+    patched = bytearray(stream)
+    for target, old, new in patches:
+        if not isinstance(old, bytes) or not isinstance(new, bytes) or not old or len(old) != len(new) \
+                or target % 2 or len(old) % 2:
+            raise ModError('SHARC patch needs equal nonempty instruction bytes')
+        lo, hi = byte_span(profile, target, len(old), check_protected=False)
+        if not any(start <= lo and hi <= end for start, end in profile.get('patch_ranges', ())):
+            raise ModError('SHARC patch is outside the profile patch range')
+        overlaps = [r for r in records if r.flags in (LOAD, FILL)
+                    and r.target < hi and lo < r.target + r.count]
+        if len(overlaps) != 1 or overlaps[0].flags != LOAD \
+                or not (overlaps[0].target <= lo and hi <= overlaps[0].target + overlaps[0].count):
+            raise ModError('SHARC patch needs one unambiguous stock load')
+        at = overlaps[0].offset + 16 + lo - overlaps[0].target
+        if patched[at:at + len(old)] != old:
+            raise ModError('SHARC patch stock instruction does not match')
+        patched[at:at + len(old)] = new
     occupied = [byte_span(profile, r.target, r.count, check_protected=False)
                 for r in records if r.flags in (LOAD, FILL)]
     for target, count in spans:
@@ -173,8 +190,8 @@ def insert(stream, profile, *, loads=(), fills=()):
         raise ModError('SHARC FIRST distance overflows uint32')
     inserted = b''.join(_header(flags, target, count, word) + data
                         for flags, target, count, word, data in additions)
-    result = b''.join((stream[:first.offset], _header(FIRST, first.target, 0, first.argument + extra),
-                       stream[first.offset + 16:records[-1].offset], inserted, records[-1].raw))
+    result = b''.join((patched[:first.offset], _header(FIRST, first.target, 0, first.argument + extra),
+                       patched[first.offset + 16:records[-1].offset], inserted, records[-1].raw))
     parse(result, profile)
     return result
 

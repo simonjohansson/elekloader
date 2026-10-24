@@ -105,7 +105,8 @@ function join(chunks: Uint8Array[]): Uint8Array {
 
 /** One insertion before FINAL. Only the profile's qualified loader-byte ranges are eligible. */
 export function insert(stream: Uint8Array, profile: SharcProfile,
-  loads: [number, Uint8Array][] = [], fills: [number, number, number][] = []): Uint8Array {
+  loads: [number, Uint8Array][] = [], fills: [number, number, number][] = [],
+  patches: [number, Uint8Array, Uint8Array][] = []): Uint8Array {
   const records = parse(stream, profile)
   if (sha(stream) !== profile.decodedSha256) throw new ModError('SHARC stock DSP hash does not match the profile')
   const additions: [number, number, number, number, Uint8Array][] = [], spans: [number, number][] = []
@@ -119,7 +120,23 @@ export function insert(stream: Uint8Array, profile: SharcProfile,
     spans.push([target, count])
     additions.push([FILL, target, count, word, new Uint8Array()])
   }
-  if (!additions.length) return Uint8Array.from(stream)
+  if (!additions.length && !patches.length) return Uint8Array.from(stream)
+  const patched = Uint8Array.from(stream)
+  for (const [target, old, replacement] of patches) {
+    if (!(old instanceof Uint8Array) || !(replacement instanceof Uint8Array) || !old.length ||
+      old.length !== replacement.length || target % 2 || old.length % 2)
+      throw new ModError('SHARC patch needs equal nonempty instruction bytes')
+    const [lo, hi] = byteSpan(profile, target, old.length, 'loader-byte', false)
+    if (!profile.patchRanges?.some(([start, end]) => start <= lo && hi <= end))
+      throw new ModError('SHARC patch is outside the profile patch range')
+    const overlaps = records.filter(r => (r.flags === LOAD || r.flags === FILL) && r.target < hi && lo < r.target + r.count)
+    if (overlaps.length !== 1 || overlaps[0].flags !== LOAD || overlaps[0].target > lo || hi > overlaps[0].target + overlaps[0].count)
+      throw new ModError('SHARC patch needs one unambiguous stock load')
+    const at = overlaps[0].offset + 16 + lo - overlaps[0].target
+    if (!patched.subarray(at, at + old.length).every((b, i) => b === old[i]))
+      throw new ModError('SHARC patch stock instruction does not match')
+    patched.set(replacement, at)
+  }
   const occupied = records.filter(r => r.flags === LOAD || r.flags === FILL).map(r => byteSpan(profile, r.target, r.count, 'loader-byte', false))
   for (const [target, count] of spans) {
     const [lo, hi] = byteSpan(profile, target, count)
@@ -135,8 +152,8 @@ export function insert(stream: Uint8Array, profile: SharcProfile,
   const first = records.findLast(r => r.flags === FIRST)!
   if (first.argument + extra > 0xffffffff) throw new ModError('SHARC FIRST distance overflows uint32')
   const inserted = additions.flatMap(([flags, target, count, word, data]) => [header(flags, target, count, word), data])
-  const result = join([stream.subarray(0, first.offset), header(FIRST, first.target, 0, first.argument + extra),
-    stream.subarray(first.offset + 16, records.at(-1)!.offset), ...inserted, records.at(-1)!.raw])
+  const result = join([patched.subarray(0, first.offset), header(FIRST, first.target, 0, first.argument + extra),
+    patched.subarray(first.offset + 16, records.at(-1)!.offset), ...inserted, records.at(-1)!.raw])
   parse(result, profile)
   return result
 }

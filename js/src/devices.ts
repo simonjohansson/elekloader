@@ -23,6 +23,7 @@ export type SharcProfile = {
   ddrBytes: Range
   protected: [number, number, string][]         // loader-byte exclusions
   ownedRanges: Range[]                         // qualified loader-byte intervals only
+  patchRanges?: Range[]                        // exact stock instruction intervals
   abi?: string
   appRange?: Range
   coreRange?: Range
@@ -235,6 +236,7 @@ export const DIGITONE_MK2: Device = {
         abi: 'dn2-master-mono32-v1', appRange: [0x282dda00, 0x282dde00],
         coreRange: [0x282dd600, 0x282dda00], stackMax: 544,
         ownedRanges: [[0x282dda00, 0x282dde00]],
+        patchRanges: [[0x2838489a, 0x283848a0]],
       },
     },
   ],

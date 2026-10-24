@@ -70,6 +70,15 @@ original byte remains exact. The result is parsed again before it is returned.
 The exact-stock hash also prevents accidentally appending to a previous result.
 Calling with no additions returns the original bytes unchanged.
 
+The active DN2 H1 bridge additionally needs one six-byte instruction replaced
+inside a stock LOAD record. `insert(..., patches=...)` takes loader-byte
+`(address, expected_stock_bytes, replacement_bytes)` tuples. The decoded
+stock hash is checked first; the range must be explicitly listed in the
+device profile, exactly match the expected bytes, and belong to one
+unambiguous LOAD record. The record header, size, order and every other stock
+byte stay unchanged. This does not make arbitrary overwrites or boot-phase
+overlay records available to mods.
+
 The production DN2 profile has **no owned ranges**, so it refuses every
 nonempty insertion. The test profile explicitly grants a tiny synthetic L2
 interval. Runtime qualification in #35 and integration in #37 must establish

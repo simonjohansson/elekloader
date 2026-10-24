@@ -142,18 +142,19 @@ class SharcTests(unittest.TestCase):
 
     def test_prelinked_inert_payload_boundaries(self):
         artifact = json.loads((Path(__file__).parents[1] / 'examples/sharc-sine/sine.sharc.json').read_text())
+        artifact['entries'], artifact['stack_bytes'] = None, 0
         payload = sharc.module_payload(artifact, PROFILE)
         self.assertEqual(payload['owner'], PROFILE['app_range'])
         self.assertIsNone(payload['entries'])
         for change, message in (
                 (lambda d: d['segments'][0].update(offset_bytes=4),
                  'SHARC payload has a gap or overlap in its owner'),
-                (lambda d: d['zero'][1].update(size_bytes=364),
+                (lambda d: d['zero'][0].update(size_bytes=364),
                  'SHARC zero range is unaligned or exceeds its owner'),
                 (lambda d: d.update(stack_bytes=1),
                  'inert SHARC payload must declare zero stack'),
                 (lambda d: d.update(entries={'init_offset_bytes': 0,
-                                               'render_offset_bytes': 424}),
+                                               'render_offset_bytes': 512}),
                  'SHARC entry is not in owned code')):
             bad = copy.deepcopy(artifact)
             change(bad)
@@ -163,6 +164,7 @@ class SharcTests(unittest.TestCase):
     def test_inert_section_round_trip_keeps_other_sections(self):
         stock, dev, _rel = formats.load(STOCK)
         artifact = json.loads((Path(__file__).parents[1] / 'examples/sharc-sine/sine.sharc.json').read_text())
+        artifact['entries'], artifact['stack_bytes'] = None, 0
         payload = sharc.module_payload(artifact, PROFILE)
         base = payload['owner'][0]
         stream = sharc.insert(stock.section(7), PROFILE,

@@ -520,14 +520,14 @@ smaller core-only CO02 build then flashed and booted successfully (below).
   copy of the seed and constant (`0x40210a4a`, `0x4021b9ef`), which give
   the same key. The writer reproduces the stock file byte for byte, seal
   included; the profile also knows Elektron's zip of it.
-- **Inert SHARC app gate.** The profile grants only loader-byte
-  `[0x282dda00,0x282dde00)` for one prelinked app in section 7. Its
-  neighboring H1 bridge/hook is not installed. The SDK, linker, writer and
-  independent verifier check the exact stock DSP stream, app coverage,
-  section budgets, HMAC and untouched sections. The
-  [starter](../examples/sharc-sine/README.md) builds and patches without a
-  SHARC compiler, but does not play audio. The active bridge and physical
-  sine are separate [#41](https://github.com/simonjohansson/elekloader/issues/41).
+- **SHARC fixed-sine gate.** The profile grants loader-byte
+  `[0x282dd600,0x282dde00)` for the checked-in 1 KiB core bridge and 1 KiB
+  prelinked app in section 7, and separately grants the exact six-byte H1
+  instruction patch. Only their qualified code/data hashes and entry/stack
+  declarations can activate the hook. The SDK, linker, writer and independent
+  verifier check the stock DSP stream, coverage, budgets, HMAC and untouched
+  sections. The [starter](../examples/sharc-sine/README.md) uses no SHARC
+  compiler during build; physical audio remains [#41](https://github.com/simonjohansson/elekloader/issues/41).
 - **Staging.** The bootstrap is the Digitakt II 1.17's code instruction for
   instruction, at the same addresses: the loader `0x80000596` reads section
   3 from flash at its container offset + `0x80000` to `0x40400000`, and the

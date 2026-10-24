@@ -341,10 +341,23 @@ export function check(mods: Mod2[], image: Uint8Array): string[] {
         bad.push(`${m.label()} needs core ${m.needsCore} or newer, and this build has core ${cores[0].version}`)
   }
   const sharcApps = mods.filter(m => m.sharc && !m.sections.has('.boot'))
-  if (cores.some(m => m.sharc)) bad.push('SHARC core bridge installation awaits the active-audio gate')
   if (sharcApps.length > 1) bad.push('only one SHARC application may own the DN2 reservation')
-  if (sharcApps.some(m => m.sharc!.entries !== null))
-    bad.push('active SHARC application requires a qualified matching core bridge')
+  for (const app of sharcApps) {
+    if (app.sharc!.entries === null) continue
+    const core = cores.length === 1 ? cores[0] : null
+    if (!core?.sharc) { bad.push('active SHARC application requires a qualified matching core bridge'); continue }
+    const profile = app.rel.sharc!
+    for (const [role, mod, qualified] of [['core', core, profile.activeCore], ['app', app, profile.activeApp]] as const) {
+      const payload = mod.sharc!
+      const entriesMatch = Object.keys(qualified?.entries ?? {}).length === Object.keys(payload.entries ?? {}).length &&
+        Object.entries(qualified?.entries ?? {}).every(([name, value]) => payload.entries?.[name] === value)
+      if (!qualified || JSON.stringify(payload.segments.map(([off, kind, data]) => [off, kind, sha(data)])) !== JSON.stringify(qualified.segments)
+        || JSON.stringify(payload.zero) !== JSON.stringify(qualified.zero)
+        || !entriesMatch || payload.stackBytes !== qualified.stackBytes)
+        bad.push(`${mod.label()} has unqualified active SHARC ${role} bytes or entry`)
+    }
+    if (core.sharc.stackBytes + app.sharc!.stackBytes > profile.stackMax!) bad.push('active SHARC stack exceeds the profile limit')
+  }
   const owner = new Map<string, Mod2>()
   for (const m of mods) {
     for (const x of m.exports) {
@@ -490,7 +503,7 @@ export type Layout = {
   reserve?: { units: number; end: number }   // a core sized to the mods: the pages it takes, and where they end
   dsp?: Record<string, DspLayout>              // words: P addresses of each payload's area
   sharc?: { owner: [number, number]; decoded: number; decoded_sha256: string;
-    stored: number; stored_sha256: string; app: string }
+    stored: number; stored_sha256: string; app: string; core?: [number, number]; hook?: number }
 }
 
 export type Linked = {
@@ -530,11 +543,25 @@ export function link(mods: Mod2[], image: Uint8Array, lock: store.Lock | null = 
   let dspStream: Uint8Array | null = null, dspStored: Uint8Array | null = null
   if (sharcApps.length) {
     if (sharcStream === null) throw new ModError('SHARC application needs the stock section-7 stream')
-    if (core.sharc) throw new ModError('SHARC core bridge installation awaits the active-audio gate')
     const payload = sharcApps[0].sharc!, base = payload.owner[0]
+    let loads: [number, Uint8Array][] = payload.segments.map(([off, , data]) => [base + off, data])
+    let fills: [number, number, number][] = payload.zero.map(([off, count]) => [base + off, count, 0])
+    let patches: [number, Uint8Array, Uint8Array][] = []
+    if (payload.entries !== null) {
+      const bridge = core.sharc!
+      const [aliasLo, , aliasBase] = rel.sharc!.l1Aliases[1]
+      const pc16 = (off: number) => Math.floor((aliasLo + base + off - aliasBase) / 2)
+      const binding = new Uint8Array(12), words = new DataView(binding.buffer)
+      words.setUint32(0, pc16(payload.entries.init_offset_bytes), true)
+      words.setUint32(4, pc16(payload.entries.render_offset_bytes), true)
+      const coreBase = bridge.owner[0]
+      loads = [[coreBase, binding], ...bridge.segments.map(([off, , data]) => [coreBase + off, data] as [number, Uint8Array]), ...loads]
+      fills = [...bridge.zero.map(([off, count]) => [coreBase + off, count, 0] as [number, number, number]), ...fills]
+      const [site, old, replacement] = rel.sharc!.hook!
+      patches = [[site, hexBytes(old, 'SHARC stock hook'), hexBytes(replacement, 'SHARC bridge hook')]]
+    }
     dspStream = sharcRecords.insert(sharcStream, rel.sharc!,
-      payload.segments.map(([off, , data]) => [base + off, data]),
-      payload.zero.map(([off, count]) => [base + off, count, 0]))
+      loads, fills, patches)
     dspStored = syx.packMain(dspStream)
     if (dspStored.length > rel.sharc!.storedMax) throw new ModError('SHARC stored section exceeds the profile limit')
   }
@@ -877,6 +904,10 @@ export function link(mods: Mod2[], image: Uint8Array, lock: store.Lock | null = 
   if (sharcApps.length) layout.sharc = { owner: sharcApps[0].sharc!.owner,
     decoded: dspStream!.length, decoded_sha256: sha(dspStream!),
     stored: dspStored!.length, stored_sha256: sha(dspStored!), app: sharcApps[0].id }
+  if (sharcApps.length && sharcApps[0].sharc!.entries !== null) {
+    layout.sharc!.core = core.sharc!.owner
+    layout.sharc!.hook = rel.sharc!.hook![0]
+  }
   if (units !== null) layout.reserve = { units, end: ddrBase + units * dev.reserve![0] }   // the reserve the core takes
   if (areas.size) {
     const dspOut: Record<string, DspLayout> = {}

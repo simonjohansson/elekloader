@@ -12,6 +12,14 @@ PERSONALIZE builder ends the same way. There is no `fast.s` (SRAM is not
 qualified, so there is no `.fast` area) and no `render.s` (the audio renders
 on the DSP).
 
+`bridge.sharc.json` is the checked-in prelinked H1 audio bridge. The linker
+installs it and the exact six-byte stock hook only when a qualified active
+SHARC app is selected. Core-only and inert-app builds leave stock DSP audio
+unchanged. The first active app is
+[the fixed sine](../../examples/sharc-sine/README.md); physical audio
+qualification is tracked in #41. Building this core still needs only its
+normal ColdFire toolchain, not a SHARC compiler.
+
 - **At boot** (the OS entry's call at 0x40000538, which called 0x400019b0,
   the Digitakt II's: it sets the VBR to 0x40000000 and returns), `boot`
   copies the RAM image the linker built to the device's DDR area

@@ -78,13 +78,21 @@ DEVICE = Device(
                               (0x282ec000, 0x282f0000, 'L1 block 1 cache'),
                               (0x2831c000, 0x28320000, 'L1 block 2 cache'),
                               (0x2839c000, 0x283a0000, 'L1 block 3 cache')),
-                # #37's inert app; #41 grants the fixed H1 instruction separately.
+                # #41's 2 KiB H1 bridge/app reservation; patch range is separate.
                 'abi': 'dn2-master-mono32-v1',
                 'app_range': (0x282dda00, 0x282dde00),
                 'core_range': (0x282dd600, 0x282dda00),
                 'stack_max': 544,
-                'owned_ranges': ((0x282dda00, 0x282dde00),),
+                'owned_ranges': ((0x282dd600, 0x282dde00),),
                 'patch_ranges': ((0x2838489a, 0x283848a0),),
+                'active_core': {'segments': ((12, 'code', 'f4ed9cb989f57e603433d7efa650129e81776effacca150433716edfac71a806'),),
+                                'zero': (),
+                                'entries': {'hook_offset_bytes': 12}, 'stack_bytes': 116},
+                'active_app': {'segments': ((0, 'code', 'a8d3c376c72083c7ac290482c5ae6fe472d7e279e903cf27c5321f213ea70246'),
+                                            (512, 'data', '17f735313bf151356989a7b29ec0cab9ea189a59062f5e22ab521d6f40946c9f')),
+                               'zero': ((664, 360),),
+                               'entries': {'init_offset_bytes': 320, 'render_offset_bytes': 370}, 'stack_bytes': 84},
+                'hook': (0x2838489a, '8715ffff78ff', '3e06160006eb'),
             })
     },
     main_section=3,

@@ -4,8 +4,9 @@
 observed in Digitone II OS 1.12. They preserve original headers, payloads,
 ordering and legal boot-phase overwrites. This is the record layer for
 [#32](https://github.com/simonjohansson/elekloader/issues/32), with the release
-facts from [the DN2 profile](SHARC-DN2.md). It does not enable a SHARC mod or
-change the outer firmware writer, SDK, mod format or Octatrack DSP path.
+facts from [the DN2 profile](SHARC-DN2.md). The later #37/#41 integration
+uses it for the prelinked app and H1 bridge without changing the Octatrack DSP
+path.
 
 The implementations are original. The format reference is the
 [ADI ADSP-2156x Hardware Reference, boot chapter](https://www.analog.com/media/en/dsp-documentation/processor-manuals/adsp-2156x_hwr.pdf).
@@ -79,16 +80,15 @@ unambiguous LOAD record. The record header, size, order and every other stock
 byte stay unchanged. This does not make arbitrary overwrites or boot-phase
 overlay records available to mods.
 
-The production DN2 profile has **no owned ranges**, so it refuses every
-nonempty insertion. The test profile explicitly grants a tiny synthetic L2
-interval. Runtime qualification in #35 and integration in #37 must establish
-the eventual reservation and consumer path; a capacity map or boot-unloaded
-interval alone cannot grant memory.
+The DN2 OS 1.12 profile grants only the observed 2 KiB H1 bridge/app
+reservation and one separately checked six-byte stock instruction patch. The
+test profile grants a tiny synthetic L2 interval. A capacity map or
+boot-unloaded interval alone does not grant memory; the active bridge and sine
+remain bounded to exact qualified hashes during the #41 physical gate.
 
-The reader and insertion enforce the profile's decoded-stream budget. Stored
-section size, outer transfer/flash limits, compression, seal verification and
-permitted stock code patches belong to the later container integration. No
-modified stock firmware is emitted by this slice.
+The reader and insertion enforce the profile's decoded-stream budget. The
+container writer separately checks stored size, transfer/flash limits,
+compression and seal verification. The #32 tests alone emit no firmware.
 
 ## Tests
 

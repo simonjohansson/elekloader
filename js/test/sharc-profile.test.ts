@@ -5,11 +5,12 @@ import { DIGITONE_MK2, devices } from '../src/devices.ts'
 
 const profile = DIGITONE_MK2.releases[0].sharc!
 
-test('DN2 SHARC profile grants only the inert app reservation', () => {
+test('DN2 SHARC profile grants the H1 core and app reservation', () => {
   assert.equal(profile.processor, 'ADSP-21569')
   assert.equal(profile.isa, 'sharc+-visa')
   assert.equal(profile.siliconRevision, null)
-  assert.deepEqual(profile.ownedRanges, [[0x282dda00, 0x282dde00]])
+  assert.deepEqual(profile.ownedRanges, [[0x282dd600, 0x282dde00]])
+  assert.deepEqual(profile.patchRanges, [[0x2838489a, 0x283848a0]])
   assert.equal(profile.abi, 'dn2-master-mono32-v1')
   assert.deepEqual(DIGITONE_MK2.dspPayloads, {})
   assert.deepEqual(devices().flatMap(d => d.releases.filter(r => r.sharc).map(r => [d.key, r.version])),
@@ -32,7 +33,7 @@ test('DN2 address units and capacity endpoints remain distinct', () => {
   assert.equal(base + 2 * (0xb89c53 - lo), 0x200138a6)
   assert.ok(profile.protected.some(([a, b]) => a <= 0x200fe000 && 0x200fe000 < b))
   assert.equal(profile.protected.some(([a, b]) => a <= 0x282dd600 && 0x282dd600 < b), false)
-  assert.equal(profile.ownedRanges.some(([a, b]) => a <= 0x282dd600 && 0x282dd600 < b), false)
+  assert.equal(profile.ownedRanges.some(([a, b]) => a <= 0x282dd600 && 0x282dd600 < b), true)
 })
 
 test('DN2 transport, flash, stored and decoded DSP have independent budgets', () => {

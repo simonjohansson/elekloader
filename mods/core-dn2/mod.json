@@ -4,6 +4,7 @@
  "title": "core", "category": "Framework", "author": "irpina",
  "description": "The boot copier and the hook bus for the Digitone II: every other mod needs it. On its own it changes nothing the unit does.",
  "device": "digitone-mk2", "os": "1.12",
+ "sharc": {"artifact": "bridge.sharc.json"},
  "sources": ["../core/core.s", "../core/settings.s", "../core-dt2/personalize.s",
              "input.c", "input.s", "sysex.s"],
  "defsym": {

@@ -332,7 +332,8 @@ of every live stock register.
 
 PC dumps omit full DAG/bank/stack state. Change-only watches miss reads,
 same-value stores and transient writes. Neither establishes ownership of the
-candidate `[0x2dd600,0x2dde00)`. The device profile must retain empty
-`owned_ranges` until the bounded access investigation and integration
-contract justify a reservation. Physical output and instruction visibility
-remain #41's device gate, with key tracking following in #47.
+candidate `[0x2dd600,0x2dde00)`. The bounded access investigation and
+integration contract now grant only that fixed bridge/app reservation and the
+exact H1 patch for #41's sine. This still does not prove physical instruction
+visibility, interrupt timing or audio. Those remain #41's device gate, with
+key tracking following in #47.

@@ -71,7 +71,7 @@ A format-2 mod is a relocatable object:
 | `storage` | fields this mod keeps with the project: `[{"sym", "scope", "bits"}]` (the Analog Rytm MKII from core-ar2 0.2, the Analog Four MKII from core-a4 0.1; "Mod storage" below) |
 | `sharc` | Digitone II 1.12 only: a prelinked SHARC+ app with the exact envelope below |
 
-### Digitone II SHARC app (inert gate)
+### Digitone II SHARC app
 
 The SDK accepts `"sharc": {"artifact": "sine.sharc.json"}` in a mod's
 `mod.json`. The path must stay inside that mod folder. The artifact becomes
@@ -85,11 +85,18 @@ Each zero range has `offset_bytes` and `size_bytes`. Segments and zero ranges
 must be nonempty, four-byte aligned, disjoint, and together cover every byte
 of the profiled 1 KiB app reservation at loader address
 `[0x282dda00,0x282dde00)`. Offsets are relative to that reservation.
-For the current inert gate, `entries` must be `null` and `stack_bytes` zero.
-An active app or SHARC core bridge is refused until the audio gate in
-[#41](https://github.com/simonjohansson/elekloader/issues/41) qualifies it.
+An inert app may still use `entries:null` and `stack_bytes:0`. The active
+fixed-sine starter declares init/render offsets 320/370 and 84 stack bytes.
+The matching core supplies a separate 1 KiB bridge artifact with a hook entry
+at offset 12 and 116 stack bytes. The linker binds the two PC16 callback
+addresses itself; neither app may supply core binding bytes or stock patches.
+For this first device gate, only the exact bridge and sine code/data hashes in
+the DN2 profile are accepted. Other active code is refused pending its own
+qualification in [#41](https://github.com/simonjohansson/elekloader/issues/41).
 Only one SHARC app may be selected. The linker checks stock section 7 by
-hash before adding the app's ordered LOAD/FILL records; the independent
+hash before adding the app's and core's ordered LOAD/FILL records. The active
+path additionally replaces one exact six-byte H1 instruction inside its
+existing stock LOAD; the independent
 writer verifier checks the decoded stream, section sizes, HMAC, all outer
 budgets, and unchanged stock sections. A mod without `sharc` retains the
 existing byte-exact build path.

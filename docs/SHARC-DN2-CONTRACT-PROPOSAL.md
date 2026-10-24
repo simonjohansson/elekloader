@@ -1,8 +1,8 @@
 # Proposed DN2 SHARC sine contract (#36)
 
-**Approved contract, 24 October 2026. The inert app slice is implemented in
-#37; the active bridge, callback dispatch and device audio remain proposed for
-#41.** This replaces the older synthetic sizing and
+**Approved contract, 24 October 2026. The inert app slice was implemented in
+#37; #41 now has a fixed active bridge and sine candidate, while device audio
+qualification remains open.** This replaces the older synthetic sizing and
 incoming-R4 assumptions retained in [#36](https://github.com/simonjohansson/elekloader/issues/36).
 The first target is DN2 OS 1.12 and one fixed, key-independent 440 Hz sine.
 Playback on hardware is a separate gate, [#41](https://github.com/simonjohansson/elekloader/issues/41).
@@ -47,8 +47,8 @@ python -m elekloader.lint examples/sharc-sine/out/sharc-sine-0.1.elemod --stock 
 python -m elekloader.patch --stock "$DN2_STOCK" --mod "$DN2_CORE" --mod examples/sharc-sine/out/sharc-sine-0.1.elemod --out sine.syx --version SN01
 ```
 
-These commands work for the inert artifact on this branch. Its bytes are
-installed in section 7 but never called by an audio hook.
+These commands now build the exact active fixed-sine candidate. Hardware
+playback evidence is recorded separately in #41.
 The end user supplies stock OS and matching core/mod files as for other
 devices; no compiler, native linker, remote service or extra DSP patch step
 is involved. The same parsed `.elemod` must work in Python and TypeScript.
@@ -66,10 +66,7 @@ format-2 `.elemod`. Its initial ABI name is `dn2-master-mono32-v1`:
     {"offset_bytes": 0, "kind": "code", "hex": "<loader-order bytes>"},
     {"offset_bytes": 512, "kind": "data", "hex": "<data bytes>"}
   ],
-  "zero": [
-    {"offset_bytes": 424, "size_bytes": 88},
-    {"offset_bytes": 664, "size_bytes": 360}
-  ],
+  "zero": [{"offset_bytes": 664, "size_bytes": 360}],
   "entries": {"init_offset_bytes": 320, "render_offset_bytes": 370},
   "stack_bytes": 84
 }
@@ -78,7 +75,7 @@ format-2 `.elemod`. Its initial ABI name is `dn2-master-mono32-v1`:
 The hex placeholders make this a **shape example**, not an installable file.
 The app's measured linked map has 424 code bytes at core-byte `0x2dda00`,
 152 data bytes at `0x2ddc00`, init PC16 `0x16eda0`, render PC16 `0x16edb9`,
-and both the 88-byte code/data gap and the remaining 360 bytes zero-filled.
+with 88 bytes of NOP code guard before data and 360 bytes of zero state.
 The displayed entry offsets are
 relative **byte** offsets: `(0x16eda0 - 0x16ed00) * 2 = 320`, and render is
 `370`. The measured bridge saves consume **116 bytes**, and its call into the
@@ -86,19 +83,20 @@ application consumes at most **84 more bytes**, for **200 bytes** total in
 the borrowed H1 stack frame. The core declares `stack_bytes:116`; the app
 declares `stack_bytes:84`. `stack_bytes` is a declared contribution checked
 against the profile; it is not proof of an arbitrary executable's behavior.
-The first physical run must pin the exact qualified artifact hashes and check
-the bound against observed state before enabling a wider set of apps.
+The first candidate pins the exact qualified artifact bytes, placement and
+zero state. Physical playback must still check the bound against observed
+state before enabling a wider set of apps.
 
 For this ABI, the core's fixed 1 KiB owner is `[0x2dd600,0x2dda00)` and the
 app's fixed 1 KiB owner is `[0x2dda00,0x2dde00)`, expressed here as **core
 bytes**. The corresponding loader aliases are `0x282dd600` and `0x282dda00`;
-the code PCs use 16-bit parcels (`core_byte / 2`). The existing candidate is
-approved only for the inert app slice: the device profile owns its upper 1 KiB
-while the core bridge's lower 1 KiB remains unowned. The profile, never an
-author offset, grants ownership.
-The app code, data and zero fill above exactly cover its owner. The core owns
-the 12-byte binding at its offset 0, its 548-byte bridge at offset 12, and
-zero-fills the rest of its owner. The H1 jump is core-owned and only installed
+the code PCs use 16-bit parcels (`core_byte / 2`). The active candidate grants
+both 1 KiB owners only for the hash-pinned first bridge and sine. The profile,
+never an author offset, grants ownership.
+The active artifact uses NOP padding for the code guards, then data and zero
+state fill to cover its owner. The core owns the 12-byte binding at offset 0,
+its 548-byte bridge at offset 12, and NOP-fills the rest. The H1 jump is
+core-owned and only installed
 with a matching active app. No author-supplied stock code or loader header is
 accepted.
 
@@ -106,7 +104,7 @@ All segment starts and lengths are four-byte aligned. Code hex is the
 variable-width SHARC+ instruction byte stream in **loader order**, not raw
 Selache ELF parcel order; data bytes are unchanged. Entry offsets may be
 two-byte aligned and must point into the owner's code segment. Checking
-decoded instruction starts is part of the future active-app gate. Every range
+decoded instruction starts is part of qualifying this pinned active candidate. Every range
 must be nonempty, in bounds, disjoint and free of
 protected aliases. Reject malformed hex, missing or unknown keys, booleans
 as integers, wrong ABI, instruction decode gaps, wrong entry kinds, or a
@@ -123,12 +121,11 @@ not producer labels.
 The core artifact uses the same envelope but a core-only
 `entries:{"hook_offset_bytes":12}`. An inert app uses `entries:null` and
 `stack_bytes:0`, with real bounded segments. An active app requires the
-matching bridge and both callbacks; otherwise patching refuses. In the
-implemented inert slice, the ordinary core is still required as for every
-format-2 mod, but it installs no SHARC hook or entry binding. With no app,
+matching bridge and both callbacks; otherwise patching refuses. An inert app
+still installs no SHARC hook or entry binding. With no app,
 section 7 stays byte-identical to stock. One inert app can exercise section-7
-installation while stock audio remains untouched. A SHARC-capable core and
-entry-word binding belong to #41.
+installation while stock audio remains untouched. The SHARC-capable core and
+entry-word binding are implemented for the pinned #41 candidate.
 
 ## Callback and installation boundary
 

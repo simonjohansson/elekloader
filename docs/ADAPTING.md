@@ -51,13 +51,13 @@ artifact in the mod folder. Building the mod needs no SHARC compiler:
 ```sh
 python -m elekloader.sdk.build examples/sharc-sine --stock "$DN2_STOCK"
 python -m elekloader.lint examples/sharc-sine/out/sharc-sine-0.1.elemod --stock "$DN2_STOCK" --with "$DN2_CORE" --json
-python -m elekloader.patch --stock "$DN2_STOCK" --mod "$DN2_CORE" --mod examples/sharc-sine/out/sharc-sine-0.1.elemod --out sine-inert.syx --version SN01
+python -m elekloader.patch --stock "$DN2_STOCK" --mod "$DN2_CORE" --mod examples/sharc-sine/out/sharc-sine-0.1.elemod --out sine.syx --version SN01
 ```
 
 The first build prints `BUILT`, lint reports `"ok": true`, and patch prints
-`verified: sections 2, 4, 5, 8, byte for byte`. This artifact is deliberately
-inert: section 7 carries the sine code, but no DSP hook calls it, so it is
-not a playable sine. [The starter](../examples/sharc-sine/README.md) explains
+`verified: sections 2, 4, 5, 8, byte for byte`. The checked-in artifact
+connects the fixed sine to the SHARC master block; physical audio qualification
+is tracked in #41. [The starter](../examples/sharc-sine/README.md) explains
 its source and producer. A matching core `.elemod` remains necessary, as for
 other format-2 mods; building that core from source uses the ColdFire toolchain.
 

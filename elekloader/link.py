@@ -330,12 +330,25 @@ def check(mods, image):
                 bad.append('%s needs core %s or newer, and this build has core %s'
                            % (m.label(), m.needs_core, cores[0].version))
     sharc_apps = [m for m in mods if m.sharc and '.boot' not in m.sections]
-    if any(m.sharc for m in cores):
-        bad.append('SHARC core bridge installation awaits the active-audio gate')
     if len(sharc_apps) > 1:
         bad.append('only one SHARC application may own the DN2 reservation')
-    if any(m.sharc['entries'] is not None for m in sharc_apps):
-        bad.append('active SHARC application requires a qualified matching core bridge')
+    for app in sharc_apps:
+        if app.sharc['entries'] is None:
+            continue
+        core = cores[0] if len(cores) == 1 else None
+        if not core or not core.sharc:
+            bad.append('active SHARC application requires a qualified matching core bridge')
+            continue
+        profile = app.rel.sharc
+        for role, mod in (('core', core), ('app', app)):
+            payload, qualified = mod.sharc, profile['active_' + role]
+            if ([(off, kind, sha(data)) for off, kind, data in payload['segments']] != list(qualified['segments'])
+                    or payload['zero'] != list(qualified['zero'])
+                    or payload['entries'] != qualified['entries']
+                    or payload['stack_bytes'] != qualified['stack_bytes']):
+                bad.append('%s has unqualified active SHARC %s bytes or entry' % (mod.label(), role))
+        if core.sharc['stack_bytes'] + app.sharc['stack_bytes'] > profile['stack_max']:
+            bad.append('active SHARC stack exceeds the profile limit')
     owner = {}
     for m in mods:
         for x in m.exports:
@@ -515,13 +528,25 @@ def link(mods, image, lock=None, *, sharc_stream=None):
     if sharc_apps:
         if sharc_stream is None:
             raise ModError('SHARC application needs the stock section-7 stream')
-        if core.sharc:
-            raise ModError('SHARC core bridge installation awaits the active-audio gate')
         payload = sharc_apps[0].sharc
         base = payload['owner'][0]
+        loads = [(base + off, data) for off, _kind, data in payload['segments']]
+        fills = [(base + off, count, 0) for off, count in payload['zero']]
+        patches = []
+        if payload['entries'] is not None:
+            bridge = core.sharc
+            alias_lo, _alias_hi, alias_base = rel.sharc['l1_aliases'][1]
+            def pc16(off):
+                return (alias_lo + base + off - alias_base) // 2
+            binding = struct.pack('<III', pc16(payload['entries']['init_offset_bytes']),
+                                  pc16(payload['entries']['render_offset_bytes']), 0)
+            core_base = bridge['owner'][0]
+            loads = [(core_base, binding)] + [(core_base + off, data) for off, _kind, data in bridge['segments']] + loads
+            fills = [(core_base + off, count, 0) for off, count in bridge['zero']] + fills
+            site, old, new = rel.sharc['hook']
+            patches = [(site, bytes.fromhex(old), bytes.fromhex(new))]
         dsp_stream = sharc.insert(sharc_stream, rel.sharc,
-                                  loads=[(base + off, data) for off, _kind, data in payload['segments']],
-                                  fills=[(base + off, count, 0) for off, count in payload['zero']])
+                                  loads=loads, fills=fills, patches=patches)
         dsp_stored = syx.pack_main(dsp_stream)
         if len(dsp_stored) > rel.sharc['stored_max']:
             raise ModError('SHARC stored section exceeds the profile limit')
@@ -835,6 +860,9 @@ def link(mods, image, lock=None, *, sharc_stream=None):
         out.layout['sharc'] = {'owner': list(payload['owner']), 'decoded': len(dsp_stream),
                                'decoded_sha256': sha(dsp_stream), 'stored': len(dsp_stored),
                                'stored_sha256': sha(dsp_stored), 'app': sharc_apps[0].id}
+        if payload['entries'] is not None:
+            out.layout['sharc']['core'] = list(core.sharc['owner'])
+            out.layout['sharc']['hook'] = rel.sharc['hook'][0]
     out.store, out.store_notes = new_lock, store_notes
     if units is not None:                      # the reserve the core takes: units of dev.reserve
         out.layout['reserve'] = {'units': units, 'end': ddr_base + units * dev.reserve[0]}

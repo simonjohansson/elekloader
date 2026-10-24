@@ -30,11 +30,12 @@ def stock():
 
 
 class ProfileTests(unittest.TestCase):
-    def test_profile_grants_only_the_inert_app_reservation(self):
+    def test_profile_grants_the_h1_core_and_app_reservation(self):
         self.assertEqual(PROFILE['processor'], 'ADSP-21569')
         self.assertEqual(PROFILE['isa'], 'sharc+-visa')
         self.assertIsNone(PROFILE['silicon_revision'])
-        self.assertEqual(PROFILE['owned_ranges'], ((0x282dda00, 0x282dde00),))
+        self.assertEqual(PROFILE['owned_ranges'], ((0x282dd600, 0x282dde00),))
+        self.assertEqual(PROFILE['patch_ranges'], ((0x2838489a, 0x283848a0),))
         self.assertEqual(PROFILE['abi'], 'dn2-master-mono32-v1')
         self.assertEqual(DEVICE.dsp_payloads, {})  # OT/DSP56300 support remains separate.
         self.assertEqual([(d.key, r.version) for d in devices.devices()
@@ -56,8 +57,7 @@ class ProfileTests(unittest.TestCase):
         self.assertEqual(base + 2 * (0xb89c53 - lo), 0x200138a6)
         self.assertTrue(any(a <= 0x200fe000 < b for a, b, _ in PROFILE['protected']))
         self.assertFalse(any(a <= 0x282dd600 < b for a, b, _ in PROFILE['protected']))
-        # A candidate being outside exclusions is still not an ownership grant.
-        self.assertFalse(any(a <= 0x282dd600 < b for a, b in PROFILE['owned_ranges']))
+        self.assertTrue(any(a <= 0x282dd600 < b for a, b in PROFILE['owned_ranges']))
 
     def test_independent_transfer_and_dsp_budgets(self):
         self.assertEqual((PROFILE['stored_max'], PROFILE['decoded_max']), (0x100000, 0xfffff))

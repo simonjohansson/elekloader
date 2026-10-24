@@ -1,16 +1,18 @@
 # SHARC support: first DN2 build
 
-Work starts on `sharc`, based on `digitone-2-support` at
-`af1b4212a1e4444f161d333492313a980a5d92d2`. The first target is Digitone II OS
+Initial research started on `digitone-2-support` at
+`af1b4212a1e4444f161d333492313a980a5d92d2`; `sharc` has since been rebased
+onto merged `main`. The first target is Digitone II OS
 1.12 and the ADSP-21569 SHARC+ VISA instruction set. No silicon stepping has
 been observed; the profile records it as unknown. OS 1.12 and a compiler's
 `-proc ADSP-21569` switch do not identify the chip revision.
 
 The release's `sharc` metadata in `elekloader/devices/digitone_mk2.py` and
 `js/src/devices.ts` records identity, capacities, address views and exclusions.
-It grants only the 1 KiB inert app reservation at loader bytes
-`[0x282dda00,0x282dde00)` for a prelinked artifact. The adjacent bridge and
-H1 hook remain unowned until the active-audio gate. The Octatrack's
+It now grants the keyed L1 bridge/app reservations and the experimental
+32 KiB L2 app reservation. The [callback contract](SHARC-DN2-ABI.md) and
+[L2 evidence](SHARC-L2.md) describe current active support; the stock
+evidence procedure below remains independent of app execution. The Octatrack's
 `dsp_payloads` / DSP56300 path remains separate.
 
 ## Reproduce the stock evidence
@@ -95,11 +97,12 @@ unaligned load record. Normal-word addresses are not an artifact unit.
 The profile records four L1 capacity windows, an L2 byte window of
 `[0x20000000,0x20100000)` with its PC16 view, and the DDR byte window.
 Capacity and address equivalence never establish ownership. In particular,
-boot-unloaded L2 contains live firmware pointers, and the investigated 2 KiB
-L1 interval `[0x2dd600,0x2dde00)` has bounded idle/sounding frame evidence in
-[#35](https://github.com/simonjohansson/elekloader/issues/35). Only its upper
-1 KiB is currently owned for inert app records; the lower bridge interval
-remains unowned.
+raw pointer-like words in boot-unloaded L2 require operand/data
+classification; see the [updated analysis](SHARC-L2.md#evidence-and-uncertainty).
+The 2 KiB L1 interval `[0x2dd600,0x2dde00)` has bounded idle/sounding
+evidence in [#35](https://github.com/simonjohansson/elekloader/issues/35)
+and later active sine tests. Its lower 1 KiB holds the pinned bridge; its
+upper 1 KiB holds an L1 app or the retained pitch table for an L2 app.
 
 New payloads must exclude the DN2 special window
 `[0x200fa000,0x200fe000)`, Boot ROM workspace from `0x200fe000` to the end of

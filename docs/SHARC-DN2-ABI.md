@@ -106,5 +106,7 @@ owner identities and firmware budgets remain independently checked.
 Packaging is compiler-independent and certifies the envelope, not the
 program. Qualify each generated executable for calling-convention behavior,
 actual stack and writes, numerical output, interrupts and audio deadlines.
-The edited C and ASM sines were checked in Digikit. Emulator success and
-instruction counts are not physical-device timing or a full ISA guarantee.
+The external edited C and ASM sines were checked in Digikit and in bounded
+physical USB note tests, through both placements. See the [L2 results](SHARC-L2.md).
+Emulator instruction counts and short captures are not hardware cycle
+measurements, sustained stress or a full ISA guarantee.

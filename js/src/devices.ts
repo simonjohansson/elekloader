@@ -26,6 +26,8 @@ export type SharcProfile = {
   patchRanges?: Range[]                        // exact stock instruction intervals
   activeCore?: { segments: [number, string, string][], zero: [number, number][], entries: Record<string, number>, stackBytes: number }
   activeApp?: { segments: [number, string, string][], zero: [number, number][], entries: Record<string, number>, stackBytes: number }
+  activeKeyedCore?: { segments: [number, string, string][], zero: [number, number][], entries: Record<string, number>, stackBytes: number }
+  activeKeyedApp?: { segments: [number, string, string][], zero: [number, number][], entries: Record<string, number>, stackBytes: number }
   activeAppIncrement?: [number, string, number, number] // one inspected 32-bit instruction field
   hook?: [number, string, string]               // loader address, stock bytes, replacement bytes
   abi?: string
@@ -247,6 +249,11 @@ export const DIGITONE_MK2: Device = {
           [512, 'data', '17f735313bf151356989a7b29ec0cab9ea189a59062f5e22ab521d6f40946c9f']], zero: [[664, 360]],
           entries: { init_offset_bytes: 320, render_offset_bytes: 370 }, stackBytes: 84 },
         activeAppIncrement: [328, '580226bf', 19685267, 78741067],
+        activeKeyedCore: { segments: [[12, 'code', 'af2f375dc58a8ccd4b8abd89b1fb526441baa6fb5da9266c2b664e69d90fc829']],
+          zero: [[1008, 16]], entries: { hook_offset_bytes: 12 }, stackBytes: 116 },
+        activeKeyedApp: { segments: [[0, 'code', '89ceab25abe173f9e050adedbd5f6a2dd67bbc06e09ea28ba40e2ad76d0a524a'],
+          [768, 'data', '32040df54c1330b3325255cf5ad18101caf2dabd697a7a10040a99aa530c40d3']],
+          zero: [[972, 52]], entries: { init_offset_bytes: 320, render_offset_bytes: 382 }, stackBytes: 128 },
         hook: [0x2838489a, '8715ffff78ff', '3e06160006eb'],
       },
     },

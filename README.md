@@ -22,7 +22,7 @@ file on your own machine, and you flash it the way you flash any OS update.
 | Digitakt (mk1) | 1.53, 1.54 | supported |
 | Digitakt II | 1.17 | experimental: whole builds (format-1 mods) and linkable mods with its own core (the hook bus's tick, draw, key and encoder events), sealed as the unit checks them; boots in digikit's emulator; core with a key-swap mod works on a unit (Transfer over USB) |
 | Digitone (mk1) and Digitone Keys | 1.43, 1.44 | supported |
-| Digitone II | 1.12 | experimental: whole builds and linkable mods with core 0.1; sealed as the unit checks them; the six UI events, remote input and DigiHealth screen readback checked on a unit; longer project/audio qualification pending ([evidence and limits](docs/DEVICES.md#the-digitone-ii-112)) |
+| Digitone II | 1.12 | experimental: whole builds and linkable mods with core 0.1; sealed as the unit checks them; the six UI events, remote input, DigiHealth and a played SHARC sine checked on a unit; longer project/audio qualification pending ([evidence and limits](docs/DEVICES.md#the-digitone-ii-112)) |
 | Octatrack (MKI and MKII) | 1.40C | supported: whole builds (format-1 mods); linkable mods with its own core: boots on an MKII, not yet run on an MKI |
 | Model:Cycles, Model:Samples | 1.13 | supported: linkable mods with their own core (the hook bus's tick, draw, key and encoder events); builds work on both units (Transfer over USB) |
 | Analog Rytm MKII | 1.74 | supported: linkable mods with its own core (the hook bus's tick, draw, key, encoder, SETTINGS and render events); builds with the core work on a unit (Transfer over USB) |

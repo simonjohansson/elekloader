@@ -154,7 +154,7 @@ class SharcTests(unittest.TestCase):
                 (lambda d: d.update(stack_bytes=1),
                  'inert SHARC payload must declare zero stack'),
                 (lambda d: d.update(entries={'init_offset_bytes': 0,
-                                               'render_offset_bytes': 512}),
+                                               'render_offset_bytes': 768}),
                  'SHARC entry is not in owned code')):
             bad = copy.deepcopy(artifact)
             change(bad)

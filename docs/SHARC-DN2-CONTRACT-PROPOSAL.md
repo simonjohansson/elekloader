@@ -1,5 +1,8 @@
 # Proposed DN2 SHARC sine contract (#36)
 
+This records the original fixed-tone gate. The current played starter is
+[here](../examples/sharc-sine/README.md); the owner ranges and ABI stay the same.
+
 **Approved contract, 24 October 2026. The inert app slice was implemented in
 #37; #41 has a fixed active bridge and a measured physical USB sine, while
 timing and broader route qualification remain open.** This replaces the older

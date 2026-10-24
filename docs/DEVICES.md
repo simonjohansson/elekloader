@@ -523,13 +523,15 @@ smaller core-only CO02 build then flashed and booted successfully (below).
 - **SHARC sine gate.** The profile grants loader-byte
   `[0x282dd600,0x282dde00)` for the checked-in 1 KiB core bridge and 1 KiB
   prelinked app in section 7, and separately grants the exact six-byte H1
-  instruction patch. Only their qualified code/data hashes, apart from the
-  app's bounded 220–880 Hz phase increment, and entry/stack
-  declarations can activate the hook. The SDK, linker, writer and independent
+  instruction patch. The current keyed core/app pair is byte-exact; the
+  earlier fixed-tone pair remains accepted with only its bounded 220–880 Hz
+  phase increment editable. Mismatched pairs cannot activate the hook.
+  The SDK, linker, writer and independent
   verifier check the stock DSP stream, coverage, budgets, HMAC and untouched
   sections. The [starter](../examples/sharc-sine/README.md) uses no SHARC
-  compiler during build; its measured physical USB sine is recorded in
-  [#41](https://github.com/simonjohansson/elekloader/issues/41).
+  compiler during build; the fixed-tone physical USB proof is recorded in
+  [#41](https://github.com/simonjohansson/elekloader/issues/41), and the
+  played-sine proof in [#47](https://github.com/simonjohansson/elekloader/issues/47).
 - **Staging.** The bootstrap is the Digitakt II 1.17's code instruction for
   instruction, at the same addresses: the loader `0x80000596` reads section
   3 from flash at its container offset + `0x80000` to `0x40400000`, and the

@@ -94,6 +94,14 @@ DEVICE = Device(
                                'entries': {'init_offset_bytes': 320, 'render_offset_bytes': 370}, 'stack_bytes': 84},
                 # One inspected instruction field: phase step for 220..880 Hz at 48 kHz.
                 'active_app_increment': (328, '580226bf', 19685267, 78741067),
+                'active_keyed_core': {'segments': ((12, 'code', 'af2f375dc58a8ccd4b8abd89b1fb526441baa6fb5da9266c2b664e69d90fc829'),),
+                                      'zero': ((1008, 16),),
+                                      'entries': {'hook_offset_bytes': 12}, 'stack_bytes': 116},
+                'active_keyed_app': {'segments': ((0, 'code', '89ceab25abe173f9e050adedbd5f6a2dd67bbc06e09ea28ba40e2ad76d0a524a'),
+                                                   (768, 'data', '32040df54c1330b3325255cf5ad18101caf2dabd697a7a10040a99aa530c40d3')),
+                                     'zero': ((972, 52),),
+                                     'entries': {'init_offset_bytes': 320, 'render_offset_bytes': 382},
+                                     'stack_bytes': 128},
                 'hook': (0x2838489a, '8715ffff78ff', '3e06160006eb'),
             })
     },

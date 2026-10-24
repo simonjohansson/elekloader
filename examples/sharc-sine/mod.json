@@ -2,7 +2,7 @@
  "id": "sharc-sine",
  "version": "0.1",
  "title": "SHARC sine",
- "description": "Prelinked 440 Hz sine on the DN2 SHARC master output",
+ "description": "Played monophonic SHARC sine on the DN2 master output",
  "license": "GPL-2.0-or-later",
  "device": "digitone-mk2",
  "os": "1.12",

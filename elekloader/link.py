@@ -340,11 +340,10 @@ def check(mods, image):
             bad.append('active SHARC application requires a qualified matching core bridge')
             continue
         profile = app.rel.sharc
-        for role, mod in (('core', core), ('app', app)):
-            payload, qualified = mod.sharc, profile['active_' + role]
+        def matches(payload, qualified, adjustable=False):
             segments = []
             for off, kind, data in payload['segments']:
-                if role == 'app' and off == 0 and kind == 'code':
+                if adjustable and off == 0 and kind == 'code':
                     at, original, low, high = profile['active_app_increment']
                     if len(data) >= at + 4:
                         field = data[at:at + 4]
@@ -352,11 +351,18 @@ def check(mods, image):
                         if low <= step <= high:
                             data = data[:at] + bytes.fromhex(original) + data[at + 4:]
                 segments.append((off, kind, sha(data)))
-            if (segments != list(qualified['segments'])
-                    or payload['zero'] != list(qualified['zero'])
-                    or payload['entries'] != qualified['entries']
-                    or payload['stack_bytes'] != qualified['stack_bytes']):
-                bad.append('%s has unqualified active SHARC %s bytes or entry' % (mod.label(), role))
+            return (segments == list(qualified['segments'])
+                    and payload['zero'] == list(qualified['zero'])
+                    and payload['entries'] == qualified['entries']
+                    and payload['stack_bytes'] == qualified['stack_bytes'])
+
+        keyed = matches(core.sharc, profile['active_keyed_core'])
+        fixed = matches(core.sharc, profile['active_core'])
+        if not (keyed or fixed):
+            bad.append('%s has unqualified active SHARC core bytes or entry' % core.label())
+        elif not (keyed and matches(app.sharc, profile['active_keyed_app'])
+                  or fixed and matches(app.sharc, profile['active_app'], adjustable=True)):
+            bad.append('%s has unqualified active SHARC app bytes or entry' % app.label())
         if core.sharc['stack_bytes'] + app.sharc['stack_bytes'] > profile['stack_max']:
             bad.append('active SHARC stack exceeds the profile limit')
     owner = {}

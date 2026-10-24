@@ -15,10 +15,11 @@ on the DSP).
 `bridge.sharc.json` is the checked-in prelinked H1 audio bridge. The linker
 installs it and the exact six-byte stock hook only when a qualified active
 SHARC app is selected. Core-only and inert-app builds leave stock DSP audio
-unchanged. The first active app is
-[the fixed sine](../../examples/sharc-sine/README.md), which has a measured
-physical USB run in #41. Building this core still needs only its
-normal ColdFire toolchain, not a SHARC compiler.
+unchanged. The current pair is [the played sine](../../examples/sharc-sine/README.md),
+with its slot and pitch reader in `sharc-bridge.s`. The earlier fixed-tone
+pair remains accepted by the linker only as a matching historical pair.
+Building this core still needs only its normal ColdFire toolchain, not a
+SHARC compiler.
 
 - **At boot** (the OS entry's call at 0x40000538, which called 0x400019b0,
   the Digitakt II's: it sets the VBR to 0x40000000 and returns), `boot`

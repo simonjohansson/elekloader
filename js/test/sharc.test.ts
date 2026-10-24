@@ -19,26 +19,35 @@ inertArtifact.stack_bytes = 0
 const synthetic = { ...profile, decodedSha256: sha(original), ownedRanges: [[0x20002000, 0x20002020] as [number, number]] }
 const refusal = (fn: () => unknown, error: string) => assert.throws(fn, e => e instanceof ModError && e.message === error)
 
-test('active DN2 sine accepts only the bounded compiled frequency field', () => {
+test('active DN2 keyed sine and historical fixed pair stay exactly matched', () => {
   const rel = DIGITONE_MK2.releases[0], target = targetOf(DIGITONE_MK2, rel)
   const bridge = JSON.parse(readFileSync(new URL('../../mods/core-dn2/bridge.sharc.json', import.meta.url), 'utf8'))
-  const core = new Mod2({ elemod: 2, id: 'core', version: '0.1', target,
-    sections: { '.boot': { align: 4, parts: [['hex', '00000000']] } }, sharc: bridge }, 'core')
+  const fixed = JSON.parse(readFileSync(new URL('../../tests/fixtures/sharc-fixed-pair.json', import.meta.url), 'utf8'))
+  const core = (artifact: unknown) => new Mod2({ elemod: 2, id: 'core', version: '0.1', target,
+    sections: { '.boot': { align: 4, parts: [['hex', '00000000']] } }, sharc: artifact }, 'core')
   const image = new Uint8Array(rel.mainLen)
-  const bad = (artifact: unknown) => check([core, new Mod2({ elemod: 2, id: 'sine', version: '0.1', target,
+  const bad = (bridgeArtifact: unknown, artifact: unknown) => check([core(bridgeArtifact), new Mod2({ elemod: 2, id: 'sine', version: '0.1', target,
     sections: {}, sharc: artifact }, 'sine')], image).some(p => p.includes('unqualified active SHARC app'))
   const original = JSON.parse(readFileSync(new URL('../../examples/sharc-sine/sine.sharc.json', import.meta.url), 'utf8'))
-  assert.equal(bad(original), false)
+  assert.equal(bad(bridge, original), false)
+  assert.equal(bad(fixed.core, fixed.app), false)
+  assert.equal(bad(bridge, fixed.app), true)
+  assert.equal(bad(fixed.core, original), true)
+  const changed = structuredClone(original)
+  const changedCode = bytes(changed.segments[0].hex)
+  changedCode[328] ^= 1
+  changed.segments[0].hex = Buffer.from(changedCode).toString('hex')
+  assert.equal(bad(bridge, changed), true)
   for (const [hz, accepted] of [[220, true], [660, true], [880, true], [219, false], [881, false]] as const) {
-    const artifact = structuredClone(original)
+    const artifact = structuredClone(fixed.app)
     const code = bytes(artifact.segments[0].hex)
     const step = Math.round(hz * 2 ** 32 / 48000)
     code.set([(step >>> 16) & 255, (step >>> 24) & 255, step & 255, (step >>> 8) & 255], 328)
     artifact.segments[0].hex = Buffer.from(code).toString('hex')
-    assert.equal(bad(artifact), !accepted, `${hz} Hz`)
+    assert.equal(bad(fixed.core, artifact), !accepted, `${hz} Hz`)
     code[327] ^= 1
     artifact.segments[0].hex = Buffer.from(code).toString('hex')
-    assert.equal(bad(artifact), true, `${hz} Hz with neighboring byte changed`)
+    assert.equal(bad(fixed.core, artifact), true, `${hz} Hz with neighboring byte changed`)
   }
 })
 
@@ -50,7 +59,7 @@ test('prelinked inert payload covers only its DN2 owner', () => {
   bad.zero[0].size_bytes += 4
   refusal(() => sharc.modulePayload(bad, profile), 'SHARC zero range is unaligned or exceeds its owner')
   const active = structuredClone(inertArtifact)
-  active.entries = { init_offset_bytes: 0, render_offset_bytes: 512 }
+  active.entries = { init_offset_bytes: 0, render_offset_bytes: 768 }
   refusal(() => sharc.modulePayload(active, profile), 'SHARC entry is not in owned code')
 })
 

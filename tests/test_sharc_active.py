@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 """Active DN2 sine integration; requires owner stock and a ColdFire cross compiler."""
 import copy
+import json
 import os
 from pathlib import Path
 import sys
@@ -37,22 +38,34 @@ class ActiveSineTests(unittest.TestCase):
             code['hex'] = ('00' if code['hex'][:2] != '00' else '01') + code['hex'][2:]
             self.assertTrue(any('unqualified active SHARC app' in problem for problem in
                                 link.check([core, link.Mod2(mutated, 'mutated')], image)))
+            fixed = json.loads((ROOT / 'tests/fixtures/sharc-fixed-pair.json').read_text())
+            fixed_core_doc = copy.deepcopy(core.doc)
+            fixed_core_doc['sharc'] = fixed['core']
+            fixed_app_doc = copy.deepcopy(app.doc)
+            fixed_app_doc['sharc'] = fixed['app']
+            fixed_core = link.Mod2(fixed_core_doc, 'fixed-core')
+            fixed_app = link.Mod2(fixed_app_doc, 'fixed-app')
+            self.assertEqual(link.check([fixed_core, fixed_app], image), [])
+            self.assertTrue(any('unqualified active SHARC app' in p for p in
+                                link.check([core, fixed_app], image)))
+            self.assertTrue(any('unqualified active SHARC app' in p for p in
+                                link.check([fixed_core, app], image)))
             for frequency, accepted in ((220, True), (660, True), (880, True),
                                         (219, False), (881, False)):
-                varied = copy.deepcopy(app.doc)
+                varied = copy.deepcopy(fixed_app.doc)
                 code = varied['sharc']['segments'][0]
                 data = bytearray.fromhex(code['hex'])
                 step = round(frequency * (1 << 32) / 48000)
                 word = step.to_bytes(4, 'big')
                 data[328:332] = word[:2][::-1] + word[2:][::-1]
                 code['hex'] = data.hex()
-                problems = link.check([core, link.Mod2(varied, 'varied')], image)
+                problems = link.check([fixed_core, link.Mod2(varied, 'varied')], image)
                 self.assertEqual(not any('unqualified active SHARC app' in p for p in problems),
                                  accepted, frequency)
                 data[327] ^= 1
                 code['hex'] = data.hex()
                 self.assertTrue(any('unqualified active SHARC app' in p for p in
-                                    link.check([core, link.Mod2(varied, 'varied')], image)))
+                                    link.check([fixed_core, link.Mod2(varied, 'varied')], image)))
             relocated = copy.deepcopy(app.doc)
             relocated['sharc']['zero'][0]['offset_bytes'] += 4
             relocated['sharc']['zero'][0]['size_bytes'] -= 4
@@ -62,7 +75,7 @@ class ActiveSineTests(unittest.TestCase):
             linked = link.link([core, app], image, sharc_stream=stock.section(7))
             profile = rel.sharc
             records = sharc.parse(linked.sharc_stream, profile)
-            self.assertEqual(len(records), profile['record_count'] + 5)
+            self.assertEqual(len(records), profile['record_count'] + 6)
             self.assertEqual(linked.layout['sharc']['hook'], profile['hook'][0])
             self.assertEqual(linked.layout['sharc']['core'], list(profile['core_range']))
             outputs = formats.write(stock, formats.pack_main(linked.image, dev), dev,

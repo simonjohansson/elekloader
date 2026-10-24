@@ -85,17 +85,18 @@ Each zero range has `offset_bytes` and `size_bytes`. Segments and zero ranges
 must be nonempty, four-byte aligned, disjoint, and together cover every byte
 of the profiled 1 KiB app reservation at loader address
 `[0x282dda00,0x282dde00)`. Offsets are relative to that reservation.
-An inert app may still use `entries:null` and `stack_bytes:0`. The active
-fixed-sine starter declares init/render offsets 320/370 and 84 stack bytes.
-The matching core supplies a separate 1 KiB bridge artifact with a hook entry
+An inert app may still use `entries:null` and `stack_bytes:0`. The current
+keyed starter declares init/render offsets 320/382 and 128 stack bytes.
+Its matching core supplies a separate 1 KiB bridge artifact with a hook entry
 at offset 12 and 116 stack bytes. The linker binds the two PC16 callback
 addresses itself; neither app may supply core binding bytes or stock patches.
-For this first device gate, the bridge and sine data/code must match the DN2
-profile. The sole exception is the sine's four phase-increment bytes at app
-code offset 328, which may encode 220–880 Hz. The source producer checks the
-rest of the linked executable before writing the artifact; the linker checks
-the same bounded edit without requiring a compiler. Other active code is
-refused pending its own qualification in [#41](https://github.com/simonjohansson/elekloader/issues/41).
+The profile accepts this exact keyed core/app pair. It also retains the
+earlier fixed-sine pair, whose app declares 320/370 and 84 stack bytes; only
+that historical app permits a four-byte phase-increment edit at code offset
+328 for 220–880 Hz. Core/app pairs cannot be mixed. The source producer
+checks the linked executable before writing artifacts, and the linker
+requires their qualified hashes without a compiler. Other active code is
+refused pending its own qualification.
 Only one SHARC app may be selected. The linker checks stock section 7 by
 hash before adding the app's and core's ordered LOAD/FILL records. The active
 path additionally replaces one exact six-byte H1 instruction inside its

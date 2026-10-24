@@ -347,11 +347,10 @@ export function check(mods: Mod2[], image: Uint8Array): string[] {
     const core = cores.length === 1 ? cores[0] : null
     if (!core?.sharc) { bad.push('active SHARC application requires a qualified matching core bridge'); continue }
     const profile = app.rel.sharc!
-    for (const [role, mod, qualified] of [['core', core, profile.activeCore], ['app', app, profile.activeApp]] as const) {
-      const payload = mod.sharc!
+    const matches = (payload: NonNullable<typeof core.sharc>, qualified: NonNullable<typeof profile.activeCore>, adjustable = false) => {
       const segments = payload.segments.map(([off, kind, bytes]) => {
         let data = bytes
-        if (role === 'app' && off === 0 && kind === 'code') {
+        if (adjustable && off === 0 && kind === 'code') {
           const [at, original, low, high] = profile.activeAppIncrement!
           if (data.length >= at + 4) {
             const step = ((data[at + 1] * 0x1000000) + (data[at] << 16) + (data[at + 3] << 8) + data[at + 2]) >>> 0
@@ -363,13 +362,18 @@ export function check(mods: Mod2[], image: Uint8Array): string[] {
         }
         return [off, kind, sha(data)]
       })
-      const entriesMatch = Object.keys(qualified?.entries ?? {}).length === Object.keys(payload.entries ?? {}).length &&
-        Object.entries(qualified?.entries ?? {}).every(([name, value]) => payload.entries?.[name] === value)
-      if (!qualified || JSON.stringify(segments) !== JSON.stringify(qualified.segments)
-        || JSON.stringify(payload.zero) !== JSON.stringify(qualified.zero)
-        || !entriesMatch || payload.stackBytes !== qualified.stackBytes)
-        bad.push(`${mod.label()} has unqualified active SHARC ${role} bytes or entry`)
+      const entriesMatch = Object.keys(qualified.entries).length === Object.keys(payload.entries ?? {}).length &&
+        Object.entries(qualified.entries).every(([name, value]) => payload.entries?.[name] === value)
+      return JSON.stringify(segments) === JSON.stringify(qualified.segments)
+        && JSON.stringify(payload.zero) === JSON.stringify(qualified.zero)
+        && entriesMatch && payload.stackBytes === qualified.stackBytes
     }
+    const keyed = matches(core.sharc, profile.activeKeyedCore!)
+    const fixed = matches(core.sharc, profile.activeCore!)
+    if (!keyed && !fixed) bad.push(`${core.label()} has unqualified active SHARC core bytes or entry`)
+    else if (!(keyed && matches(app.sharc!, profile.activeKeyedApp!)
+      || fixed && matches(app.sharc!, profile.activeApp!, true)))
+      bad.push(`${app.label()} has unqualified active SHARC app bytes or entry`)
     if (core.sharc.stackBytes + app.sharc!.stackBytes > profile.stackMax!) bad.push('active SHARC stack exceeds the profile limit')
   }
   const owner = new Map<string, Mod2>()

@@ -51,19 +51,18 @@ artifact in the mod folder. Building the mod needs no SHARC compiler:
 ```sh
 python -m elekloader.sdk.build examples/sharc-sine --stock "$DN2_STOCK"
 python -m elekloader.lint examples/sharc-sine/out/sharc-sine-0.1.elemod --stock "$DN2_STOCK" --with "$DN2_CORE" --json
-python -m elekloader.patch --stock "$DN2_STOCK" --mod "$DN2_CORE" --mod examples/sharc-sine/out/sharc-sine-0.1.elemod --out sine.syx --version SN01
+python -m elekloader.patch --stock "$DN2_STOCK" --mod "$DN2_CORE" --mod examples/sharc-sine/out/sharc-sine-0.1.elemod --out sine.syx --version SK02
 ```
 
 The first build prints `BUILT`, lint reports `"ok": true`, and patch prints
 `verified: sections 2, 4, 5, 8, byte for byte`. The checked-in artifact
-connects the fixed sine to the SHARC master block; its physical USB result
-is recorded in #41. [The starter](../examples/sharc-sine/README.md) explains
-its source and producer. A matching core `.elemod` remains necessary, as for
-other format-2 mods; building that core from source uses the ColdFire toolchain.
-An author may change the starter's 220–880 Hz phase increment and regenerate
-its prelinked artifact with the pinned Selache compiler using the one-command
-`examples/sharc-sine/rebuild.py`; ordinary consumers still use only the three
-commands above.
+connects the played sine to the SHARC master block.
+[The starter](../examples/sharc-sine/README.md) explains its source,
+fixed ramp and qualified MIDI note range. A matching core `.elemod` remains
+necessary, as for other format-2 mods; building that core from source uses
+the ColdFire toolchain. Authors regenerate the prelinked pair with pinned
+Selache using `examples/sharc-sine/rebuild.py` after source qualification;
+ordinary consumers still use only the three commands above.
 
 ## 2. The rules
 

@@ -42,14 +42,18 @@ reports apparent L2-tail pointers. For exact 1.12 stock, all three raw
 `0x200c0008` matches are inside decoded compute instructions, not immediate
 address operands. Both `0x200c1f84` matches occur in the same increasing
 int16 sequence (including 8068, 8204, 8353); interpreting each pair as a
-32-bit pointer is not justified. The DDR occurrence of `0x200918c0` remains
-unclassified packed data and therefore an explicit unresolved observation.
+32-bit pointer is not justified. The DDR occurrence of `0x200918c0` was initially unclassified. The later
+[bounded consumer check](#the-apparent-ddr-pointer-has-a-halfword-data-consumer)
+identifies it as two signed-halfword table elements for that reader.
 
-A private index built using [DigiKit's SHARC analysis](https://github.com/ElekLabs/digikit/tree/9dee5d56c328e7091babdfd2c1d363657db78b96/tools/sharc_dev/sharcdb)
+A private index built using [DigiKit's SHARC analysis](https://github.com/ElekLabs/digikit/tree/38dfbe4ae88263511eed95691c07fc07e17b6f26/tools/sharc_dev/sharcdb)
 found no decoded direct memory accesses, data references or propagated
 pointer targets into `0x20088240..0x200f9fff`. It resolved 2,979 propagated
 pointer rows and left 192 unknown; this analysis covers only a subset of
-25,878 indirect accesses. It cannot establish global memory ownership.
+25,878 indirect accesses. It cannot establish global memory ownership. The private database records
+`tool_commit=38dfbe4a`; this corrects the earlier prose source attribution
+to `9dee5d56`. A later Type3d width discrepancy also limits its footprint
+claims; see [#53](https://github.com/simonjohansson/elekloader/issues/53).
 The exact DSP hash is registered there under 1.11; matching DSP bytes does
 not prove the surrounding 1.12 runtime configuration is identical.
 
@@ -63,7 +67,8 @@ hardware silence after mixing cached DM/PM mutable DDR access; emulator
 success does not qualify cache coherency. This change does not alter cache,
 interrupt or memory-controller configuration. The 64-byte NOP tail is a
 conservative packaging policy, not a cache/fetch proof for arbitrary code.
-Long-running stock-project stress, all indirect users, interrupt interleavings
+A ten-minute note sweep extends the physical evidence below, but sustained
+heavy stock-project stress, all indirect users, interrupt interleavings
 and physical cycle budgets remain separate qualification work in #41/#51.
 ModelDigi's measured 1,204-byte stack drop still needs #42.
 
@@ -137,5 +142,111 @@ Reports/events/CAF files and the invalid early C capture stay in the private
 evidence directory above. The device was left running `LA03`, with DigiHealth
 responding and the last note released. These short USB tests do not qualify
 all L2 users, sustained stock-project stress, DAC behavior, hardware cycle
-margin or ModelDigi. #51 retains the unresolved memory observations; #41
-retains physical timing/context work, and #42 retains the larger stack.
+margin or ModelDigi. #51 retains the incomplete memory audit, including #53; #41 retains
+physical timing/context work, and #42 retains the larger stack.
+
+## The apparent DDR pointer has a halfword data consumer
+
+The word at loader `0x804aa2e0`, read as uint32, numerically equals
+`0x200918c0`. Record 23 supplies a pointer/length descriptor at loader
+`0x28266e00` (index 31 of the array beginning `0x28266d08`): data start
+`0x804a9908`, count 4,800. Its 9,600-byte data region ends at `0x804abe88`.
+The apparent pointer occupies elements 1,260 and 1,261 of this table.
+The bounded checker also executed the lookup address calculation/data load
+for index 31 and the length-load delay-slot instruction: R0 returned the
+expected data pointer and R1 returned 4,800, without a synthetic return frame.
+Stock lookup PC16 `0x1c8110` computes the eight-byte descriptor index;
+its callers at `0x1c7292` and `0x1c72ac` save the resulting pointer/count
+into voice state. The reader at `0x1c78b9` loads from that data pointer.
+
+A bounded concrete run of this exact stock instruction, using DigiKit
+`38dfbe4ae88263511eed95691c07fc07e17b6f26`, explicitly seeded `MODE1=0`,
+`I0=0x804aa2e0`, `M6=1`, `L0=0`. It read exactly two bytes, returned 6,336,
+and advanced I0 by two. Starting at the next element returned 8,201.
+Mutating only the low element changed only the first result; mutating only
+the high element changed only the second. All ten bounded cases passed, including negative signed values,
+with watched reads at the DDR data and no access to the candidate L2 window.
+This identifies the numerical match as table data for the known consumer,
+not a demonstrated L2 pointer. It is a modeled data-flow result with an
+explicit SISD seed, not a complete engine or physical memory observation.
+
+The investigation also found a separate tool mismatch: the static DB's
+`mem_access` calls this Type3d load `normal-word`, while the concrete
+executor correctly takes the signed-halfword path for `w=0,ex=0,l=1,x=1`.
+Its comments and existing executor tests explain the encoding; the static
+width function/test retain the earlier interpretation. Its pointer
+propagation also advances I0 by four for this example, rather than the
+executed two. This affects derived addresses, not just display labels.
+#53 tracks aligning width and modifier scaling and redoing the static audit. No DigiKit code
+or Elekloader acceptance check was changed to make this probe pass.
+Until that is reconciled, the existing index is supporting evidence, not
+a complete access-footprint proof. The all-indirect-users limitation remains.
+
+Private source scripts, watch logs and mutation results are in
+`out/sharc51-sustained-20261024/ddr-consumer-proof.json` and the copied
+`sharc-ddr-consumer-proof.py` beside it. No stock bytes are distributed.
+
+## Stock-emulator canary check
+
+A separate coupled native run used the exact stock OS, without an app or
+bridge patch. The running emulator alone filled all 32 KiB of the candidate
+with `0xa5`; no firmware file or device memory was changed. The harness
+verified the whole range, deliberately changed its last word by one byte,
+confirmed the mismatch was detected, then restored the canary.
+
+The entire reservation was unchanged at checkpoints across idle and four
+held/released 16-note MIDI chord inputs, spanning 1,380 DSP blocks. The
+modeled DSP progressed with no reported halt or missing block. This is
+bounded stock-emulator evidence, not a verified 16-voice physical workload.
+Checkpoint comparison cannot detect reads, same-value writes, or values
+written and restored between checks, and it does not model real cache
+coherency. It does not resolve #53's static pointer-scale discrepancy.
+
+Private report: `out/sharc51-sustained-20261024/stock-canary/report.json`;
+probe: `sharc51-stock-canary.py` beside the other private scripts. Native
+emulator pin remains `ded547e14e63977c1a6e808812d46243e13c43d0`.
+
+## Ten-minute physical note sweeps
+
+A later run tested each unchanged L2 candidate for ten minutes on the
+connected DN2. Both completed 392 note/release pairs: all 49 supported
+notes (36..84), eight times each, in changing orders. This varies the
+signal throughout the run instead of accepting a repeating audio buffer.
+Each capture had 28,800,512 stereo frames over 600.0107 seconds, 56,251
+buffers and zero dropped capture buffers. All expected note regions were
+present, stereo channels matched exactly, samples were finite, peak was
+0.17857146, and the final five seconds were silent. Pitch error stayed
+below 0.090 cent at nominal 48 kHz; the capture clock was not calibrated.
+
+| Candidate | Maximum absolute pitch error, cents | Capture SHA-256 |
+|---|---:|---|
+| C `LC03` | 0.0880 | `bb81535c25b0137a2ae9abbf03e1c476f69d82ebd9922f46bc1ecefbe005460f` |
+| ASM `LA03` | 0.0899 | `cba4c2512a53f6792065f86bfe7018c56ee48def0233c87c830864faf0804eb4` |
+
+The analyzer checked every note's frequency and on-time, 10 ms active RMS
+windows and bounded adjacent sample differences, plus the full stereo and
+finite-sample checks. These checks can detect gross gaps or discontinuities;
+they cannot exclude every sub-window glitch. Zero capture drops describes
+the host capture, not an internal hardware overrun counter.
+
+This used the current project without saving/loading projects or changing
+machines, effects or UI settings. It is sustained note-sweep qualification,
+not a heavy stock-project/FX benchmark. The required DigiHealth 1.3 remained
+responsive after both runs. The final verified device version was `LC03`,
+with the last note released. The existing helper's unavailable render-load
+fields do not measure SHARC progress or exceptions.
+
+The [source investigation of stock reply word 0](https://github.com/angellinares/dn2_firmware_explore/blob/39815895720b84c59ce2fa0ff5b13bd47dc415d2/docs/sharc-load.md)
+records counterintuitive decreases when work increases and does not establish
+that counter as total DSP load. No hardware cycle-margin or C/ASM speed
+claim is made from it. The earlier interpreter instruction benchmark and
+these physical audio results remain separate evidence. #41 retains the
+qualified timing/readout work; no new telemetry channel, hook or protocol
+was introduced in this increment.
+
+Private captures, events, strict analyzer and complete results are in
+`/Users/simonjohansson/src/elekloader-sharc/out/sharc51-sustained-20261024/`.
+`validation-report.json` ties together both physical captures, the stock
+canary, descriptor/halfword mutations, tool/source pins and 35 passing
+Python unit tests plus five passing linker-refusal suites. This increment
+changes documentation/evidence only; the tested firmware bytes are unchanged.

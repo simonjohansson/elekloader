@@ -112,7 +112,7 @@ def build(selache):
                   loader_fixture=dict(bytes=len(stream), sha256=digest(stream), spans=spans,
                                       scope='synthetic only; not a bootable application'),
                   commands=commands,
-                  limitations=['Pinned external runners fail PX destination semantics',
+                  limitations=['This command does not run the separate Digikit PX-fixed bridge checks',
                                'No stock input, reservation or firmware output',
                                'No cache, interrupt timing or physical qualification'])
     (out / 'h1-report.json').write_text(json.dumps(report, indent=2) + '\n')

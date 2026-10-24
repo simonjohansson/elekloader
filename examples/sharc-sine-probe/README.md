@@ -269,12 +269,13 @@ bytes and synthetic FIRST/FINAL records; it is **not a bootable application or
 flashable firmware**. Its private profile copy does not allocate stock memory.
 The six-byte hook object is checked but is not installed anywhere.
 
-**Runtime qualification is still open.** Both pinned external runners mishandle
-writes to PX, so the exact bridge fails there. The independent full-width
-check must not be described as a passing full-bridge execution. The
-[captured-context investigation](../../docs/SHARC-CONTEXT.md#h1-bridge-follow-up)
-records separate routing/context experiments and the placement limits.
-Hardware cache visibility, interrupt timing and output remain #41's gate.
+The old pinned Digikit runners mishandled PX writes. With the targeted fix in
+[Digikit PR #184](https://github.com/ElekLabs/digikit/pull/184), the exact
+bridge passes offline execution in both captured H1 contexts and the native
+next-SPORT-page check. This `h1.py` command itself checks compile/layout/spills,
+not those runtime checks. The [captured-context investigation](../../docs/SHARC-CONTEXT.md#h1-bridge-follow-up)
+records the separate execution evidence and placement limits. Hardware cache
+visibility, interrupt timing and audible output remain #41's gate.
 This maintainer command is not a new mod-author workflow or compiler contract.
 
 ## Source and license closure

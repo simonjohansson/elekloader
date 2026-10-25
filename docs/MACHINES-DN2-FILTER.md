@@ -47,8 +47,8 @@ needs independently qualified firmware adapters and limits. Synths use
 Contribute the same four-field descriptor to `mk2_voice_filters` instead
 of `mk2_filters`. The stock-type field must still be 0..5, but custom
 filters use only the common stock defaults; filter-specific parameter
-slots 66..68 have no mapping. Its FLTR page is named after the mod and
-has no controls. The same mod must carry a
+slots 66..68 have no mapping. Its FLTR page has no controls, but the common
+stock envelope graphic remains. The same mod must carry a
 `dn2-filter-mono32-l2-v1` artifact with the matching `machine_id` and
 `entries: {"render_offset_bytes": ...}`. The linker refuses a missing or
 mismatched payload, conflicting filter IDs, or the same ID registered as

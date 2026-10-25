@@ -56,8 +56,11 @@ This prototype has 1,228 adapter code bytes and 798 C code bytes. The C
 body reserves 48 stack bytes and has no nested calls, plus the adapter's
 eight-byte call frame. Those figures motivate the proposed bounds below;
 they do not measure interrupt headroom or qualify a public stack limit.
-The injected adapter only targets slot 0 and does not establish native
-custom-type dispatch, coexistence or the final build workflow.
+The injected adapter only targets slot 0. A separate run forced that
+slot's transmitted type to 5 and produced the same capture, with the DSP
+frame read back as type 5. This checks the stock pipeline's custom-type
+path in the emulator; it does not establish native transmission from the
+registration, coexistence or the final build workflow.
 
 ## Proposed next boundary (approval pending)
 

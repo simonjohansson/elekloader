@@ -31,6 +31,8 @@ export type SharcProfile = {
   l2Abi?: string
   l2AppRange?: Range
   voiceAbi?: string
+  voiceTable?: string
+  voiceCloneTable?: string
   voiceAdapterSha256?: string
   voiceAdapterBytes?: number
   voiceStateBytes?: number
@@ -249,6 +251,7 @@ export const DIGITONE_MK2: Device = {
         abi: 'dn2-master-mono32-v1', pitchRange: [0x282dda00, 0x282dde00],
         l2Abi: 'dn2-master-mono32-l2-v1', l2AppRange: [0x20090000, 0x20098000],
         voiceAbi: 'dn2-voice-mono32-l2-v1',
+        voiceTable: 'dn2_voice_synths', voiceCloneTable: 'dn2_synths',
         voiceAdapterSha256: '7e4f1147a0017c07d330aba3ac3b1ffa64a9fe892c3ab90e5bf27325fe7528e0',
         voiceAdapterBytes: 2048, voiceStateBytes: 1024, voiceBindingOffset: 32256, voiceStackMax: 128,
         voiceHook: [0x20004a36, '8715ffffeeff', '3e06bc000080'],

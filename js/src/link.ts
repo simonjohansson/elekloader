@@ -343,15 +343,19 @@ export function check(mods: Mod2[], image: Uint8Array): string[] {
   }
   const sharcMods = mods.filter(m => m.sharc && !m.sections.has('.boot'))
   if (sharcMods.length > 1) bad.push('only one SHARC mod may own the DN2 reservation')
+  const voiceTable = mods[0].rel.sharc?.voiceTable
   for (const m of mods)
-    if (m.contribute.some(c => c.to === 'dn2_voice_synths') && m.sharc?.machineId === undefined)
+    if (voiceTable && m.contribute.some(c => c.to === voiceTable) && m.sharc?.machineId === undefined)
       bad.push(`${m.label()}: DN2 voice registration requires a matching SHARC voice payload`)
   for (const app of sharcMods) {
     if (app.sharc!.machineId !== undefined) {
-      const contributions = app.contribute.filter(c => c.to === 'dn2_voice_synths')
+      const profile = app.rel.sharc!
+      const contributions = app.contribute.filter(c => c.to === profile.voiceTable)
+      const expected = app.dev.slotClaims.filter(([table]) => table === profile.voiceTable)
+        .map(([, , , prefix]) => `${prefix}:${app.sharc!.machineId}`)
       if (contributions.length !== 1 || contributions[0].data.length !== 4 ||
-        JSON.stringify(app.impliedNames(image, 'dn2_voice_synths')) !== JSON.stringify([`dn2-synth:${app.sharc!.machineId}`]) ||
-        app.impliedNames(image, 'dn2_synths').includes(`dn2-synth:${app.sharc!.machineId}`))
+        !expected.length || JSON.stringify(app.impliedNames(image, profile.voiceTable)) !== JSON.stringify(expected) ||
+        expected.some(name => app.impliedNames(image, profile.voiceCloneTable).includes(name)))
         bad.push(`${app.label()}: SHARC voice machine_id must match its single native voice registration`)
       continue
     }

@@ -334,16 +334,20 @@ def check(mods, image):
     sharc_mods = [m for m in mods if m.sharc and '.boot' not in m.sections]
     if len(sharc_mods) > 1:
         bad.append('only one SHARC mod may own the DN2 reservation')
+    voice_table = (mods[0].rel.sharc or {}).get('voice_table')
     for m in mods:
-        if any(c['to'] == 'dn2_voice_synths' for c in m.contribute) \
+        if voice_table and any(c['to'] == voice_table for c in m.contribute) \
                 and (not m.sharc or 'machine_id' not in m.sharc):
             bad.append('%s: DN2 voice registration requires a matching SHARC voice payload' % m.label())
     for app in sharc_mods:
         if 'machine_id' in app.sharc:
-            contributions = [c for c in app.contribute if c['to'] == 'dn2_voice_synths']
+            profile = app.rel.sharc
+            contributions = [c for c in app.contribute if c['to'] == profile['voice_table']]
+            expected = ['%s:%d' % (prefix, app.sharc['machine_id'])
+                        for table, _at, _count, prefix in app.dev.slot_claims if table == profile['voice_table']]
             if len(contributions) != 1 or len(contributions[0]['data']) != 4 \
-                    or app.implied_names(image, 'dn2_voice_synths') != ['dn2-synth:%d' % app.sharc['machine_id']] \
-                    or 'dn2-synth:%d' % app.sharc['machine_id'] in app.implied_names(image, 'dn2_synths'):
+                    or not expected or app.implied_names(image, profile['voice_table']) != expected \
+                    or any(name in app.implied_names(image, profile['voice_clone_table']) for name in expected):
                 bad.append('%s: SHARC voice machine_id must match its single native voice registration' % app.label())
             continue
         if app.sharc['entries'] is None:

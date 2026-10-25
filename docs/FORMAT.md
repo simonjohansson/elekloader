@@ -74,9 +74,10 @@ A format-2 mod is a relocatable object:
 ### Digitone II SHARC mod
 
 On the Digitone II 1.12 a format-2 mod may also carry code for the DSP, an
-ADSP-21569 SHARC+, in a top-level `sharc` object. This is experimental. The
-[callback contract](SHARC-DN2-ABI.md) says what the code must do, and
-[SHARC-DN2.md](SHARC-DN2.md) what has been checked.
+ADSP-21569 SHARC+, in a top-level `sharc` object. This is experimental. Use
+the callback contract for a [master-output mod](SHARC-DN2-ABI.md), a
+[track synth](MACHINES-DN2-VOICE.md) or a
+[track filter](MACHINES-DN2-FILTER.md).
 
 **In mod.json**, `"sharc": {"artifact": "sine.sharc.json"}` names a file in
 the mod's folder; the SDK refuses a path outside it. The SDK copies the file
@@ -86,29 +87,23 @@ so no SHARC compiler runs during build, lint or patch. Any compiler or
 assembler can make one; the [sine example](../examples/sharc-sine/README.md)
 makes one from C or assembly.
 
-For a selectable track synth, the additional experimental ABI is
-`dn2-voice-mono32-l2-v1`. It uses the same fields below, plus `machine_id`
-(5..31), and `entries` contains only `render_offset_bytes`. A matching
-descriptor must be contributed by that same mod to `mk2_voice_synths` in
-machines-dn2 0.1. A voice registration without its DSP payload is refused.
-IDs conflict with clone IDs too. One DSP mod still owns the reservation.
+**A selectable synth or filter object** uses the fields below, plus
+`machine_id`; `entries` contains only `render_offset_bytes` and cannot be
+`null`. The same mod must contribute one matching descriptor to its table:
 
-The voice artifact starts with the profiled 2 KiB adapter code segment,
-and ends with exactly 1 KiB of zeroed adapter state. Author code and data
-cannot overlap them, and the render entry must point into author code.
-Each code segment retains its 64-byte NOP guard. The callback may declare
-at most 128 stack bytes; the adapter adds an eight-byte call frame.
-`elekloader.sdk.sharc.voice_artifact` packages prelinked code and data in
-this layout without invoking a compiler. Kernel code links at PC16
-`0xbc8400`; data starts at `0x20094000`. This leaves 14 KiB of code,
-guard included, and 15 KiB of data inside the existing 32 KiB reservation.
+| `abi` | `machine_id` | native table |
+|---|---|---|
+| `dn2-voice-mono32-l2-v1` | 5..31 | `mk2_voice_synths` |
+| `dn2-filter-mono32-l2-v1` | 6..31 | `mk2_voice_filters` |
 
-For this ABI, the linker binds the render PC and machine ID at
-`0x20097e00`, adds the pinned adapter, and replaces the guarded six-byte
-instruction at the voice helper (`0x20004a36`). It leaves the master hook
-and the L1 bridge reservation untouched. The voice contract is in
-`elekloader/sdk/include/digitone-mk2/voice.h`; qualification is tracked in
-[MACHINES-DN2-VOICE.md](MACHINES-DN2-VOICE.md).
+IDs share their kind's clone namespace. A build accepts at most one of
+each kind, with separate 16 KiB owners, and cannot mix them with a
+master-output mod. Each machine artifact starts with the profiled 2 KiB
+adapter and ends with exactly 1 KiB of zeroed adapter state. Author bytes
+and the render entry must stay outside those reservations. The linker
+writes each callback's address and ID into its adapter state and patches
+that kind's stock hook. It leaves the master hook and L1 bridge untouched.
+The callback references above define the memory bounds and stack limits.
 
 **The master-output object** has exactly these fields:
 
@@ -127,7 +122,7 @@ example's at 176 and 238; both declare 128 bytes of stack.
 
 **The checks.** elekloader refuses the mod when it loads it, unless:
 - the segments and zero ranges are 4-byte aligned, do not overlap, and
-  together cover all 32 KiB, with no gap;
+  together cover the entire owner, with no gap;
 - each entry is 2-byte aligned and inside a code segment;
 - in a mod with entries, each code segment ends in 64 bytes of NOPs (`0100`
   repeated), with no entry inside them, because the DSP fetches instructions
@@ -157,9 +152,10 @@ right, and that every other section is stock. Without a SHARC mod, section 7
 stays stock, with core 0.1 too.
 
 A mod's code, data and callback offsets may change from build to build with
-no change to elekloader: only the bridge is pinned. These checks cover the
-packaging. They cannot prove what the instructions do, how much stack they
-really use, or that they finish in time, so test each program on its own.
+no change to elekloader: only its core bridge or machine adapter is pinned.
+These checks cover the packaging. They cannot prove what the instructions
+do, how much stack they really use, or that they finish in time, so test
+each program on its own.
 
 ### The linker
 

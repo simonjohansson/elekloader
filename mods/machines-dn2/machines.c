@@ -141,10 +141,12 @@ uint32_t dn2_permit(uint32_t type, uint32_t track)
 }
 
 extern const struct mk2_filter *const mk2_filters[];
+extern const struct mk2_filter *const mk2_voice_filters[];
 extern const struct names dn2_stock_filter_names[6];
 extern const struct descriptor dn2_stock_filter_descriptors[6];
 uint32_t dn2_filter_list[COUNT], dn2_filter_list_bytes;
 static const struct mk2_filter *filters[COUNT];
+static uint8_t filter_voices[COUNT];
 static struct descriptor filter_descriptors[COUNT];
 static struct string_rep filter_strings[COUNT][2];
 static uint32_t filters_ready;
@@ -153,13 +155,19 @@ void dn2_filters_ensure(void)
 {
     if (filters_ready)
         return;
-    for (const struct mk2_filter *const *e = mk2_filters; *e; ++e) {
+    const struct mk2_filter *const *e;
+    for (unsigned voice = 0; voice < 2; ++voice)
+    for (e = voice ? mk2_voice_filters : mk2_filters; *e; ++e) {
         const struct mk2_filter *f = *e;
         if (f->id < 6 || f->id >= COUNT || f->clone >= 6 || !f->name || !f->label
                 || filters[f->id])
             continue;
         filters[f->id] = f;
+        filter_voices[f->id] = voice;
         filter_descriptors[f->id] = dn2_stock_filter_descriptors[f->clone];
+        if (voice)
+            for (unsigned i = 0; i < 9; ++i)
+                filter_descriptors[f->id].params[i] = 0;
         filter_descriptors[f->id].name = representation(&filter_strings[f->id][0], f->name, 31);
         filter_descriptors[f->id].label = representation(&filter_strings[f->id][1], f->label, 7);
     }
@@ -180,6 +188,12 @@ uint32_t dn2_filter_clone(uint32_t type)
         return type;
     dn2_filters_ensure();
     return filters[type] ? filters[type]->clone : 0;
+}
+
+uint32_t dn2_filter_dsp_type(uint32_t type)
+{
+    dn2_filters_ensure();
+    return type < COUNT && filter_voices[type] ? type : dn2_filter_clone(type);
 }
 
 uintptr_t dn2_filter_descriptor(uint32_t type)

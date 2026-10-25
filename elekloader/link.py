@@ -332,23 +332,29 @@ def check(mods, image):
                 bad.append('%s needs core %s or newer, and this build has core %s'
                            % (m.label(), m.needs_core, cores[0].version))
     sharc_mods = [m for m in mods if m.sharc and '.boot' not in m.sections]
-    if len(sharc_mods) > 1:
-        bad.append('only one SHARC mod may own the DN2 reservation')
-    voice_table = (mods[0].rel.sharc or {}).get('voice_table')
-    for m in mods:
-        if voice_table and any(c['to'] == voice_table for c in m.contribute) \
-                and (not m.sharc or 'machine_id' not in m.sharc):
-            bad.append('%s: DN2 voice registration requires a matching SHARC voice payload' % m.label())
+    if len(sharc_mods) > 1 and (len(sharc_mods) != 2 or
+            {m.sharc.get('machine_kind') for m in sharc_mods} != {'voice', 'filter'}):
+        bad.append('SHARC mods may combine only one DN2 voice and one DN2 filter')
+    for kind in ('voice', 'filter'):
+        table = (mods[0].rel.sharc or {}).get(kind + '_table')
+        for m in mods:
+            if table and any(c['to'] == table for c in m.contribute) \
+                    and (not m.sharc or m.sharc.get('machine_kind') != kind):
+                bad.append('%s: DN2 %s registration requires a matching SHARC %s payload'
+                           % (m.label(), kind, kind))
     for app in sharc_mods:
-        if 'machine_id' in app.sharc:
+        kind = app.sharc.get('machine_kind')
+        if kind:
             profile = app.rel.sharc
-            contributions = [c for c in app.contribute if c['to'] == profile['voice_table']]
+            table = profile[kind + '_table']
+            contributions = [c for c in app.contribute if c['to'] == table]
             expected = ['%s:%d' % (prefix, app.sharc['machine_id'])
-                        for table, _at, _count, prefix in app.dev.slot_claims if table == profile['voice_table']]
+                        for name, _at, _count, prefix in app.dev.slot_claims if name == table]
             if len(contributions) != 1 or len(contributions[0]['data']) != 4 \
-                    or not expected or app.implied_names(image, profile['voice_table']) != expected \
-                    or any(name in app.implied_names(image, profile['voice_clone_table']) for name in expected):
-                bad.append('%s: SHARC voice machine_id must match its single native voice registration' % app.label())
+                    or not expected or app.implied_names(image, table) != expected \
+                    or any(name in app.implied_names(image, profile[kind + '_clone_table']) for name in expected):
+                bad.append('%s: SHARC %s machine_id must match its single native %s registration'
+                           % (app.label(), kind, kind))
             continue
         if app.sharc['entries'] is None:
             continue
@@ -546,38 +552,40 @@ def link(mods, image, lock=None, *, sharc_stream=None):
     if sharc_mods:
         if sharc_stream is None:
             raise ModError('SHARC mod needs the stock section-7 stream')
-        payload = sharc_mods[0].sharc
-        base = payload['owner'][0]
-        loads = [(base + off, data) for off, _kind, data in payload['segments']]
-        fills = [(base + off, count, 0) for off, count in payload['zero']]
-        patches = []
-        if 'machine_id' in payload:
-            at = rel.sharc['voice_binding_offset']
-            binding = struct.pack('<II', sharc.pc16(rel.sharc, base + payload['entries']['render_offset_bytes']),
-                                  payload['machine_id'])
-            lo = payload['owner'][1] - rel.sharc['voice_state_bytes']
-            fills = [f for f in fills if f[0] != lo]
-            fills += [(lo, base + at - lo, 0), (base + at + 8, payload['owner'][1] - base - at - 8, 0)]
-            loads.append((base + at, binding))
-            site, old, new = rel.sharc['voice_hook']
-            patches = [(site, bytes.fromhex(old), bytes.fromhex(new))]
-        elif payload['entries'] is not None:
-            bridge = core.sharc
-            def pc16(off):
-                return sharc.pc16(rel.sharc, base + off)
-            binding = struct.pack('<III', pc16(payload['entries']['init_offset_bytes']),
-                                  pc16(payload['entries']['render_offset_bytes']), 0)
-            core_base = bridge['owner'][0]
-            # The pinned bridge reads its pitch table from the L1 reservation.
-            lo, hi = rel.sharc['pitch_range']
-            at, table = rel.sharc['keyed_pitch_table']
-            table = bytes.fromhex(table)
-            loads.append((lo + at, table))
-            fills += [(lo, at, 0), (lo + at + len(table), hi - lo - at - len(table), 0)]
-            loads = [(core_base, binding)] + [(core_base + off, data) for off, _kind, data in bridge['segments']] + loads
-            fills = [(core_base + off, count, 0) for off, count in bridge['zero']] + fills
-            site, old, new = rel.sharc['hook']
-            patches = [(site, bytes.fromhex(old), bytes.fromhex(new))]
+        loads, fills, patches = [], [], []
+        for mod in sharc_mods:
+            payload = mod.sharc
+            base = payload['owner'][0]
+            loads += [(base + off, data) for off, _kind, data in payload['segments']]
+            fills += [(base + off, count, 0) for off, count in payload['zero']]
+            kind = payload.get('machine_kind')
+            if kind:
+                at = rel.sharc[kind + '_binding_offset']
+                binding = struct.pack('<II', sharc.pc16(rel.sharc, base + payload['entries']['render_offset_bytes']),
+                                      payload['machine_id'])
+                lo = payload['owner'][1] - rel.sharc[kind + '_state_bytes']
+                fills = [f for f in fills if f[0] != lo]
+                fills += [(lo, base + at - lo, 0), (base + at + 8, payload['owner'][1] - base - at - 8, 0)]
+                loads.append((base + at, binding))
+                site, old, new = rel.sharc[kind + '_hook']
+                patches.append((site, bytes.fromhex(old), bytes.fromhex(new)))
+            elif payload['entries'] is not None:
+                bridge = core.sharc
+                def pc16(off):
+                    return sharc.pc16(rel.sharc, base + off)
+                binding = struct.pack('<III', pc16(payload['entries']['init_offset_bytes']),
+                                      pc16(payload['entries']['render_offset_bytes']), 0)
+                core_base = bridge['owner'][0]
+                # The pinned bridge reads its pitch table from the L1 reservation.
+                lo, hi = rel.sharc['pitch_range']
+                at, table = rel.sharc['keyed_pitch_table']
+                table = bytes.fromhex(table)
+                loads.append((lo + at, table))
+                fills += [(lo, at, 0), (lo + at + len(table), hi - lo - at - len(table), 0)]
+                loads = [(core_base, binding)] + [(core_base + off, data) for off, _kind, data in bridge['segments']] + loads
+                fills = [(core_base + off, count, 0) for off, count in bridge['zero']] + fills
+                site, old, new = rel.sharc['hook']
+                patches.append((site, bytes.fromhex(old), bytes.fromhex(new)))
         dsp_stream = sharc.insert(sharc_stream, rel.sharc,
                                   loads=loads, fills=fills, patches=patches)
         dsp_stored = syx.pack_main(dsp_stream)
@@ -890,14 +898,16 @@ def link(mods, image, lock=None, *, sharc_stream=None):
         'ddr_size': ddr_end - ddr_base, 'fast_size': fast_end - fast_base,
     }
     if sharc_mods:
-        out.layout['sharc'] = {'owner': list(payload['owner']), 'decoded': len(dsp_stream),
-                               'decoded_sha256': sha(dsp_stream), 'stored': len(dsp_stored),
-                               'stored_sha256': sha(dsp_stored), 'app': sharc_mods[0].id}
-        if 'machine_id' in payload:
-            out.layout['sharc']['hook'] = rel.sharc['voice_hook'][0]
-        elif payload['entries'] is not None:
-            out.layout['sharc']['core'] = list(core.sharc['owner'])
-            out.layout['sharc']['hook'] = rel.sharc['hook'][0]
+        info = out.layout['sharc'] = {'decoded': len(dsp_stream), 'decoded_sha256': sha(dsp_stream),
+                                      'stored': len(dsp_stored), 'stored_sha256': sha(dsp_stored)}
+        if sharc_mods[0].sharc.get('machine_kind'):
+            info['mods'] = [{'id': m.id, 'owner': list(m.sharc['owner']),
+                             'hook': rel.sharc[m.sharc['machine_kind'] + '_hook'][0]}
+                            for m in sharc_mods]
+        else:
+            info.update(owner=list(payload['owner']), app=sharc_mods[0].id)
+            if payload['entries'] is not None:
+                info.update(core=list(core.sharc['owner']), hook=rel.sharc['hook'][0])
     out.store, out.store_notes = new_lock, store_notes
     if units is not None:                      # the reserve the core takes: units of dev.reserve
         out.layout['reserve'] = {'units': units, 'end': ddr_base + units * dev.reserve[0]}

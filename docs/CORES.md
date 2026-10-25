@@ -129,8 +129,9 @@ the one a mod that uses it names in `resources.core`.
   bounded encoder turns, a monotonic clock and SysEx observers for
   DigiHealth. Its audio runs on SHARC; there is no `.fast` area or
   ColdFire audio-render event. DSP mods provide a prelinked artifact for
-  the [master-output contract](SHARC-DN2-ABI.md) or
-  [selectable track synth](MACHINES-DN2-VOICE.md). The
+  the [master-output contract](SHARC-DN2-ABI.md), or a
+  [selectable track synth](MACHINES-DN2-VOICE.md) and
+  [custom filter](MACHINES-DN2-FILTER.md). The
   [machines companion](MACHINES-DN2.md) adds synth and filter registration
   through the `mk2_*` tables. See the core README for build and API details.
 - **Analog Rytm MKII** ([mods/core-ar2](../mods/core-ar2)): SETTINGS rows

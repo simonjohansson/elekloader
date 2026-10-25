@@ -2,8 +2,9 @@
 
 Experimental, OS 1.12 only. machines-dn2 0.1 can register an external C
 oscillator in the native FUNC+SYN selector. Its output passes through the
-stock voice envelope, filter, pan, sends and mixer. Physical multitrack,
-control and project-reload qualification is incomplete; see the
+voice envelope, the selected stock or [custom filter](MACHINES-DN2-FILTER.md),
+pan, sends and mixer. Physical multitrack, control and project-reload
+qualification is incomplete; see the
 [hardware checklist](https://github.com/simonjohansson/elekloader/issues/67).
 Timing is unqualified.
 
@@ -13,14 +14,15 @@ Use the existing four-field `mk2_synth` descriptor from
 `mk2/machines.h`, contributing its pointer to `mk2_voice_synths`
 instead of `mk2_synths`. The fields remain stable ID, stock defaults type,
 name and short label. Use permanent IDs 5..31; clones share that namespace.
-The companion supplies a named empty SYN page and stock AMP/FLTR controls.
-The native machine selector identifies the engine as SINE.
+The companion supplies a named empty SYN page and stock AMP controls.
+FLTR controls belong to the selected filter.
 
 The same mod must carry a `dn2-voice-mono32-l2-v1` artifact with a matching
 `machine_id` and `entries: {"render_offset_bytes": ...}`. Require `core`
 (core 0.1) and `machines-dn2`. The linker refuses a missing/mismatched
 payload, conflicting IDs or registering the voice's ID as a clone too.
-A build accepts one SHARC mod.
+A build accepts at most one SHARC synth and one SHARC filter, in separate memory
+regions. Neither can be combined with a master-output SHARC mod.
 
 ```c
 #include "digitone-mk2/voice.h"
@@ -51,29 +53,33 @@ convention. The callback may declare at most **128 stack bytes**; its
 adapter adds an eight-byte call frame. A declaration is not a measurement
 or an instruction sandbox.
 
-The existing 32 KiB L2 reservation contains:
+The synth owns the first 16 KiB of the L2 reservation:
 
 | Part | Loader byte range | Size |
 |---|---|---|
 | Pinned adapter, including guard | `0x20090000..0x20090800` | 2 KiB |
-| Author code, including 64-byte guard | `0x20090800..0x20094000` | 14 KiB |
-| Author data | `0x20094000..0x20097c00` | 15 KiB |
-| Zeroed adapter state | `0x20097c00..0x20098000` | 1 KiB |
+| Author code, including 64-byte guard | `0x20090800..0x20092000` | 6 KiB |
+| Author data | `0x20092000..0x20093c00` | 7 KiB |
+| Zeroed adapter state | `0x20093c00..0x20094000` | 1 KiB |
 
-Ranges exclude their end. Link the kernel at PC16 `0xbc8400`, its data
-at `0x20094000`. `elekloader.sdk.sharc.voice_artifact` packages the
-prelinked bytes with the pinned adapter; it does not invoke a compiler.
-The linker writes the render PC and ID at `0x20097e00`. Keep your state
-and writes in the author area and the supplied voice buffer.
+Ranges exclude their end. A producer's build script reads
+`elekloader.sdk.sharc.machine_layout('voice')` for the compiler-independent
+`code_pc16`, `code_bytes`, `data_address` and `data_bytes` bounds. Link the
+kernel and data at those addresses, then call
+`voice_artifact(code, data, render_offset_bytes, machine_id, stack_bytes)`.
+The entry offset counts from the start of the supplied kernel; data may
+be empty. The SDK adds the pinned adapter, NOP padding and zero ranges;
+the producer owns compilation. The linker writes the render PC and ID at
+`0x20093e00`. Keep writes in the author data area and supplied voice buffer.
 
 The exact OS 1.12 hook is PC16 `0xb8251b`, loader `0x20004a36`, called by
 the voice pipeline at `0x1c9459`. Its guarded six-byte stack adjustment is
 `8715ffffeeff`; the adapter executes it and continues at `0xb8251e`.
-Rebuild the adapter from `mods/machines-dn2/voice-bridge.s` with
-`rebuild_voice.py`; the
-Selache pin is `2b26d3b75c53063575bc5c820fa0d38879335187`. Its 1,702 code
+Rebuild both machine adapters from `mods/machines-dn2/*-bridge.s` with
+`rebuild_voice.py`; the Selache pin is
+`2b26d3b75c53063575bc5c820fa0d38879335187`. The voice adapter's 1,702 code
 bytes are padded to 2 KiB, SHA-256
-`c8e0e9866e16980b4249dcc43334bd4f632cecec49ce479b1f698d5cafe05457`.
+`46afad21d9f24483a645ec1b3c70a9df99c40285cdf73cf83b0f0467828572f8`.
 
 The adapter uses register counts for right shifts. This Selache pin omits
 the required sign-extension bits in negative immediate shifts, which can
@@ -83,8 +89,8 @@ The unit suite checks the generated adapter for this encoding defect.
 
 ## Example and checks
 
-The external `digitone-2-mod-hack` consumer builds SINE with
-`mise run build-c`, including DigiHealth and CLONE FILTER. The C example
+The external `digitone-2-mod-hack` consumer includes the C SINE example;
+see the [paired build and checks](MACHINES-DN2-FILTER.md#checks). SINE
 supports integer MIDI pitches 36..84 and plays one octave above its input;
 fractional pitch rounds down and other pitches produce zeros. Each voice
 slot keeps independent phase and resets it on START.

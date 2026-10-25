@@ -1744,7 +1744,7 @@ root, so `pick` may open another list. NO closes a submenu like the menu, and
 holding a track key always opens the root. The machines mod's MACHINES
 entry opens one (below).
 
-### Synth and filter clones (machines-dn2 0.1, Digitone II)
+### Synth and filter machines (machines-dn2 0.1, Digitone II)
 
 The experimental `machines-dn2` companion adds external stock synth clones
 in **FUNC+SYN** on OS 1.12. A mod contributes a stable ID, stock synth type
@@ -1752,14 +1752,14 @@ and names; its firmware hooks live in the companion. See
 [Digitone II synth clones](MACHINES-DN2.md) for the descriptor and build.
 This uses stock synthesis and pages; per-voice custom DSP is separate.
 
-A mod can also register a stock filter clone in
-the FLTR category, independently of its synth. See
-[Digitone II filter clones](MACHINES-DN2-FILTER.md) for `mk2_filters`, IDs
-and missing-mod behavior. This interface is currently implemented only
-for the Digitone II.
-
-For a synth with its own DSP code, use the
-[track-synth contract](MACHINES-DN2-VOICE.md).
+A mod can also register a filter in the FLTR category, independently of
+its synth. Use the [track-synth contract](MACHINES-DN2-VOICE.md) or
+[filter contract](MACHINES-DN2-FILTER.md) for custom DSP, registration and
+missing-mod behavior. One custom synth and one custom filter can share a
+build; their SDK helpers package the compiled code in separate regions.
+The producer's build handles compilation and placement. The external
+`digitone-2-mod-hack` example's `mise run build-c` builds SINE, UNITY and
+DigiHealth together. This interface is implemented only for Digitone II.
 
 ### Machines and stock parameters (core-dn1 3.1, Digitone mk1)
 
@@ -3138,15 +3138,17 @@ Some differences from an octabam build, by design:
 | `is a DSP reference to a ColdFire address` (or the reverse) | a `dsp24` relocation names a ColdFire symbol, or a ColdFire one a DSP label | name the right symbol; DSP labels are word addresses on the DSP |
 | `dsp_asm is not installed` | the SDK needs octabam's DSP assembler | build octabam's `vendor/dsp56300` and set `ELEKLOADER_DSP_ASM` |
 | `the label N is part of a longer word here` (SDK) | dsp_asm would put N's address inside that word | rename the label |
-| `SHARC ABI does not match the device profile` | the artifact does not name a supported master-output or track-synth contract | build for the matching [SHARC contract](FORMAT.md#digitone-ii-sharc-mod); changing only the ABI string does not relocate code |
+| `SHARC ABI does not match the device profile` | the artifact does not name a supported master-output, track-synth or track-filter contract | build for the matching [SHARC contract](FORMAT.md#digitone-ii-sharc-mod); changing only the ABI string does not relocate code |
 | `SHARC voice machine_id must match its single native voice registration` / `DN2 voice registration requires a matching SHARC voice payload` | a voice descriptor and DSP artifact disagree, or the artifact is absent | package one matching descriptor and payload as the [track-synth contract](MACHINES-DN2-VOICE.md) describes |
+| `SHARC filter machine_id must match its single native filter registration` / `DN2 filter registration requires a matching SHARC filter payload` | a filter descriptor and DSP artifact disagree, or the artifact is absent | package one matching descriptor and payload as the [filter contract](MACHINES-DN2-FILTER.md) describes |
 | `SHARC voice stack exceeds the profile limit` | the callback declares more than 128 stack bytes | reduce its stack use and declaration, then qualify the real workload |
-| `SHARC payload has a gap or overlap in its owner` | the segments and zero ranges do not cover the mod's 32 KiB exactly once | add a `zero` range for the bytes you do not use; fix overlapping offsets |
+| `SHARC filter stack exceeds the profile limit` | the callback declares more than 12 stack bytes | reduce its stack use and declaration, then qualify the real workload |
+| `SHARC payload has a gap or overlap in its owner` | the segments and zero ranges do not cover the mod's owner exactly once | add a `zero` range for the bytes you do not use; fix overlapping offsets |
 | `SHARC mod code needs its profiled NOP read-ahead guard` | a code segment does not end in 64 bytes of NOPs (`0100` repeated) | pad the end of each code segment |
 | `SHARC entry is in the instruction read-ahead guard` / `SHARC entry is not in owned code` | a callback offset is in the guard, outside the code, or odd | link the callbacks inside a code segment, before its guard |
 | `active SHARC mod requires a qualified matching core bridge` / `has unqualified active SHARC core bytes or entry` | the bridge is not the one the device profile pins | build with core-dn2 0.1, its bridge unchanged; set `"resources": {"core": "0.1"}` |
 | `active SHARC stack exceeds the profile limit` | the mod declares more than 428 bytes of stack (the bridge's 116 and yours may not pass 544) | use less stack, and declare what you use |
-| `only one SHARC mod may own the DN2 reservation` | two SHARC mods in one build | pick one |
+| `SHARC mods may combine only one DN2 voice and one DN2 filter` | the build has two mods of one kind, or mixes a master-output mod with a machine | use at most one synth and one filter, or one master-output mod |
 
 ## 6. Definition of done
 

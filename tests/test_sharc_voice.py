@@ -11,7 +11,7 @@ import unittest
 from elekloader import elemod, formats, link, sharc
 from elekloader.devices.digitone_mk2 import DEVICE
 from elekloader.sdk import build as sdk
-from elekloader.sdk.sharc import voice_artifact
+from elekloader.sdk.sharc import filter_artifact, voice_artifact
 
 ROOT = Path(__file__).resolve().parents[1]
 PROFILE = DEVICE.releases['1.12'].sharc
@@ -41,14 +41,17 @@ class EnvelopeTests(unittest.TestCase):
         bad = bytes.fromhex('3e02000022f0')
         self.assertEqual(malformed(good), [])
         self.assertEqual(malformed(bad), [0])
-        code = bytes.fromhex(artifact()['segments'][0]['hex'])
-        self.assertEqual(malformed(code), [])
-        self.assertIn(0, malformed(bad + code[6:]))
+        for doc in (artifact(), filter_artifact(bytes(4), bytes(4), 0, 6, 12)):
+            code = bytes.fromhex(doc['segments'][0]['hex'])
+            self.assertEqual(malformed(code), [])
+            self.assertIn(0, malformed(bad + code[6:]))
 
     def test_voice_envelope_and_mutations(self):
         doc = artifact()
         payload = sharc.module_payload(doc, PROFILE)
         self.assertEqual(payload['machine_id'], 5)
+        self.assertEqual(payload['machine_kind'], 'voice')
+        self.assertEqual(payload['owner'], (0x20090000, 0x20094000))
         self.assertEqual(payload['entries'], {'render_offset_bytes': 2048})
         cases = [
             (lambda d: d.update(machine_id=True), 'machine_id'),
@@ -57,10 +60,10 @@ class EnvelopeTests(unittest.TestCase):
             (lambda d: d.update(stack_bytes=129), 'voice stack'),
             (lambda d: d.update(entries=None), 'render entry'),
             (lambda d: d['entries'].update(render_offset_bytes=0), 'adapter reservation'),
-            (lambda d: d['entries'].update(render_offset_bytes=16320), 'read-ahead guard'),
+            (lambda d: d['entries'].update(render_offset_bytes=8128), 'read-ahead guard'),
             (lambda d: d['segments'][0].update(hex='0000'+d['segments'][0]['hex'][4:]), 'qualified prefix'),
             (lambda d: d['segments'][1].update(hex=d['segments'][1]['hex'][:-4]+'0000'), 'read-ahead guard'),
-            (lambda d: d['zero'][-1].update(offset_bytes=31748, size_bytes=1020), 'gap or overlap'),
+            (lambda d: d['zero'][-1].update(offset_bytes=15364, size_bytes=1020), 'gap or overlap'),
         ]
         for change, error in cases:
             bad = copy.deepcopy(doc)
@@ -74,8 +77,9 @@ class EnvelopeTests(unittest.TestCase):
     def test_producer_bounds(self):
         # SHARC instructions are short-word aligned; padding makes the load four-byte aligned.
         doc = voice_artifact(bytes(6), bytes(4), 0, 5, 128)
-        self.assertEqual(len(bytes.fromhex(doc['segments'][1]['hex'])), 14336)
-        for code, data in ((bytes(14336), bytes(4)), (bytes(4), bytes(15364)), (bytes(3), bytes(4))):
+        self.assertEqual(len(bytes.fromhex(doc['segments'][1]['hex'])), 6144)
+        voice_artifact(bytes(6080), bytes(7168), 0, 31, 128)
+        for code, data in ((bytes(6082), bytes(4)), (bytes(4), bytes(7172)), (bytes(3), bytes(4))):
             with self.assertRaises(ValueError):
                 voice_artifact(code, data, 0, 5, 128)
 
@@ -114,7 +118,7 @@ class LinkTests(unittest.TestCase):
                 expected = bytes.fromhex('4ef9') + struct.pack('>I', out.map['machines-dn2:' + target])
                 self.assertEqual(out.image[off:off+6], expected, target)
             records = sharc.parse(out.sharc_stream, rel.sharc)
-            binding = next(r for r in records if r.target == 0x20097e00)
+            binding = next(r for r in records if r.target == 0x20093e00)
             self.assertEqual(binding.raw[16:], struct.pack('<II', 0xbc8400, 5))
             # The stock master hook is untouched; only the voice helper changes.
             def at(stream, addr):

@@ -40,14 +40,22 @@ const struct descriptor dn2_stock_filter_descriptors[6] = {
 };
 static const struct mk2_filter filter_low = {6, 0, "CLONE FILTER", "CLONE"};
 static const struct mk2_filter filter_high = {31, 5, "comb clone", "comb"};
-static const struct mk2_filter filter_same_id = {7, 1, "SAME ID", "SAME"};
+static const struct mk2_filter filter_unity = {7, 1, "UNITY", "UNITY"};
+static const struct mk2_filter filter_duplicate_clone = {6, 2, "DUPLICATE", "DUP"};
 static const struct mk2_filter filter_bad = {8, 6, "BAD", "BAD"};
 static const struct mk2_filter filter_outside = {32, 0, "BAD", "BAD"};
 static const struct mk2_filter filter_stock = {5, 0, "BAD", "BAD"};
 const struct mk2_filter *const mk2_filters[] = {
 #ifndef EMPTY
-    &filter_high, &filter_bad, &filter_outside, &filter_stock, &filter_low, &filter_same_id,
+    &filter_high, &filter_bad, &filter_outside, &filter_stock, &filter_low,
     &filter_low,
+#endif
+    0
+};
+const struct mk2_filter *const mk2_voice_filters[] = {
+#ifndef EMPTY
+    &filter_bad, &filter_outside, &filter_stock, &filter_unity, &filter_unity,
+    &filter_duplicate_clone,
 #endif
     0
 };
@@ -59,6 +67,7 @@ static void check_filters(void)
     assert(!memcmp(dn2_filter_list, stock, sizeof(stock)));
     for (unsigned i = 0; i < 6; ++i) {
         assert(dn2_filter_clone(i) == i);
+        assert(dn2_filter_dsp_type(i) == i);
         assert(dn2_filter_descriptor(i) == (uintptr_t)&dn2_stock_filter_descriptors[i]);
         assert(dn2_filter_name(i) == (uintptr_t)dn2_stock_filter_names[i].name);
         assert(dn2_filter_label(i) == (uintptr_t)dn2_stock_filter_names[i].label);
@@ -66,20 +75,33 @@ static void check_filters(void)
 #ifdef EMPTY
     assert(dn2_filter_list_bytes == 24);
     assert(dn2_filter_clone(31) == 0);
+    assert(dn2_filter_dsp_type(7) == 0);
     assert(!strcmp((const char *)dn2_filter_name(6), "MISSING"));
-    (void)filter_low; (void)filter_high; (void)filter_same_id;
+    assert(!strcmp((const char *)dn2_filter_name(7), "MISSING"));
+    assert(dn2_filter_descriptor(7) == (uintptr_t)&dn2_stock_filter_descriptors[0]);
+    (void)filter_low; (void)filter_high; (void)filter_unity; (void)filter_duplicate_clone;
     (void)filter_bad; (void)filter_outside; (void)filter_stock;
 #else
     assert(dn2_filter_list_bytes == 36);
     assert(dn2_filter_list[6] == 6 && dn2_filter_list[7] == 7 && dn2_filter_list[8] == 31);
     assert(dn2_filter_clone(6) == 0 && dn2_filter_clone(7) == 1 && dn2_filter_clone(31) == 5);
+    assert(dn2_filter_dsp_type(6) == 0 && dn2_filter_dsp_type(7) == 7
+           && dn2_filter_dsp_type(31) == 5);
     assert(dn2_is_voice(7) && dn2_dsp_type(7) == 7);  /* Same ID, separate categories. */
+    const struct descriptor *voice = (const struct descriptor *)dn2_filter_descriptor(7);
+    assert(!strcmp(voice->name, "UNITY") && !strcmp(voice->label, "UNITY"));
+    for (unsigned i = 0; i < 9; ++i)
+        assert(voice->params[i] == 0);
+    assert(!strcmp((const char *)dn2_filter_name(6), "CLONE FILTER"));
+    const struct descriptor *clone = (const struct descriptor *)dn2_filter_descriptor(6);
+    assert(!memcmp(clone->params, dn2_stock_filter_descriptors[0].params, sizeof(clone->params)));
     const struct descriptor *d = (const struct descriptor *)dn2_filter_descriptor(31);
     assert(d->params[0] == 318 && !strcmp(d->name, "COMB CLONE"));
     assert(filter_strings[31][0].references == -1);
     assert(!strcmp((const char *)dn2_filter_label(31), "comb"));
 #endif
     assert(dn2_filter_clone(8) == 0 && dn2_filter_clone(0xffffffff) == 0xffffffff);
+    assert(dn2_filter_dsp_type(8) == 0 && dn2_filter_dsp_type(0xffffffff) == 0xffffffff);
     assert(dn2_filter_name(32) == (uintptr_t)dn2_unknown_name);
     assert(dn2_filter_label(32) == (uintptr_t)dn2_unknown_label);
     assert(dn2_filter_descriptor(8) == (uintptr_t)&dn2_stock_filter_descriptors[0]);

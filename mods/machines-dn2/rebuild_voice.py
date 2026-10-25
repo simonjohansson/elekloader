@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-"""Rebuild the pinned voice adapter with the qualified Selache checkout."""
+"""Rebuild the pinned machine adapters with the qualified Selache checkout."""
 import argparse
 import hashlib
 import json
@@ -15,18 +15,23 @@ def main():
     args = parser.parse_args()
     here = Path(__file__).resolve().parent
     tools = args.selache / 'target/release'
+    for kind, start in (('voice', 0x1790000), ('filter', 0x1794000)):
+        rebuild(here, tools, kind, start)
+
+
+def rebuild(here, tools, kind, start):
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         (tmp / 'layout.ldf').write_text('''ARCHITECTURE(ADSP-21569)
 $OBJECTS=$COMMAND_LINE_OBJECTS;
-MEMORY {code {TYPE(BW RAM) START(0x01790000) END(0x017907ff) WIDTH(8)}}
+MEMORY {code {TYPE(BW RAM) START(0x%x) END(0x%x) WIDTH(8)}}
 PROCESSOR p0 {OUTPUT($COMMAND_LINE_OUTPUT_FILE) SECTIONS {
  bridge SW {INPUT_SECTIONS($OBJECTS(seg_swco))} > code}}
-''')
+''' % (start, start + 2047))
         subprocess.run([tools / 'selas', '-proc', 'ADSP-21569', '-o', tmp / 'bridge.doj',
-                        here / 'voice-bridge.s'], check=True)
+                        here / (kind + '-bridge.s')], check=True)
         subprocess.run([tools / 'seld', '-proc', 'ADSP-21569', '-T', tmp / 'layout.ldf',
-                        '-entry', 'dn2_voice_entry', '-o', tmp / 'bridge.dxe', tmp / 'bridge.doj'], check=True)
+                        '-entry', 'dn2_' + kind + '_entry', '-o', tmp / 'bridge.dxe', tmp / 'bridge.doj'], check=True)
         raw = (tmp / 'bridge.dxe').read_bytes()
         shoff, = struct.unpack_from('<I', raw, 32)
         count, = struct.unpack_from('<H', raw, 48)
@@ -36,9 +41,9 @@ PROCESSOR p0 {OUTPUT($COMMAND_LINE_OUTPUT_FILE) SECTIONS {
         size = len(code[0])
         code = b''.join(code[0][i:i + 2][::-1] for i in range(0, size, 2))
         code += b'\x01\x00' * ((2048 - size) // 2)
-        target = here.parents[1] / 'elekloader/sdk/include/digitone-mk2/voice-bridge.json'
+        target = here.parents[1] / ('elekloader/sdk/include/digitone-mk2/' + kind + '-bridge.json')
         target.write_text(json.dumps({'offset_bytes': 0, 'kind': 'code', 'hex': code.hex()}, indent=1) + '\n')
-        print('adapter:', size, 'bytes; padded SHA-256:', hashlib.sha256(code).hexdigest())
+        print(kind, 'adapter:', size, 'bytes; padded SHA-256:', hashlib.sha256(code).hexdigest())
 
 
 if __name__ == '__main__':

@@ -511,19 +511,20 @@ addresses and bounds are checked against its own stock file.
   section 2's `Multiplier` seed. The stock validator at `0x400dbdb0`
   checks the content checksum and seal. Writing an unchanged image must
   reproduce stock byte for byte, including the seal.
-- **SHARC.** One DSP mod may own the 32 KiB L2 reservation
-  `[0x20090000,0x20098000)`. The master-output contract uses the core's
-  pinned L1 bridge; selectable track synths use the bounded voice adapter
-  inside L2. See [memory and limits](SHARC-DN2.md), the
-  [master-output contract](SHARC-DN2-ABI.md) and
-  [track-synth contract](MACHINES-DN2-VOICE.md). Mod compilation belongs to
+- **SHARC.** The 32 KiB L2 reservation `[0x20090000,0x20098000)` holds
+  either one master-output mod or one custom synth and one custom filter.
+  Master output uses the core's pinned L1 bridge; each machine has its own
+  adapter inside L2. See [memory and limits](SHARC-DN2.md), the
+  [master-output contract](SHARC-DN2-ABI.md),
+  [track-synth contract](MACHINES-DN2-VOICE.md) and
+  [filter contract](MACHINES-DN2-FILTER.md). Mod compilation belongs to
   its project; the SDK accepts its prelinked artifact and checks ownership,
   coverage, callback bindings, guards, declared stack and firmware limits.
 - **Machine registration.** The `machines-dn2` companion owns the native
-  SYN/FLTR hooks. Mods use `mk2/machines.h` to register synths and stock
-  filter clones with independent saved IDs. The external C workflow builds
-  SINE + CLONE FILTER with DigiHealth; see
-  [synth clones](MACHINES-DN2.md) and [filter clones](MACHINES-DN2-FILTER.md).
+  SYN/FLTR hooks. Mods use `mk2/machines.h` to register synths and filters
+  with independent saved IDs. The external C workflow builds SINE and
+  UNITY with DigiHealth; see [synth clones](MACHINES-DN2.md) and
+  [filters](MACHINES-DN2-FILTER.md).
 - **Staging.** The bootstrap loader `0x80000596` reads section 3 from flash
   at the container offset plus `0x80000` to `0x40400000`. Its depacker
   `0x80000432` unpacks to `0x40000400`. `syx.verify` checks that output

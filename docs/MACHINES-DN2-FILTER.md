@@ -1,9 +1,12 @@
-# Digitone II filter clones
+# Digitone II filters
 
-`machines-dn2` 0.1 adds stock filter clones to the native **FUNC+SYN →
-FLTR** category on OS 1.12. They work independently of synth registration:
-one track can retain SINE and select CLONE FILTER. Core-dn2 is 0.1.
-Filter clones use stock DSP; custom filter DSP is not supported.
+Experimental, OS 1.12 only. `machines-dn2` 0.1 registers stock filter
+clones and custom SHARC filters in **FUNC+SYN → FLTR**. Filter selection
+is independent of the synth: a custom filter can process SINE or a stock
+synth. Require core-dn2 0.1. Custom filter hardware and timing
+qualification is incomplete.
+
+## Registration
 
 ```c
 #include "mk2/machines.h"
@@ -28,37 +31,82 @@ use the same numeric ID: their namespaces and stored bytes are separate.
 Never reuse a distributed filter's ID for a different filter.
 
 The selector lists the six stock filters in their native order, followed
-by registered clones in ID order. Pages, defaults, parameters and audio use
-the chosen stock filter. Saving and copying retain the clone's identity.
+by registered filters in ID order. For clones, pages, defaults, parameters
+and audio use the chosen stock filter. Saving and copying retain the ID.
 A missing registration keeps its saved ID, disappears from the selector
 and uses **MULTI-MODE**, with the existing parameter values. This can change
 the sound. Keep project backups when changing installed mods. Removing the
 companion restores the stock loader's unknown-ID clamp.
 
-`mk2_filters` names the registration interface; it does **not** enable
-Digitakt II. That device needs independently traced and qualified firmware
-adapters and limits. Synths use `mk2_synths` and `mk2_voice_synths`, with
+The `mk2_*` interfaces are implemented only for Digitone II. Digitakt II
+needs independently qualified firmware adapters and limits. Synths use
 `struct mk2_synth` from the same header.
 
-## OS 1.12 trace
+## Custom DSP
 
-OS 1.12 stock SHA-256:
-`7e5b8a733d4ab1fdf7e5d22757f7d8eddaa3cbf71d0858874a791844c02ceb35`.
+Contribute the same four-field descriptor to `mk2_voice_filters` instead
+of `mk2_filters`. The stock-type field must still be 0..5, but custom
+filters use only the common stock defaults; filter-specific parameter
+slots 66..68 have no mapping. Its FLTR page is named after the mod and
+has no controls. The same mod must carry a
+`dn2-filter-mono32-l2-v1` artifact with the matching `machine_id` and
+`entries: {"render_offset_bytes": ...}`. The linker refuses a missing or
+mismatched payload, conflicting filter IDs, or the same ID registered as
+both a clone and a custom filter.
 
-| Path | OS 1.12 finding |
-|---|---|
-| Cached list | `0x4004dae2`, vector at `0x405cdfa4`, stock IDs `0,1,4,3,5,2` |
-| Assignment | selector YES calls `0x40031a56`; sound setter `0x4004cd7c` writes `sound+0xdf` |
-| Saved identity | save `0x400dd8b8`: `sound+0xdf → stored+0xf5`; load `0x400dd42a` reverses it; the filter's bound is at `0x400dd420` |
-| Names | `0x400dc508` / `0x400dc52e`, six rows at `0x401f7bbc` |
-| Pages | `0x400c2614`, six 44-byte descriptors at `0x424339cc` |
-| Defaults and parameters | `0x400dc18e`, filter argument selects three words at `0x42c65cd0` for slots 66..68; native defaults use the same lookup |
-| Audio frame | `0x40027586` reads mirror `+0xd8d`; only the transmitted filter type is mapped to its clone |
-| DSP filter stage | render table `0x8052dbc0`, setup table `0x8052dba4`; selected filtering precedes the stock amp stage, downstream of the voice synth callback |
+```c
+#include "digitone-mk2/filter.h"
+void sharc_filter_render(const struct dn2_filter_input *in);
+```
 
-The six page descriptors share the envelope/global entries; their filter
-control IDs are `36..38`, `39..40`, `41..43`, `54..56`, `57..59`, and
-`318..320`. This is not the synth page table or synth owner numbering.
+The eight-byte input contains `float *samples` and `uint32_t slot`.
+Process 32 mono floats at 48 kHz in place before the stock AMP stage and
+return nothing. Slot is 0..15, not a track number; keep independent state
+per slot. The callback receives no pitch, trigger flags or filter controls.
+One custom synth and one custom filter can coexist; a master-output mod
+cannot be combined with either.
+
+The adapter uses the register preservation and C context described for
+the [synth adapter](MACHINES-DN2-VOICE.md#context-and-memory), and also
+preserves LCNTR around the callback. The filter
+callback may declare at most **12 stack bytes**, plus its adapter's
+eight-byte call frame. Preserve the other registers and hardware stacks;
+return I6/I7 unchanged. These limits do not measure actual stack use or
+prove an audio deadline.
+
+## Memory and dispatch
+
+The filter owns the second 16 KiB of the L2 reservation:
+
+| Part | Loader byte range | Size |
+|---|---|---|
+| Pinned adapter, including guard | `0x20094000..0x20094800` | 2 KiB |
+| Author code, including 64-byte guard | `0x20094800..0x20096000` | 6 KiB |
+| Author data | `0x20096000..0x20097c00` | 7 KiB |
+| Zeroed adapter state | `0x20097c00..0x20098000` | 1 KiB |
+
+Ranges exclude their end. The producer reads
+`elekloader.sdk.sharc.machine_layout('filter')` for its link bounds and
+calls `filter_artifact(code, data, render_offset_bytes, machine_id,
+stack_bytes)` with the prelinked bytes. Its arguments follow
+[`voice_artifact`](MACHINES-DN2-VOICE.md#context-and-memory); empty data is
+allowed. Compilation belongs to the producer. Keep writes in the author
+data area and supplied sample buffer.
+
+The linker binds the render PC and ID at `0x20097e00`. Its hook replaces
+the six-byte table-pointer load at `0x28392b0e` and continues at PC16
+`0x1c958a` after restoring that load. A matching raw filter ID dispatches
+the callback when the stock internal filter type has settled to zero.
+The first block after selection may still use the previous stock filter.
+Other IDs follow the stock path.
+
+`mods/machines-dn2/filter-bridge.s` produces 1,424 code bytes, padded to
+2 KiB, SHA-256
+`05358ac7830134569942f9bec805071bea2a3dae2b17febb7d22aad682daf4f8`.
+The [adapter rebuild instructions](MACHINES-DN2-VOICE.md#context-and-memory)
+cover both machine adapters. Native sites are declared in
+`mods/machines-dn2/mod.json`; the DSP hook and limits live in the device
+profile.
 
 Sources: [DigiKit's machine/parameter investigation](https://github.com/ElekLabs/digikit/blob/38dfbe4ae88263511eed95691c07fc07e17b6f26/docs/findings/02-machines-and-parameters.md),
 [native selector research](https://github.com/angellinares/dn2_firmware_explore/blob/39815895720b84c59ce2fa0ff5b13bd47dc415d2/docs/machine-list.md)
@@ -66,15 +114,14 @@ and [DSP stage research](https://github.com/angellinares/dn2_firmware_explore/bl
 
 ## Checks
 
-Build the external consumer with `mise run build-c`; its firmware includes
-SINE, CLONE FILTER and DigiHealth. The host registry tests cover separate
-IDs, stock ordering, invalid registrations and missing filters. Python and
-TypeScript check conflicting IDs and produce matching firmware.
+Build the external `digitone-2-mod-hack` consumer with `mise run build-c`;
+its firmware includes SINE (synth ID 6), UNITY (filter ID 7) and DigiHealth.
+UNITY multiplies its input by one. Compare SINE and stock FM through both
+MULTI-MODE and UNITY, including AMP controls and project save/reload.
+Removing UNITY must retain the synth and saved filter ID; reinstalling it
+must restore selection. Check stock filter controls with MULTI-MODE.
 
-For runtime checks, use the same build with DigiHealth. Select SINE and
-CLONE FILTER on one track, compare it with MULTI-MODE at identical settings,
-and play a stock synth on a second track. Check cutoff, preset copy and
-project save/reload. Removing the filter registration must retain SINE's
-identity and the saved filter ID; reinstalling it must restore selection.
-Run these checks in the coupled emulator and on the device for each
-changed workload.
+Run `python tests/test_units.py` and the TypeScript suite for registration,
+memory and artifact refusals. Run the four synth/filter combinations in
+the coupled emulator and on the device for each changed workload. A host
+or emulator pass does not qualify hardware timing.

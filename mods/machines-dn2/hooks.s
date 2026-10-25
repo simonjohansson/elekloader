@@ -119,7 +119,7 @@ dn2_parameter:
 1:  RESTORE
 2:
     MAP 12
-    MAP 16,dn2_filter_clone
+    MAP 16,dn2_filter_dsp_type
     move.l 12(%sp),%d0
     movea.l 16(%sp),%a1
     jmp PARAM_CONTINUE
@@ -209,7 +209,7 @@ dn2_filter_frame_type:
     movem.l %d1/%a0-%a1,(%sp)
     mvs.b 0xd8d(%a0),%d0
     move.l %d0,-(%sp)
-    jsr dn2_filter_clone
+    jsr dn2_filter_dsp_type
     addq.l #4,%sp
     movem.l (%sp),%d1/%a0-%a1
     lea 12(%sp),%sp
@@ -224,7 +224,7 @@ dn2_filter_real_return:
     addq.l #4,%sp
     rts
 
-| Clipboard, undo and identity callers retain the filter ID; defaults see its clone.
+| Custom filters keep their empty page; clones and missing IDs use stock defaults.
     .globl dn2_filter_reader
 dn2_filter_reader:
     mvs.b 0xdf(%a0),%d0
@@ -237,7 +237,7 @@ dn2_filter_reader:
     lea -8(%sp),%sp
     movem.l %a0-%a1,(%sp)
     move.l %d0,-(%sp)
-    jsr dn2_filter_clone
+    jsr dn2_filter_dsp_type
     addq.l #4,%sp
     movem.l (%sp),%a0-%a1
     lea 8(%sp),%sp

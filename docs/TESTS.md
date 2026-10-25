@@ -33,8 +33,7 @@ node tests/test_web.mjs build/site   # the web page's engine, in Pyodide (packag
 ```
 
 The Digitone II suite builds the current core and examples with the
-ColdFire tools. It needs no archived core or mod binaries. Keep all built
-`.elemod` files out of the repository.
+ColdFire tools. Keep all built `.elemod` files out of the repository.
 
 ## The refusal fixtures
 

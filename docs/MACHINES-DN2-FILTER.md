@@ -1,8 +1,8 @@
 # Digitone II filter clones
 
-`machines-dn2` 0.3 adds stock filter clones to the native **FUNC+SYN →
+`machines-dn2` 0.1 adds stock filter clones to the native **FUNC+SYN →
 FLTR** category on OS 1.12. They work independently of synth registration:
-one track can retain SINE and select CLONE FILTER. Core-dn2 remains 0.2.
+one track can retain SINE and select CLONE FILTER. Core-dn2 is 0.1.
 This increment adds no custom filter DSP.
 
 ```c
@@ -19,7 +19,7 @@ Contribute its pointer to `mk2_filters`, with the normal SDK manifest:
 ]
 ```
 
-Require `core` and `machines-dn2`, and set `resources.core` to `"0.2"`.
+Require `core` and `machines-dn2`, and set `resources.core` to `"0.1"`.
 The fields are permanent ID **6..31**, stock filter **0..5**, name (ASCII,
 at most 31 characters) and label (at most 7). Stock types are MULTI-MODE,
 LOWPASS 4, EQUALIZER, COMB-, LEGACY LP/HP and COMB+, respectively. The linker

@@ -125,8 +125,8 @@ docs match its code.
 ## Maintaining elekloader
 
 - **[Digitone II SHARC](SHARC-DN2.md)**: the stock file, the memory the
-  mods and the bridge use, the size limits, the sources, and what was
-  checked.
+  mods and the bridge use, size limits, source provenance and runtime
+  constraints.
 - **[SHARC boot records](SHARC-BOOT.md)**: how section 7 is read and added
   to, with test cases shared by the Python and the TypeScript.
 - **[SHARC reference checks](../examples/sharc-sine-probe/README.md)**: the

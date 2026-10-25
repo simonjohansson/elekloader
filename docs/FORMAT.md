@@ -90,7 +90,7 @@ For a selectable track synth, the additional experimental ABI is
 `dn2-voice-mono32-l2-v1`. It uses the same fields below, plus `machine_id`
 (5..31), and `entries` contains only `render_offset_bytes`. A matching
 descriptor must be contributed by that same mod to `mk2_voice_synths` in
-machines-dn2 0.3. A voice registration without its DSP payload is refused.
+machines-dn2 0.1. A voice registration without its DSP payload is refused.
 IDs conflict with clone IDs too. One DSP mod still owns the reservation.
 
 The voice artifact starts with the profiled 2 KiB adapter code segment,
@@ -136,8 +136,8 @@ example's at 176 and 238; both declare 128 bytes of stack.
 For master-output mods, linking also refuses unless:
 - only one mod in the build has `sharc`;
 - a mod with entries has a core whose bridge is the one the device profile
-  pins: its bytes, its entry and its stack. That is core-dn2 0.2 or newer;
-  set `"resources": {"core": "0.2"}` so the loader picks it;
+  pins: its bytes, its entry and its stack. That is core-dn2 0.1;
+  set `"resources": {"core": "0.1"}` so the loader picks it;
 - the declared stacks fit: the bridge declares 116 bytes and the two
   together may not pass 544, so a mod has at most 428.
 
@@ -154,7 +154,7 @@ also adds:
 The writer packs section 7 again. The verifier checks that it depacks to the
 linked stream and fits its limits, that the seal and the update size are
 right, and that every other section is stock. Without a SHARC mod, section 7
-stays stock, with core 0.2 too.
+stays stock, with core 0.1 too.
 
 A mod's code, data and callback offsets may change from build to build with
 no change to elekloader: only the bridge is pinned. These checks cover the

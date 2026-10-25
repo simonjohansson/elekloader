@@ -81,14 +81,14 @@ Build it with the SDK (it needs m68k binutils; with Homebrew's
 `m68k-elf-binutils`, set `ELEKLOADER_CROSS=m68k-elf-`):
 
 ```bash
-python -m elekloader.sdk.build mods/core-dn2 --stock Digitone_II_OS1.12.syx      # out/core-0.2.elemod
-python -m elekloader.lint mods/core-dn2/out/core-0.2.elemod --stock Digitone_II_OS1.12.syx
+python -m elekloader.sdk.build mods/core-dn2 --stock Digitone_II_OS1.12.syx      # out/core-0.1.elemod
+python -m elekloader.lint mods/core-dn2/out/core-0.1.elemod --stock Digitone_II_OS1.12.syx
 ```
 
 ## Input bridge and SysEx observers
 
-DigiHealth's DN2 port uses these shared facilities; it owns no stock code
-sites. The six UI events and their existing implementations remain intact.
+DigiHealth's DN2 port uses these shared facilities for remote input and
+SysEx requests.
 
 - `input.c` merges physical and synthetic key masks and refuses physical
   overlap or a full UI queue. `core_keys_set` and `core_keys_clear` run only

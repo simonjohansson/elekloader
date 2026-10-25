@@ -1,9 +1,9 @@
 {
  "id": "machines-dn2",
- "version": "0.3",
+ "version": "0.1",
  "license": "GPL-2.0-or-later",
  "title": "DN2 synth and filter machines",
- "description": "Native synth/filter clones and SHARC voice synths in the Digitone II machine selector. Needs core 0.2.",
+ "description": "Native synth/filter clones and SHARC voice synths in the Digitone II machine selector. Needs core 0.1.",
  "device": "digitone-mk2",
  "os": "1.12",
  "sources": [
@@ -226,7 +226,7 @@
   "mk2_filters": 4
  },
  "resources": {
-  "core": "0.2",
+  "core": "0.1",
   "names": [
    "mk2-synth:0",
    "mk2-synth:1",

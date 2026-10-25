@@ -1,6 +1,6 @@
 # Digitone II SHARC track synths
 
-Experimental, OS 1.12 only. machines-dn2 0.3 can register an external C
+Experimental, OS 1.12 only. machines-dn2 0.1 can register an external C
 oscillator in the native FUNC+SYN selector. Its output passes through the
 stock voice envelope, filter, pan, sends and mixer. Other tracks retain
 their stock synthesis. This callback has been checked in the coupled
@@ -17,7 +17,7 @@ The native machine selector identifies the engine as SINE.
 
 The same mod must carry a `dn2-voice-mono32-l2-v1` artifact with a matching
 `machine_id` and `entries: {"render_offset_bytes": ...}`. Require `core`
-(core 0.2) and `machines-dn2`. The linker refuses a missing/mismatched
+(core 0.1) and `machines-dn2`. The linker refuses a missing/mismatched
 payload, conflicting IDs or registering the voice's ID as a clone too.
 One SHARC mod still owns the reservation; coexistence of independent DSP
 mods is separate work. The master-output SHARC contract is unchanged.

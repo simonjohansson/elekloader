@@ -8,7 +8,7 @@ and release ramp, and the bridge copies them to both master channels.
 Releasing a different slot leaves the note playing.
 
 There is a C version (here) and an [assembly version](../sharc-sine-asm/README.md).
-Both need core-dn2 0.2 or newer (`resources.core`), and their build commands
+Both need core-dn2 0.1 (`resources.core`), and their build commands
 build that core too. This is one processor that owns the output, not a
 machine you pick for a sound or an effect on a track.
 

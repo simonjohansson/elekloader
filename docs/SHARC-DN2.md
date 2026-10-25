@@ -1,6 +1,6 @@
 # Digitone II SHARC implementation
 
-Core-dn2 0.2 lets one mod run code on the Digitone II's DSP, at the master
+Core-dn2 0.1 lets one mod run code on the Digitone II's DSP, at the master
 output, on OS 1.12. The DSP is an ADSP-21569 running SHARC+ VISA
 instructions; its silicon stepping has not been observed. This page is for
 maintainers. Mod authors start with the

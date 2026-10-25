@@ -69,7 +69,7 @@ class LinkTests(unittest.TestCase):
             (p / 'voice.json').write_text(json.dumps(artifact()))
             manifest = {'id': 'voice-test', 'version': '0.1', 'device': 'digitone-mk2', 'os': '1.12',
                         'sources': ['voice.c'], 'sharc': {'artifact': 'voice.json'},
-                        'resources': {'core': '0.2'}, 'requires': ['core', 'machines-dn2'],
+                        'resources': {'core': '0.1'}, 'requires': ['core', 'machines-dn2'],
                         'contribute': [{'to': 'mk2_voice_synths', 'data': '00000000',
                                         'relocs': [[0,'abs32','sym:sine',0]]},
                                        {'to': 'mk2_filters', 'data': '00000000',

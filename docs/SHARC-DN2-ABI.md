@@ -1,6 +1,6 @@
 # The Digitone II SHARC callbacks
 
-This is the contract between core-dn2 0.2's bridge and a SHARC mod on the
+This is the contract between core-dn2 0.1's bridge and a SHARC mod on the
 Digitone II OS 1.12, ABI `dn2-master-mono32-l2-v1`: what the bridge does,
 and what the mod's code must do. It is experimental.
 

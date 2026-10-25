@@ -1,6 +1,6 @@
 # Digitone II synth clones
 
-Experimental, OS 1.12 only. `machines-dn2` is a companion to core-dn2 0.2.
+Experimental, OS 1.12 only. `machines-dn2` is a companion to core-dn2 0.1.
 It also supports [SHARC track synths](MACHINES-DN2-VOICE.md) and independent
 [filter clones](MACHINES-DN2-FILTER.md), using the `mk2_*` interface.
 It puts external synth mods in the native **FUNC+SYN** selector. A clone
@@ -23,7 +23,7 @@ const struct mk2_synth my_synth = {5, 0, "CLONE", "CLONE"};
   {"to": "mk2_synths", "data": "00000000",
    "relocs": [[0, "abs32", "sym:my_synth", 0]]}
  ],
- "resources": {"core": "0.2"}, "requires": ["core", "machines-dn2"]
+ "resources": {"core": "0.1"}, "requires": ["core", "machines-dn2"]
 }
 ```
 
@@ -44,7 +44,7 @@ The companion leaves section 7 unchanged.
 python -m elekloader.sdk.build mods/core-dn2 --stock Digitone_II_OS1.12.syx --out out/core
 python -m elekloader.sdk.build mods/machines-dn2 --stock Digitone_II_OS1.12.syx --out out/machines
 python -m elekloader.sdk.build /path/to/my-mod --stock Digitone_II_OS1.12.syx --out out/clone
-python -m elekloader.patch --stock Digitone_II_OS1.12.syx --mod out/core/core-0.2.elemod --mod out/machines/machines-dn2-0.3.elemod --mod out/clone/synth-clone-0.1.elemod --mod /path/to/digihealth.elemod --out out/clone.syx --version MC01
+python -m elekloader.patch --stock Digitone_II_OS1.12.syx --mod out/core/core-0.1.elemod --mod out/machines/machines-dn2-0.1.elemod --mod out/clone/synth-clone-0.1.elemod --mod /path/to/digihealth.elemod --out out/clone.syx --version MC01
 ```
 
 The menu lists stock synths first, added synths by stable ID, then MIDI.

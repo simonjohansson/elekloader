@@ -59,17 +59,21 @@ both a clone and a custom filter.
 void sharc_filter_render(const struct dn2_filter_input *in);
 ```
 
-The eight-byte input contains `float *samples` and `uint32_t slot`.
+The twelve-byte input contains `float *samples`, `uint32_t slot` and
+`uint32_t flags`.
 Process 32 mono floats at 48 kHz in place before the stock AMP stage and
 return nothing. Slot is 0..15, not a track number; keep independent state
-per slot. The callback receives no pitch, trigger flags or filter controls.
+per slot. `DN2_FILTER_RESET` is set on the first callback after entering this filter
+and on a new trigger edge. Clear that slot's history before processing
+the block when this flag is set. Keep history between ordinary callbacks.
+The callback receives no pitch or filter controls.
 One custom synth and one custom filter can coexist; a master-output mod
 cannot be combined with either.
 
 The adapter uses the register preservation and C context described for
 the [synth adapter](MACHINES-DN2-VOICE.md#context-and-memory), and also
 preserves LCNTR around the callback. The filter
-callback may declare at most **12 stack bytes**, plus its adapter's
+callback may declare at most **20 stack bytes**, plus its adapter's
 eight-byte call frame. Preserve the other registers and hardware stacks;
 return I6/I7 unchanged. These limits do not measure actual stack use or
 prove an audio deadline.
@@ -100,9 +104,9 @@ the callback when the stock internal filter type has settled to zero.
 The first block after selection may still use the previous stock filter.
 Other IDs follow the stock path.
 
-`mods/machines-dn2/filter-bridge.s` produces 1,424 code bytes, padded to
+`mods/machines-dn2/filter-bridge.s` produces 1,566 code bytes, padded to
 2 KiB, SHA-256
-`05358ac7830134569942f9bec805071bea2a3dae2b17febb7d22aad682daf4f8`.
+`dea368ada96b1b08665e6f3399111aef43c84281a2fe4f85f585acd288e9dd32`.
 The [adapter rebuild instructions](MACHINES-DN2-VOICE.md#context-and-memory)
 cover both machine adapters. Native sites are declared in
 `mods/machines-dn2/mod.json`; the DSP hook and limits live in the device
@@ -115,10 +119,11 @@ and [DSP stage research](https://github.com/angellinares/dn2_firmware_explore/bl
 ## Checks
 
 Build the external `digitone-2-mod-hack` consumer with `mise run build-c`;
-its firmware includes SINE (synth ID 6), UNITY (filter ID 7) and DigiHealth.
-UNITY multiplies its input by one. Compare SINE and stock FM through both
-MULTI-MODE and UNITY, including AMP controls and project save/reload.
-Removing UNITY must retain the synth and saved filter ID; reinstalling it
+its firmware includes SINE (synth ID 6), LOWPASS (filter ID 8) and DigiHealth.
+LOWPASS uses per-slot history and a fixed coefficient of 1/16 at 48 kHz
+(about 493 Hz cutoff). Compare its response with the input and check RESET
+on retriggers, slot reuse and returning from a stock filter.
+Removing the filter must retain the synth and saved filter ID; reinstalling it
 must restore selection. Check stock filter controls with MULTI-MODE.
 
 Run `python tests/test_units.py` and the TypeScript suite for registration,

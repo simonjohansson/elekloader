@@ -19,7 +19,7 @@ STOCK = os.environ.get('ELEKLOADER_DN2_SYX')
 
 
 def artifact():
-    return filter_artifact(bytes(4), bytes(4), 0, 6, 12)
+    return filter_artifact(bytes(4), bytes(4), 0, 6, 20)
 
 
 class EnvelopeTests(unittest.TestCase):
@@ -49,7 +49,7 @@ class EnvelopeTests(unittest.TestCase):
             (lambda d: d.update(machine_id=True), 'machine_id'),
             (lambda d: d.update(machine_id=5), 'machine_id'),
             (lambda d: d.update(machine_id=32), 'machine_id'),
-            (lambda d: d.update(stack_bytes=13), 'filter stack'),
+            (lambda d: d.update(stack_bytes=21), 'filter stack'),
             (lambda d: d.update(entries=None), 'render entry'),
             (lambda d: d['entries'].update(render_offset_bytes=0), 'adapter reservation'),
             (lambda d: d['entries'].update(render_offset_bytes=8128), 'read-ahead guard'),

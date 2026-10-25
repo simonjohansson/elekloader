@@ -114,10 +114,8 @@ DM(0x20097cf8)=R0;
 R0=STKYY;
 DM(0x20097cfc)=R0;
 R0=LCNTR;
-DM(0x20097d08)=R0;
-// Unrecognized raw filter IDs use stock's empty filter arm.
-R0=PASS R2;
-IF NE JUMP restore;
+DM(0x20097d0c)=R0;
+R6=R2;
 R0=16;
 R0=R0-R15;
 IF LT JUMP restore;
@@ -132,6 +130,9 @@ COMP(R1,R2);
 IF NE JUMP restore;
 DM(0x20097d00)=R2;
 DM(0x20097d04)=R0;
+R7=1;
+R7=LSHIFT R7 BY R0;
+R8=NOT R7;
 L4=0;
 R1=90;
 R1=R0+R1;
@@ -153,7 +154,35 @@ R3=0xffff;
 R2=R2 AND R3;
 R3=DM(0x20097e04);
 COMP(R2,R3);
-IF NE JUMP restore;
+IF NE JUMP stock_slot;
+R0=PASS R6;
+IF NE JUMP stock_slot;
+// Reset when this slot enters the filter or receives a trigger edge.
+R3=0;
+R1=DM(0x20097e08);
+R2=R1 AND R7;
+R2=PASS R2;
+IF NE JUMP seen;
+R3=1;
+R1=R1 OR R7;
+DM(0x20097e08)=R1;
+seen:
+R1=DM(0x25c4ac);
+R2=DM(0x25c4b0);
+R1=R1 OR R2;
+R4=-16;
+R1=LSHIFT R1 BY R4;
+R1=R1 AND R7;
+R2=DM(0x20097e0c);
+R4=R2 AND R7;
+R2=R2 AND R8;
+R2=R2 OR R1;
+DM(0x20097e0c)=R2;
+COMP(R1,R4);
+IF LE JUMP flags_ready;
+R3=1;
+flags_ready:
+DM(0x20097d08)=R3;
 // Pin the C context, preserving the firmware register bank and interrupt setup.
 M5=0;
 M6=1;
@@ -178,6 +207,14 @@ JUMP(M13,I12)(DB);
 DM(I7,M7)=R2;
 DM(I7,M7)=returned-1;
 returned:
+JUMP restore;
+stock_slot:
+R1=DM(0x20097e08);
+R1=R1 AND R8;
+DM(0x20097e08)=R1;
+R1=DM(0x20097e0c);
+R1=R1 AND R8;
+DM(0x20097e0c)=R1;
 restore:
 R0=DM(0x20097c88);
 I0=R0;
@@ -229,7 +266,7 @@ R0=DM(0x20097ce4);
 L4=R0;
 R0=DM(0x20097ce8);
 L5=R0;
-R0=DM(0x20097d08);
+R0=DM(0x20097d0c);
 LCNTR=R0;
 R0=DM(0x20097cec);
 MODE1=R0;

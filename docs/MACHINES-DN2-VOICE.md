@@ -20,8 +20,7 @@ The same mod must carry a `dn2-voice-mono32-l2-v1` artifact with a matching
 (core 0.2) and `machines-dn2`. The linker refuses a missing/mismatched
 payload, conflicting IDs or registering the voice's ID as a clone too.
 One SHARC mod still owns the reservation; coexistence of independent DSP
-mods is separate work. Existing clone and master-output contracts remain
-accepted.
+mods is separate work. The master-output SHARC contract is unchanged.
 
 ```c
 #include "digitone-mk2/voice.h"

@@ -2,6 +2,9 @@
 
 Experimental, OS 1.12 only. `machines-dn2` is a companion to core-dn2 0.2.
 From 0.2 it also supports [SHARC track synths](MACHINES-DN2-VOICE.md).
+Version 0.3 uses `mk2/machines.h` and the `mk2_*` registration tables,
+and adds independent
+[filter clones](MACHINES-DN2-FILTER.md).
 It puts external synth mods in the native **FUNC+SYN** selector. A clone
 keeps its own saved machine ID but uses a stock synth's DSP and parameter
 pages. This does not yet run a mod's own per-voice SHARC code.
@@ -48,7 +51,8 @@ python -m elekloader.patch --stock Digitone_II_OS1.12.syx --mod out/core/core-0.
 
 The menu lists stock synths first, added synths by stable ID, then MIDI.
 The synth clone shares its original's SYN, FLTR and AMP pages; page titles
-retain the stock synth's name. The native FLTR selector is unchanged.
+retain the stock synth's name. The FLTR category independently lists any
+registered filter clones.
 
 With the companion present, a saved ID 5..31 whose mod is absent is kept,
 named MISSING by the name accessors and omitted from the selector. Its DSP

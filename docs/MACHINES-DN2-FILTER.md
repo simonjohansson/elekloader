@@ -37,9 +37,8 @@ companion restores the stock loader's unknown-ID clamp.
 
 `mk2_filters` names the registration interface; it does **not** enable
 Digitakt II. That device needs independently traced and qualified firmware
-adapters and limits. Synths use `mk2_synths` and `mk2_voice_synths`, with `struct mk2_synth`
-from the same header. Version 0.3 requires rebuilding earlier synth mods
-against these names; there are no aliases for the earlier DN2-prefixed tables.
+adapters and limits. Synths use `mk2_synths` and `mk2_voice_synths`, with
+`struct mk2_synth` from the same header.
 
 ## OS 1.12 trace
 
@@ -66,9 +65,20 @@ Sources: [DigiKit's machine/parameter investigation](https://github.com/ElekLabs
 and [DSP stage research](https://github.com/angellinares/dn2_firmware_explore/blob/39815895720b84c59ce2fa0ff5b13bd47dc415d2/docs/waverider-feasibility.md).
 Their OS 1.11 addresses were checked against 1.12, rather than assumed.
 
-## Qualification
+## Checks
 
-Host registry tests and the OS 1.12 firmware build are checked. Emulator
-qualification is in progress in issue #62; no physical-device qualification
-is claimed. Hardware is unavailable. The earlier SINE baseline with
-DigiHealth 1.5 still matches its qualified capture byte for byte.
+Build the external consumer with `mise run build-c`; its firmware includes
+SINE, CLONE FILTER and DigiHealth. The host registry tests cover separate
+IDs, stock ordering, invalid registrations and missing filters. Python and
+TypeScript check conflicting IDs and produce matching firmware.
+
+The native selector, cutoff, preset copy/undo, saved project and missing-mod
+checks are exercised in the coupled emulator. Detailed evidence belongs in
+[issue #62](https://github.com/simonjohansson/elekloader/issues/62).
+
+For a device check, use the same build with DigiHealth. Select SINE and
+CLONE FILTER on one track, compare it with MULTI-MODE at identical settings,
+and play a stock synth on a second track. Check cutoff, preset copy and
+project save/reload. Removing the filter registration must retain SINE's
+identity and the saved filter ID; reinstalling it must restore selection.
+Physical qualification is separate from the emulator checks.

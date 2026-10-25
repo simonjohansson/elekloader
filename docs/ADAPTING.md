@@ -1744,7 +1744,7 @@ root, so `pick` may open another list. NO closes a submenu like the menu, and
 holding a track key always opens the root. The machines mod's MACHINES
 entry opens one (below).
 
-### Synth clones (machines-dn2 0.1, Digitone II)
+### Synth and filter clones (machines-dn2 0.3, Digitone II)
 
 The experimental `machines-dn2` companion adds external stock synth clones
 in **FUNC+SYN** on OS 1.12. A mod contributes a stable ID, stock synth type

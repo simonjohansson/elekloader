@@ -3,8 +3,12 @@
 Experimental, OS 1.12 only. machines-dn2 0.1 can register an external C
 oscillator in the native FUNC+SYN selector. Its output passes through the
 stock voice envelope, filter, pan, sends and mixer. Other tracks retain
-their stock synthesis. This callback has been checked in the coupled
-emulator; no hardware or timing qualification is claimed.
+their stock synthesis in the coupled emulator. **The current voice-synth
+firmware is silent on hardware, including stock synths.** Memory-only and
+machine/filter-only controls produce audio; the voice integration remains
+blocked by [issue #69](https://github.com/simonjohansson/elekloader/issues/69).
+Use the voice callback for emulator development until that issue is fixed
+and physical qualification passes. No timing qualification is claimed.
 
 ## Author interface
 

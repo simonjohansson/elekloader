@@ -28,6 +28,84 @@ class RegistryTests(unittest.TestCase):
                 subprocess.run([str(executable)], check=True)
 
 
+class ParameterTableSitesTests(unittest.TestCase):
+    def test_bounds_and_references_match_the_appended_rows(self):
+        source = (ROOT / 'mods/machines-dn2/machines.c').read_text()
+        define = {name: int(value, 0) for name, value in
+                  (line.split()[1:3] for line in source.splitlines() if line.startswith('#define '))}
+        mod = json.loads((ROOT / 'mods/machines-dn2/mod.json').read_text())
+        self.assertEqual(int(mod['defsym']['T1_ROWS']), define['ROWS'])
+        bounds = [s for s in mod['sites'] if s['op'] == 'bytes' and len(s['stock']) == 12]
+        self.assertEqual(len(bounds), 54)
+        for site in bounds:
+            stock, new = bytes.fromhex(site['stock']), bytes.fromhex(site['new'])
+            self.assertEqual(stock[:2], new[:2], site['addr'])
+            self.assertIn(int.from_bytes(stock[2:], 'big'), (define['ROWS'], define['ROWS'] - 1))
+            self.assertEqual(int.from_bytes(new[2:], 'big') - int.from_bytes(stock[2:], 'big'),
+                             define['ADDED'], site['addr'])
+        self.assertEqual(sum(s.get('target') == 'dn2_t1' for s in mod['sites']), 56)
+
+
+@unittest.skipUnless(CF_CALL and STOCK and os.environ.get('ELEKLOADER_CROSS'),
+                     'needs DN2 stock, cross compiler and ELEKLOADER_CF_CALL')
+class VoicePagesTests(unittest.TestCase):
+    def test_stock_readers_see_the_pages_and_their_rows(self):
+        from elekloader import patch, syx
+        from elekloader.sdk import build as sdk
+        from elekloader.sdk.sharc import voice_artifact
+
+        stock = syx.Syx.load(STOCK)
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            base = [sdk.build(str(ROOT / 'mods' / source), STOCK, str(work / source))[0]
+                    for source in ('core-dn2', 'machines-dn2')]
+            stage = work / 'paged'
+            stage.mkdir()
+            (stage / 'machine.c').write_text(
+                '#include "mk2/machines.h"\n'
+                'const struct mk2_synth voice = {8, 0, "PAGED", "PAGED"};\n'
+                'static const struct mk2_param a = {"ALPH", 100}, b = {"BETA", 3};\n'
+                'static const struct mk2_page two[2] = {{{&a, 0, &b}}, {{0}}};\n'
+                'const struct mk2_voice_pages pages = {8, 2, two};\n')
+            (stage / 'kernel.json').write_text(json.dumps(voice_artifact(bytes(4), bytes(4), 0, 8, 20)))
+            (stage / 'mod.json').write_text(json.dumps({
+                'id': 'paged', 'version': '0.1', 'device': 'digitone-mk2', 'os': '1.12',
+                'sources': ['machine.c'], 'sharc': {'artifact': 'kernel.json'},
+                'resources': {'core': '0.1'}, 'requires': ['core', 'machines-dn2'],
+                'contribute': [{'to': table, 'data': '00000000', 'relocs': [[0, 'abs32', 'sym:' + symbol, 0]]}
+                               for table, symbol in (('mk2_voice_synths', 'voice'),
+                                                     ('mk2_voice_pages', 'pages'))]}))
+            mod = sdk.build(str(stage), STOCK, str(stage / 'build'))[0]
+            outputs, _manifest = patch.build(STOCK, base + [mod], 'TEST', log=lambda *args: None)
+            firmware = stage / 'test.syx'
+            firmware.write_bytes(outputs['syx'])
+            page_count, slot_code, row_slot, row_cc, value_class = (
+                0x400c2636, 0x400dc18e, 0x400dbe28, 0x400dc406, 0x400c257c)
+            checks = [(page_count, [8], 2), (page_count, [0], 4),
+                      (slot_code, [25, 8, 0], 321), (slot_code, [26, 8, 0], 0),
+                      (slot_code, [27, 8, 0], 323), (slot_code, [33, 8, 0], 0),
+                      (slot_code, [41, 8, 0], 0),
+                      (row_slot, [321], 25), (row_slot, [323], 27), (row_slot, [0xd5], 36),
+                      (row_cc, [321], 0xffffffff), (row_cc, [0xd5], 49),
+                      (value_class, [321], None), (value_class, [0xd5], None),
+                      (value_class, [361], None), (value_class, [0], None)]
+            request = stage / 'request.json'
+            request.write_text(json.dumps({'calls': [{'pc': hex(pc), 'args': [str(a) for a in args]}
+                                                     for pc, args, _ in checks]}))
+            result = subprocess.run([CF_CALL, str(firmware), str(request), '--base-sha', stock.sha256],
+                                    capture_output=True, text=True, timeout=300)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            rows = [json.loads(line) for line in result.stdout.splitlines() if line.startswith('{')]
+            self.assertEqual(len(rows), len(checks))
+            for row, (pc, args, want) in zip(rows, checks):
+                self.assertTrue(row['ok'], row)
+                if want is not None:
+                    self.assertEqual(row['d'][0], want, (hex(pc), args))
+            classes = [row['d'][0] for row in rows[-4:]]
+            self.assertEqual(classes[0], classes[1])          # an added row shares its template's object
+            self.assertEqual(classes[2], classes[3])          # past the added rows: the stock clamp to 0
+
+
 @unittest.skipUnless(CF_CALL and STOCK and os.environ.get('ELEKLOADER_CROSS'),
                      'needs DN2 stock, cross compiler and ELEKLOADER_CF_CALL')
 class ParameterDispatchTests(unittest.TestCase):

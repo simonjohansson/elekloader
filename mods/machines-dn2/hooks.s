@@ -68,12 +68,12 @@ dn2_group:
 dn2_page_count:
     SAVE
     move.l 20(%sp),-(%sp)
-    jsr dn2_is_voice
+    jsr dn2_voice_page_count
     addq.l #4,%sp
     tst.l %d0
     beq.s 1f
+    move.l %d0,(%sp)
     RESTORE
-    moveq #1,%d0
     rts
 1:  RESTORE
     MAP 4
@@ -113,7 +113,13 @@ dn2_parameter:
     subi.l #25,%d0
     cmpi.l #39,%d0
     bhi.s 2f
-    moveq #0,%d0
+    SAVE
+    move.l %a0,-(%sp)
+    move.l 32(%sp),-(%sp)
+    jsr dn2_voice_code
+    addq.l #8,%sp
+    move.l %d0,(%sp)
+    RESTORE
     move.l (%sp)+,%d2
     rts
 1:  RESTORE
@@ -123,6 +129,18 @@ dn2_parameter:
     move.l 12(%sp),%d0
     movea.l 16(%sp),%a1
     jmp PARAM_CONTINUE
+
+| The value-class accessor: an added parameter code uses its template's object.
+    .globl dn2_t2
+dn2_t2:
+    SAVE
+    move.l 20(%sp),-(%sp)
+    jsr dn2_value_code
+    addq.l #4,%sp
+    move.l %d0,(%sp)
+    RESTORE
+    cmpi.l #T1_ROWS,%d0
+    jmp T2_CONTINUE
 
 | Audio mirror identity stays real; only the transmitted DSP type is the stock clone.
     .globl dn2_frame_type

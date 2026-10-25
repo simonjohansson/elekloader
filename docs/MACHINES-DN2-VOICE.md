@@ -1,6 +1,6 @@
 # Digitone II SHARC track synths
 
-Experimental, OS 1.12 only. machines-dn2 0.1 can register an external C
+Experimental, OS 1.12 only. machines-dn2 0.2 can register an external C
 oscillator in the native FUNC+SYN selector. Its output passes through the
 voice envelope, the selected stock or [custom filter](MACHINES-DN2-FILTER.md),
 pan, sends and mixer. Timing, full-polyphony and long-duration stability
@@ -12,8 +12,36 @@ Use the existing four-field `mk2_synth` descriptor from
 `mk2/machines.h`, contributing its pointer to `mk2_voice_synths`
 instead of `mk2_synths`. The fields remain stable ID, stock defaults type,
 name and short label. Use permanent IDs 5..31; clones share that namespace.
-The companion supplies a named empty SYN page and stock AMP controls.
-FLTR controls belong to the selected filter.
+The companion supplies a named empty SYN page and stock AMP controls,
+unless the mod declares its own pages (below). FLTR controls belong to the
+selected filter.
+
+### Pages
+
+Contribute a pointer to an `mk2_voice_pages` with the synth's ID, a page
+count (1..5) and the pages. Each page has eight knobs; a `NULL` knob is an
+empty slot, and a used one shows the stock knob with its label (1..5 ASCII
+characters, shown in capitals) and starts at its default (0..127) when the
+synth is selected:
+
+```c
+#include "mk2/machines.h"
+static const struct mk2_param level = {"LEV", 100}, detune = {"DET", 64};
+static const struct mk2_page sine_pages[1] = {{{&level, &detune}}};
+const struct mk2_voice_pages sine_layout = {7, 1, sine_pages};
+```
+
+```json
+{"to": "mk2_voice_pages", "data": "00000000", "relocs": [[0, "abs32", "sym:sine_layout", 0]]}
+```
+
+Page `p`, knob `k` is sound slot `25 + 8p + k`. The value is saved with
+the sound and copied with it, as a stock synth's. Tabs read SYN1..SYN5 and
+the title is the synth's name. The render callback does not receive the
+values yet, and the knobs have no MIDI CC. The companion ignores an
+invalid entry (an unregistered or non-SHARC ID, a second entry for one
+ID, a count outside 1..5, a bad label or default) and the synth keeps its
+empty page. The linker refuses two mods that give pages to one ID.
 
 The same mod must carry a `dn2-voice-mono32-l2-v1` artifact with a matching
 `machine_id` and `entries: {"render_offset_bytes": ...}`. Require `core`

@@ -20,7 +20,8 @@ struct mk2_synth {
  * synth (mk2_voice_synths) its own SYN pages, 1..5 of 8 knobs. Page p, knob k
  * is sound slot 25 + 8p + k, saved with the sound. A NULL knob is an empty
  * slot. Labels are ASCII, 1..5 characters; defaults 0..127. SYN steps
- * through the pages, headed "NAME (p/n)". An invalid entry is ignored
+ * through the pages, headed "NAME (p/n)". A knob answers the MIDI CC/NRPN
+ * the clone has for its slot. An invalid entry is ignored
  * and the synth keeps one empty page. */
 struct mk2_param {
     const char *label;

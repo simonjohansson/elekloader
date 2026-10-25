@@ -38,8 +38,12 @@ const struct mk2_voice_pages sine_layout = {7, 1, sine_pages};
 Page `p`, knob `k` is sound slot `25 + 8p + k`. The value is saved with
 the sound and copied with it, as a stock synth's. SYN steps through the
 pages, as on a stock synth; the header reads the synth's name and the page,
-such as `SINE (2/2)`. The render callback does not receive the
-values yet, and the knobs have no MIDI CC. The companion ignores an
+such as `SINE (2/2)`. MIDI CC and NRPN reach a knob by position:
+a knob uses the number the clone's stock synth has for the same slot (for
+an FM TONE clone, SYN1 knob A is CC 40 and NRPN 1:73), turning it sends
+that CC, and a number whose slot is empty does nothing. A slot the clone
+gives no CC (FM TONE: 34 and 50..57) has none. The render callback does not
+receive the values yet. The companion ignores an
 invalid entry (an unregistered or non-SHARC ID, a second entry for one
 ID, a count outside 1..5, a bad label or default) and the synth keeps its
 empty page. The linker refuses two mods that give pages to one ID.

@@ -130,6 +130,17 @@ dn2_parameter:
     movea.l 16(%sp),%a1
     jmp PARAM_CONTINUE
 
+| The stock CC and NRPN lookups, past the entry dn2_cc_code and dn2_nrpn_code took.
+    .globl dn2_stock_cc, dn2_stock_nrpn
+dn2_stock_cc:
+    lea -12(%sp),%sp
+    movem.l %d2-%d4,(%sp)
+    jmp CC_CONTINUE
+dn2_stock_nrpn:
+    lea -12(%sp),%sp
+    movem.l %d2-%d4,(%sp)
+    jmp NRPN_CONTINUE
+
 | The value-class accessor: an added parameter code uses its template's object.
     .globl dn2_t2
 dn2_t2:

@@ -57,7 +57,9 @@
   "STOCK_T1": "0x401f83a4",
   "T1_ROWS": "321",
   "T2_CONTINUE": "0x400c2586",
-  "OS_MAIN": "0x40186fa2"
+  "OS_MAIN": "0x40186fa2",
+  "CC_CONTINUE": "0x400dc980",
+  "NRPN_CONTINUE": "0x400dca62"
  },
  "sites": [
   {
@@ -964,6 +966,18 @@
    "op": "bytes",
    "new": "bbfc00000168",
    "kind": "code"
+  },
+  {
+   "addr": "0x400dc978",
+   "stock": "4feffff448d7001c",
+   "op": "jmp",
+   "target": "dn2_cc_code"
+  },
+  {
+   "addr": "0x400dca5a",
+   "stock": "4feffff448d7001c",
+   "op": "jmp",
+   "target": "dn2_nrpn_code"
   }
  ],
  "collections": {

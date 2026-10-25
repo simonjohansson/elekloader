@@ -78,6 +78,15 @@ static int valid_pages(const struct mk2_voice_pages *p)
     return 1;
 }
 
+/* The MIDI CC the clone's stock row for `slot` has, or -1: a knob takes its position's CC. */
+static int16_t clone_cc(int32_t clone, int32_t slot)
+{
+    for (unsigned code = 1; code < ROWS; ++code)
+        if (dn2_t1[code].owner == clone && dn2_t1[code].slot == slot)
+            return dn2_t1[code].cc;
+    return -1;
+}
+
 /* Each declared knob gets a parameter row after the stock ones, copied from TEMPLATE. */
 static void build_pages(void)
 {
@@ -113,7 +122,7 @@ static void build_pages(void)
                 r->min = 0;
                 r->max = 127 << 8;
                 r->def = m->def << 8;
-                r->cc = -1;         /* No MIDI CC until the stock maps learn added rows. */
+                r->cc = clone_cc(r->owner, r->slot);
                 r->name = r->label = representation(&labels[code - ROWS], m->label, 5);
                 r->owner_name = strings[p->id][0].text;
             }
@@ -197,6 +206,35 @@ uint32_t dn2_voice_code(uint32_t type, uint32_t slot)
     if (!dn2_is_voice(type) || slot < SLOT || page >= page_count[type])
         return 0;
     return pages[first_page[type] + page].params[(slot - SLOT) % 8];
+}
+
+/* MIDI CC and NRPN lookups (track, synth, filter, number) -> parameter code. The stock maps
+ * know no voice type, so a paged voice asks its clone's: a clone synth row there stands for its
+ * slot, which is the voice's knob in that position (0 when the slot is empty). */
+typedef uint32_t lookup(uint32_t track, uint32_t synth, uint32_t filter, uint32_t key);
+extern lookup dn2_stock_cc, dn2_stock_nrpn;
+
+static uint32_t voice_lookup(lookup *stock, uint32_t track, uint32_t synth, uint32_t filter,
+                             uint32_t key)
+{
+    if (dn2_is_voice(synth) && page_count[synth]) {
+        int32_t clone = registered[synth]->clone;
+        uint32_t code = stock(track, clone, filter, key);
+        if (code < ROWS && dn2_t1[code].owner == clone && dn2_t1[code].slot >= SLOT
+                && dn2_t1[code].slot < SLOT + ADDED)
+            return dn2_voice_code(synth, dn2_t1[code].slot);
+    }
+    return stock(track, synth, filter, key);
+}
+
+uint32_t dn2_cc_code(uint32_t track, uint32_t synth, uint32_t filter, uint32_t cc)
+{
+    return voice_lookup(dn2_stock_cc, track, synth, filter, cc);
+}
+
+uint32_t dn2_nrpn_code(uint32_t track, uint32_t synth, uint32_t filter, uint32_t nrpn)
+{
+    return voice_lookup(dn2_stock_nrpn, track, synth, filter, nrpn);
 }
 
 /* An added row's value-class object is its template's. */

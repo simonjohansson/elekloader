@@ -84,6 +84,40 @@ const struct mk2_filter *const mk2_voice_filters[] = {
     0
 };
 
+/* Stock lookups: synth maps for stock types, then the filter's, then a global table. */
+static uint32_t fake_lookup(uint32_t track, uint32_t synth, uint32_t filter, uint32_t key, uint32_t base)
+{
+    static const uint32_t fm[][2] = {{40, 200}, {41, 201}, {42, 202}, {53, 217}};
+    (void)track;
+    if (synth == 0)
+        for (unsigned i = 0; i < 4; ++i)
+            if (fm[i][0] + base == key)
+                return fm[i][1];
+    if (filter == 0 && key == 23 + base)
+        return 300;
+    return key == 95 + base ? 10 : 0;
+}
+uint32_t dn2_stock_cc(uint32_t t, uint32_t s, uint32_t f, uint32_t k) { return fake_lookup(t, s, f, k, 0); }
+uint32_t dn2_stock_nrpn(uint32_t t, uint32_t s, uint32_t f, uint32_t k) { return fake_lookup(t, s, f, k, 160); }
+
+static void check_midi(void)
+{
+#ifndef EMPTY
+    /* SINE (7) clones FM TONE: a CC stands for its slot, and a slot is SINE's knob there. */
+    assert(dn2_cc_code(0, 7, 0, 40) == ROWS && dn2_cc_code(0, 7, 0, 42) == ROWS + 2);
+    assert(dn2_cc_code(0, 7, 0, 53) == ROWS + 15);
+    assert(dn2_cc_code(0, 7, 0, 41) == 0);                       /* slot 26 is empty */
+    assert(dn2_cc_code(0, 7, 0, 23) == 300 && dn2_cc_code(0, 7, 0, 95) == 10);
+    assert(dn2_nrpn_code(0, 7, 0, 200) == ROWS && dn2_nrpn_code(0, 7, 0, 201) == 0);
+    assert(dn2_nrpn_code(0, 7, 0, 183) == 300);
+    assert(dn2_t1[ROWS].cc == 40 && dn2_t1[ROWS + 2].cc == 42 && dn2_t1[ROWS + 15].cc == 53);
+    /* Without pages (8) or not a voice (0, the clone 5, a missing 6): the stock lookup. */
+    assert(dn2_cc_code(0, 8, 0, 40) == 0 && dn2_cc_code(0, 8, 0, 23) == 300);
+#endif
+    assert(dn2_cc_code(0, 0, 0, 40) == 200 && dn2_cc_code(0, 5, 0, 40) == 0);
+    assert(dn2_cc_code(0, 6, 0, 95) == 10 && dn2_nrpn_code(0, 0, 0, 201) == 201);
+}
+
 static void check_pages(void)
 {
     assert(dn2_value_code(TEMPLATE) == TEMPLATE && dn2_value_code(ROWS - 1) == ROWS - 1);
@@ -106,7 +140,7 @@ static void check_pages(void)
     assert(dn2_voice_page(7, 2) == (uintptr_t)&dn2_stock_descriptors[4]);
     const struct row *r = &dn2_t1[ROWS], *t = &dn2_t1[TEMPLATE];
     assert(r->owner == 0 && r->slot == SLOT && r->min == 0 && r->max == 127 << 8);
-    assert(r->def == 100 << 8 && r->cc == -1 && !strcmp(r->label, "LEV") && r->name == r->label);
+    assert(r->def == 100 << 8 && r->cc == 40 && !strcmp(r->label, "LEV") && r->name == r->label);
     assert(!strcmp(r->owner_name, "SINE"));
     assert(r->flag == t->flag && r->cc_low == t->cc_low && r->kind == t->kind && r->mask == t->mask
            && r->format == t->format && r->end == t->end && r->unknown == t->unknown);
@@ -177,6 +211,11 @@ int main(void)
 {
     dn2_t1[TEMPLATE] = (struct row){1, 36, 0, 32512, 8192, 1, 49, 7, 0xd2, 3, 4,
                                     "A Env Decay", "FM Tone", "DEC", 0x400e3030, 5};
+    /* FM TONE rows for slots 25, 26, 27 and 40, with their CCs; a filter row. */
+    const int32_t fm[][3] = {{200, 25, 40}, {201, 26, 41}, {202, 27, 42}, {217, 40, 53}};
+    for (unsigned i = 0; i < 4; ++i)
+        dn2_t1[fm[i][0]] = (struct row){0, fm[i][1], 0, 127, 0, 0, fm[i][2], -1};
+    dn2_t1[300] = (struct row){5, 66, 0, 127, 0, 0, 23, -1};
     dn2_ensure();
     unsigned n = dn2_list_bytes / 4;
 #ifdef EMPTY
@@ -225,5 +264,6 @@ int main(void)
     assert(dn2_list_bytes == 4*n);
     check_filters();
     check_pages();
+    check_midi();
     return 0;
 }

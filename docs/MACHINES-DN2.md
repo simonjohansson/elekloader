@@ -75,7 +75,9 @@ parameter rows after the stock table's 321: at boot, before the OS's
 initializers, the companion copies the table (`0x401f83a4`) to its RAM,
 points the table's 56 references at the copy and raises its 54 row bounds
 by 40; the value-class accessor (`0x400c257c`) gives an added row its
-template's object, and the bounds that end loops keep the stock count. The sound-load bound
+template's object, and the bounds that end loops keep the stock count. The CC
+and NRPN lookups (`0x400dc978`, `0x400dca5a`) ask a paged synth's clone,
+and a clone synth row found there becomes the synth's row for its slot. The sound-load bound
 accepts IDs through 31. Unused IDs never enter the cached list.
 
 Firmware-free C checks exercise registration order, gaps, missing mods,

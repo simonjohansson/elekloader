@@ -80,8 +80,8 @@ class VoicePagesTests(unittest.TestCase):
             outputs, _manifest = patch.build(STOCK, base + [mod], 'TEST', log=lambda *args: None)
             firmware = stage / 'test.syx'
             firmware.write_bytes(outputs['syx'])
-            page_count, slot_code, row_slot, row_cc, value_class = (
-                0x400c2636, 0x400dc18e, 0x400dbe28, 0x400dc406, 0x400c257c)
+            page_count, slot_code, row_slot, row_cc, value_class, cc_code, nrpn_code = (
+                0x400c2636, 0x400dc18e, 0x400dbe28, 0x400dc406, 0x400c257c, 0x400dc978, 0x400dca5a)
             # Stock synths keep their counts (FM TONE 4, WAVETONE 3, FM DRUM 4, SWARMER 1, MIDI 1);
             # a clone has its original's.
             checks = [(page_count, [8], 2), (page_count, [0], 4), (page_count, [1], 3),
@@ -91,7 +91,14 @@ class VoicePagesTests(unittest.TestCase):
                       (slot_code, [27, 8, 0], 323), (slot_code, [33, 8, 0], 0),
                       (slot_code, [41, 8, 0], 0),
                       (row_slot, [321], 25), (row_slot, [323], 27), (row_slot, [0xd5], 36),
-                      (row_cc, [321], 0xffffffff), (row_cc, [0xd5], 49),
+                      (row_cc, [321], 40), (row_cc, [0xd5], 49),
+                      # CC/NRPN by position: FM TONE's CC 40/41/42 and NRPN 201/202/203 are slots
+                      # 25/26/27, ALPH, empty and BETA on the clone of FM TONE; stock FM TONE unchanged.
+                      (cc_code, [0, 8, 0, 40], 321), (cc_code, [0, 8, 0, 41], 0),
+                      (cc_code, [0, 8, 0, 42], 323), (cc_code, [0, 0, 0, 40], 200),
+                      (nrpn_code, [0, 8, 0, 201], 321), (nrpn_code, [0, 8, 0, 202], 0),
+                      (nrpn_code, [0, 8, 0, 203], 323), (nrpn_code, [0, 0, 0, 201], 200),
+                      (row_cc, [323], 42),
                       (value_class, [321], None), (value_class, [0xd5], None),
                       (value_class, [361], None), (value_class, [0], None)]
             request = stage / 'request.json'

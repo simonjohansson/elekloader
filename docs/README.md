@@ -25,7 +25,7 @@ docs match its code.
   definition of done. Coding agents: start with [AGENTS.md](../AGENTS.md).
 - **[Digitone II machines](MACHINES-DN2.md)**: register synth clones,
   [SHARC voices](MACHINES-DN2-VOICE.md) and [filters](MACHINES-DN2-FILTER.md),
-  with a [paired C example](../examples/dn2-machines/README.md).
+  with a [paired C example](https://github.com/simonjohansson/digitone-2-mod-hack).
 - **[Digitone II SHARC mods](../examples/sharc-sine/README.md)**
   (experimental): code for the DSP, at the master output, from C or
   assembly, built with the normal SDK. The

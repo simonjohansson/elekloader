@@ -11,9 +11,9 @@ files never go in this repository.
 `ELEKLOADER_DN2_SYX` they check the real stock file too, and with
 `ELEKLOADER_CROSS` they build core with its bridge. The toolchain test needs
 Git, and skips without it.
-The same command checks the DN2 machine registry and the
-[paired C example](../examples/dn2-machines/README.md), including malformed
-compiler output, independent voice state and filter reset boundaries.
+The same command checks the DN2 machine registry. The
+[external C example](https://github.com/simonjohansson/digitone-2-mod-hack)
+checks its producer and kernels with `mise run test`.
 
 ```bash
 python tests/test_units.py        # includes SHARC; missing optional inputs are reported as skips

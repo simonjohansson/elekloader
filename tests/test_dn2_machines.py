@@ -3,7 +3,6 @@
 from pathlib import Path
 import shutil
 import subprocess
-import sys
 import tempfile
 import unittest
 
@@ -23,12 +22,6 @@ class RegistryTests(unittest.TestCase):
                                         capture_output=True, text=True)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 subprocess.run([str(executable)], check=True)
-
-
-class ExampleTests(unittest.TestCase):
-    def test_paired_c_producer_and_kernels(self):
-        subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s',
-                        str(ROOT / 'examples/dn2-machines/tests')], check=True)
 
 
 if __name__ == '__main__':

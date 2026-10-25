@@ -87,7 +87,7 @@ The unit suite checks the generated adapter for this encoding defect.
 
 ## Example and checks
 
-The [paired C example](../examples/dn2-machines/README.md) builds SINE and
+The [paired C example](https://github.com/simonjohansson/digitone-2-mod-hack) builds SINE and
 LOWPASS together with DigiHealth. SINE
 supports integer MIDI pitches 36..84 and plays one octave above its input;
 fractional pitch rounds down and other pitches produce zeros. Each voice

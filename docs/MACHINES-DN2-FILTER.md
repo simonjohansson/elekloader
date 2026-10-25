@@ -118,7 +118,7 @@ and [DSP stage research](https://github.com/angellinares/dn2_firmware_explore/bl
 
 ## Checks
 
-Build the [paired C example](../examples/dn2-machines/README.md); its
+Build the [paired C example](https://github.com/simonjohansson/digitone-2-mod-hack); its
 firmware includes SINE (synth ID 6), LOWPASS (filter ID 8) and DigiHealth.
 LOWPASS uses per-slot history and a fixed coefficient of 1/16 at 48 kHz
 (about 493 Hz cutoff). Compare its response with the input and check RESET

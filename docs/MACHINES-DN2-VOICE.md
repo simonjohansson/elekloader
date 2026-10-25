@@ -129,7 +129,10 @@ The [paired C example](https://github.com/simonjohansson/digitone-2-mod-hack) bu
 LOWPASS together with DigiHealth. SINE
 supports integer MIDI pitches 36..84 and plays one octave above its input;
 fractional pitch rounds down and other pitches produce zeros. Each voice
-slot keeps independent phase and resets it on START.
+slot keeps independent phase and resets it on START. Its two pages show
+how a kernel reads `param`: LEV (`param[0]`) is the level, TUNE
+(`param[1]`) transposes in semitones around 64 and OCT (`param[8]`) in
+octaves, one per 16; FINE (`param[12]`) is declared but unused.
 
 Run `python tests/test_units.py` and the TypeScript suite for the artifact,
 registration, callback binding and stack-bound checks. Runtime checks must

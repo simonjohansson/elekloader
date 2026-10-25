@@ -891,7 +891,6 @@ def link(mods, image, lock=None, *, sharc_stream=None):
                                'stored_sha256': sha(dsp_stored), 'app': sharc_mods[0].id}
         if 'machine_id' in payload:
             out.layout['sharc']['hook'] = rel.sharc['voice_hook'][0]
-            out.layout['sharc']['machine_id'] = payload['machine_id']
         elif payload['entries'] is not None:
             out.layout['sharc']['core'] = list(core.sharc['owner'])
             out.layout['sharc']['hook'] = rel.sharc['hook'][0]

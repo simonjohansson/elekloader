@@ -513,7 +513,7 @@ export type Layout = {
   reserve?: { units: number; end: number }   // a core sized to the mods: the pages it takes, and where they end
   dsp?: Record<string, DspLayout>              // words: P addresses of each payload's area
   sharc?: { owner: [number, number]; decoded: number; decoded_sha256: string;
-    stored: number; stored_sha256: string; app: string; core?: [number, number]; hook?: number; machine_id?: number }
+    stored: number; stored_sha256: string; app: string; core?: [number, number]; hook?: number }
 }
 
 export type Linked = {
@@ -930,7 +930,6 @@ export function link(mods: Mod2[], image: Uint8Array, lock: store.Lock | null = 
     stored: dspStored!.length, stored_sha256: sha(dspStored!), app: sharcMods[0].id }
   if (sharcMods.length && sharcMods[0].sharc!.machineId !== undefined) {
     layout.sharc!.hook = rel.sharc!.voiceHook![0]
-    layout.sharc!.machine_id = sharcMods[0].sharc!.machineId
   } else if (sharcMods.length && sharcMods[0].sharc!.entries !== null) {
     layout.sharc!.core = core.sharc!.owner
     layout.sharc!.hook = rel.sharc!.hook![0]

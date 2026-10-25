@@ -88,7 +88,7 @@ DEVICE = Device(
                 'voice_range': (0x20090000, 0x20094000),
                 'voice_table': 'mk2_voice_synths',
                 'voice_clone_table': 'mk2_synths',
-                'voice_adapter_sha256': '46afad21d9f24483a645ec1b3c70a9df99c40285cdf73cf83b0f0467828572f8',
+                'voice_adapter_sha256': '11cb0abb8a60cd9e97253ff7a8c063b90bd70f110a1cee95c52c98a98dbbcef1',
                 'voice_adapter_bytes': 2048,
                 'voice_state_bytes': 1024,
                 'voice_binding_offset': 15872,

@@ -42,8 +42,8 @@ such as `SINE (2/2)`. MIDI CC and NRPN reach a knob by position:
 a knob uses the number the clone's stock synth has for the same slot (for
 an FM TONE clone, SYN1 knob A is CC 40 and NRPN 1:73), turning it sends
 that CC, and a number whose slot is empty does nothing. A slot the clone
-gives no CC (FM TONE: 34 and 50..57) has none. The render callback does not
-receive the values yet. The companion ignores an
+gives no CC (FM TONE: 34 and 50..57) has none. The render callback receives
+the values in `param`. The companion ignores an
 invalid entry (an unregistered or non-SHARC ID, a second entry for one
 ID, a count outside 1..5, a bad label or default) and the synth keeps its
 empty page. The linker refuses two mods that give pages to one ID.
@@ -60,7 +60,12 @@ regions. Neither can be combined with a master-output SHARC mod.
 void sharc_voice_render(const struct dn2_voice_input *in);
 ```
 
-The 16-byte input is an output pointer, slot, unsigned 8.8 pitch and flags.
+The 20-byte input is an output pointer, slot, unsigned 8.8 pitch, flags
+and `param`, this voice's 40 knob values (page p, knob k at `param[8p + k]`).
+They are unsigned 8.8 (0..32512 = 0..127.0), the words the stock engines
+get: the voice's own values from its note-on, then live edits, parameter
+locks, LFOs and MIDI modulation, smoothed by the OS. An empty knob holds
+whatever its slot holds; read only the knobs you declared.
 Write all 32 mono floats at 48 kHz and return nothing. Slot is 0..15,
 **not the track number**: keep independent state per slot. A trigger edge's
 block is silent; the next block has settled pitch and `DN2_VOICE_START`.
@@ -108,9 +113,9 @@ the voice pipeline at `0x1c9459`. Its guarded six-byte stack adjustment is
 `8715ffffeeff`; the adapter executes it and continues at `0xb8251e`.
 Rebuild both machine adapters from `mods/machines-dn2/*-bridge.s` with
 `rebuild_voice.py`; the Selache pin is
-`2b26d3b75c53063575bc5c820fa0d38879335187`. The voice adapter's 1,702 code
+`2b26d3b75c53063575bc5c820fa0d38879335187`. The voice adapter's 1,840 code
 bytes are padded to 2 KiB, SHA-256
-`46afad21d9f24483a645ec1b3c70a9df99c40285cdf73cf83b0f0467828572f8`.
+`11cb0abb8a60cd9e97253ff7a8c063b90bd70f110a1cee95c52c98a98dbbcef1`.
 
 The adapter uses register counts for right shifts. This Selache pin omits
 the required sign-extension bits in negative immediate shifts, which can

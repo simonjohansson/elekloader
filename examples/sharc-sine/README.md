@@ -82,10 +82,9 @@ gate and memory. The packaging checks what is declared; it cannot prove
 what the instructions do, what they write, or that they meet the audio
 deadline.
 
-[SHARC-DN2.md](../../docs/SHARC-DN2.md#qualification) says what was checked
-in builds, in the emulator and on a unit, and where that stops. The
-examples are no general guarantee about a compiler or about timing on the
-hardware.
+[SHARC-DN2.md](../../docs/SHARC-DN2.md#runtime-limits) describes the memory
+and runtime limits. Qualify each changed executable in the emulator and on
+the target device, including its timing.
 
 ## Package or reproduce the reference artifact
 

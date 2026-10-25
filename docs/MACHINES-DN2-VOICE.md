@@ -76,59 +76,18 @@ Selache pin is `2b26d3b75c53063575bc5c820fa0d38879335187`. Its 1,696 code
 bytes are padded to 2 KiB, SHA-256
 `7e4f1147a0017c07d330aba3ac3b1ffa64a9fe892c3ab90e5bf27325fe7528e0`.
 
-## Qualification
+## Example and checks
 
-The consumer is `digitone-2-mod-hack` on `machines`: `mise run build-c`
-compiles its current C source, registers **SINE (ID 6)** and includes
-DigiHealth 1.5. It deliberately retains the earlier example's octave-up
-tuning. Integer pitches 36..84 are supported; fractional pitch is rounded
-down and unsupported pitches write zeros. The separate CLONE keeps ID 5.
+The external `digitone-2-mod-hack` consumer builds SINE with
+`mise run build-c`, including DigiHealth and CLONE FILTER. The C example
+supports integer MIDI pitches 36..84 and plays one octave above its input;
+fractional pitch rounds down and other pitches produce zeros. Each voice
+slot keeps independent phase and resets it on START.
 
-Checked with the owner's OS 1.12 (SHA-256
-`7e5b8a733d4ab1fdf7e5d22757f7d8eddaa3cbf71d0858874a791844c02ceb35`),
-DigiKit `ded547e14e63977c1a6e808812d46243e13c43d0`, emulator SHA-256
-`1058f5eb8c2cc5e148140960933ec1e9fdfc26fa71a3285a1ead93a083bb5156`:
-
-- Native selection assigns ID/type 6. The SYN page omits FM controls;
-  stock AMP volume reaches silence and the filter reduces a 2,093 Hz test
-  tone by 33.4 dB.
-- Input notes 36, 60, 69 and 84 measure 130.809, 523.262, 880.064 and
-  2,092.966 Hz. Notes 60/64 overlap with independent output, and a stock
-  track can play alongside SINE. All 16 slots were allocated successfully.
-- A 24-note repeat trace includes every slot and slot reuse, with exactly
-  24 START events and phase resets. With injected tick/context interrupts
-  (`bc8000-bca000:80400000:127`), no halt or missing block occurred.
-  The C kernel uses 44 stack bytes plus the adapter's eight: 52 observed,
-  within its 128-byte declaration. This is not a hardware deadline result.
-- A half-gain C source edit builds without changing an allowlist and halves
-  output within final Q31 rounding (maximum error `2^-32`). Restoring the
-  source reproduces the original firmware and byte-identical capture.
-- Saving `001 NEW PROJECT`, switching to stock and loading that named
-  project restores SINE ID/type 6 and byte-identical audio. Without SINE,
-  the saved ID 6 is retained, maps to MIDI type 4 and renders exact zeros.
-- The no-custom-voice build keeps section 7 stock and produces the exact
-  original stock FM TONE capture after selecting stock again.
-
-Candidate firmware SHA-256:
-`ca46a25493bd13cd37ebbb73256a2820015bb63f6b324c089918a99f2932b798`.
-The restored one-second capture SHA-256 is
-`2b6f66d32d5d36069dfb14be648091cace2748e8e3f989e23505dec9498670d1`.
-Non-main sections 2, 4, 5 and 8 remain stock. Section 7 contains the
-bounded voice adapter/kernel and the guarded voice hook only.
-
-Omitting the callback exposes FM TONE around 261.623 Hz for input note 60,
-rather than silence, despite transmitted type 6. The possible remaining
-stock oscillator cost is [#66](https://github.com/simonjohansson/elekloader/issues/66).
-DigiKit's [voice-path findings](https://github.com/ElekLabs/digikit/blob/38dfbe4ae88263511eed95691c07fc07e17b6f26/docs/findings/06-sharc-engine-and-startup.md)
-and [context corrections](https://github.com/ElekLabs/digikit/blob/38dfbe4ae88263511eed95691c07fc07e17b6f26/docs/findings/45-dsp-voice-context.md)
-are leads; the stock-buffer silence assumption did not hold for this
-candidate. #65 remains deferred. Hardware, calibrated load/timing, custom
-SYN knobs and combining independent DSP mods are not qualified here.
-
-For a device demo, build this exact candidate with `mise run build-c` and
-the configured DigiHealth 1.5. Its update passes the device's update/flash
-budgets and the remote input protocol works in the emulator. After the
-normal OS installation, select SINE on track 1 and play notes 60 and 64
-together; keep FM TONE on track 2, then check AMP volume, filter cutoff
-and release. Record device audio and DigiHealth responsiveness separately
-from the emulator results above before claiming hardware qualification.
+Run `python tests/test_units.py` and the TypeScript suite for the artifact,
+registration, callback binding and stack-bound checks. Runtime checks must
+cover native selection, overlapping notes and slot reuse, stock-track
+coexistence, AMP/filter controls, preset copy and saved/missing registrations.
+The coupled emulator checks these paths; hardware timing needs separate
+qualification. Investigation evidence is in
+[the machine roadmap](https://github.com/simonjohansson/elekloader/issues/58).

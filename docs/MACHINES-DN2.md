@@ -1,10 +1,8 @@
 # Digitone II synth clones
 
 Experimental, OS 1.12 only. `machines-dn2` is a companion to core-dn2 0.2.
-From 0.2 it also supports [SHARC track synths](MACHINES-DN2-VOICE.md).
-Version 0.3 uses `mk2/machines.h` and the `mk2_*` registration tables,
-and adds independent
-[filter clones](MACHINES-DN2-FILTER.md).
+It also supports [SHARC track synths](MACHINES-DN2-VOICE.md) and independent
+[filter clones](MACHINES-DN2-FILTER.md), using the `mk2_*` interface.
 It puts external synth mods in the native **FUNC+SYN** selector. A clone
 keeps its own saved machine ID but uses a stock synth's DSP and parameter
 pages. This does not yet run a mod's own per-voice SHARC code.
@@ -62,56 +60,6 @@ mask to allow the saved sound to load without replacing its identity. Removing t
 restores stock OS behavior, which clamps an unknown saved type to FM TONE
 when loading a sound. Keep backups of projects; do not save over the only
 copy when changing the installed mod set.
-
-## Qualification status
-
-The first clone increment was checked with OS 1.12, core 0.2, DigiHealth
-1.5 and the coupled DigiKit emulator at
-`ded547e14e63977c1a6e808812d46243e13c43d0`. The external consumer is
-`digitone-2-mod-hack`'s `machines` branch.
-
-- FUNC+SYN lists CLONE; one YES assigns it and moves the selected marker.
-- Reopening the selector and visiting its FLTR category retain the marker.
-- CLONE's SYN, FLTR and AMP control areas match FM TONE. The animated top
-  status/title strip is excluded from the control comparison.
-- Track 1's CLONE and FM TONE first-note captures are byte-identical:
-  48,000 stereo frames, WAV SHA-256
-  `06b2e1fb1cff83605275df3b52bebc025877e9da59c9505d5eeb70c38c8710b0`.
-- Switching back to stock uses the next allocated voice with identity 0;
-  the earlier voice slot keeps its old identity, as expected.
-- Track 2's first CLONE note uses voice slot 0 owned by track 2, with
-  identity 5 and transmitted type 0. Its WAV matches the fresh FM TONE
-  reference. A subsequent track-1 note retains stock identity 0.
-- The build keeps DSP section 7 and the other non-main sections unchanged.
-  Duplicate IDs are refused by both the Python and TypeScript engines.
-
-The saved-project and missing-mod checks are qualified in the emulator:
-
-- Save `001 NEW PROJECT` with CLONE, select stock FM TONE, then load that
-  named project: CLONE and ID 5 return, with the reference audio unchanged.
-- Cold-load firmware without the fixture and load the same project. The
-  active voice retains ID 5, transmits MIDI type 4 and renders exact zeros.
-  The missing ID has no selected entry in the stock-only machine list.
-- Save the project again while CLONE is absent. Cold-load firmware with the
-  mod reinstated and load that project: ID 5, the CLONE marker and the
-  byte-identical reference audio return. The saved identity is not lost.
-- The companion with no registrations lists only IDs `0, 2, 1, 3, 4` and
-  its stock FM TONE capture is unchanged. Removing the companion entirely
-  makes the stock loader turn the saved unknown ID into FM TONE (ID 0).
-
-The qualified clone firmware SHA-256 is
-`404b9f170ffb548323f8475b7010a38c9d7284e0ff062df04ecbcd07ae3d2a3a`.
-The missing-fixture control is
-`f9d02d5b5a1f97c7b192b344d22322f0a7da3c111556bdb7a861fac311d8d8ca`.
-All controls include DigiHealth. No hardware, undo or dedicated sound-pool
-transfer qualification is claimed.
-
-For reproducible card tests, retain the emulator's formatted base image
-as well as the guest's write overlay. Applying those writes to a zero-filled
-file does not recreate the saved card. Wait for saving/loading to complete
-and verify the named project in the native load list before checking its
-machine. These are emulator qualification steps; the mod build command is
-unchanged. The separate DigiKit proof correction remains deferred in #65.
 
 ## Maintainer checks
 

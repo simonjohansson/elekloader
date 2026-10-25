@@ -20,9 +20,8 @@ builds verified firmware with the normal SDK, lint and patcher, in the
 
 The [callback contract](../../docs/SHARC-DN2-ABI.md) applies to every edited
 program. Only one mod can own the output and the 32 KiB.
-[SHARC-DN2.md](../../docs/SHARC-DN2.md#qualification) sums up what the
-emulator and the unit showed; instruction counts are not timings on the
-hardware.
+[SHARC-DN2.md](../../docs/SHARC-DN2.md#runtime-limits) describes the runtime
+limits. Qualify each changed executable and its timing on the target device.
 
 ## Package or reproduce the reference artifact
 

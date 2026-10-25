@@ -283,8 +283,8 @@ elekloader's own development.
 The checks cover the packaging: the guard, the 32 KiB covered in full, the
 stack and the firmware's size limits. They cannot prove what the
 instructions do, what they write, or that they meet the audio deadline.
-[SHARC-DN2.md](SHARC-DN2.md) has what the emulator and a unit showed for
-the sine variants, and the limits that remain.
+[SHARC-DN2.md](SHARC-DN2.md) describes the current memory and runtime
+limits. Qualify each changed workload before using it on the device.
 
 ### The hook bus on the Octatrack (core-ot 0.2)
 

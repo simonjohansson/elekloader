@@ -132,8 +132,6 @@ range, and the size limits are still checked on every build.
 The packaging checks are the same whatever made the code, and they check the
 file's shape, not the program. Test each executable for its calling
 convention, its real stack use and writes, its output, interrupts and audio
-deadlines. [SHARC-DN2.md](SHARC-DN2.md#qualification) separates the
-emulator checks of the current sources from the tests on a unit, which ran
-sine variants with this bridge and layout. Emulator instruction counts
-and short captures are not hardware cycle measurements, sustained stress
-tests or a guarantee for the whole instruction set.
+deadlines. The [runtime limits](SHARC-DN2.md#runtime-limits) apply to each
+changed program. Emulator instruction counts and short captures do not
+measure hardware cycle margin or sustained workload behavior.

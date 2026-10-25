@@ -224,6 +224,18 @@ dn2_filter_real_return:
     addq.l #4,%sp
     rts
 
+| The MIDI parameter owner reads the sound directly, outside the identity reader.
+    .globl dn2_filter_parameter_type
+dn2_filter_parameter_type:
+    SAVE
+    mvs.b 0xdf(%a0),%d0
+    move.l %d0,-(%sp)
+    jsr dn2_filter_dsp_type
+    addq.l #4,%sp
+    move.l %d0,(%sp)
+    RESTORE
+    rts
+
 | Custom filters keep their empty page; clones and missing IDs use stock defaults.
     .globl dn2_filter_reader
 dn2_filter_reader:

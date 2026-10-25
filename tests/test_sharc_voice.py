@@ -112,7 +112,8 @@ class LinkTests(unittest.TestCase):
             filter_sites = {s['addr']: s['target'] for s in json.loads(
                 (ROOT/'mods/machines-dn2/mod.json').read_text())['sites']
                 if s.get('op') == 'jmp' and s.get('target', '').startswith('dn2_filter_')}
-            self.assertEqual(len(filter_sites), 7)
+            self.assertEqual(len(filter_sites), 8)
+            self.assertEqual(filter_sites['0x4003649c'], 'dn2_filter_parameter_type')
             for addr, target in filter_sites.items():
                 off = int(addr, 0) - dev.main_load
                 expected = bytes.fromhex('4ef9') + struct.pack('>I', out.map['machines-dn2:' + target])

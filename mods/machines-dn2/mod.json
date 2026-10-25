@@ -207,6 +207,12 @@
    "target": "dn2_filter_reader"
   },
   {
+   "addr": "0x4003649c",
+   "stock": "712800df4e75",
+   "op": "jmp",
+   "target": "dn2_filter_parameter_type"
+  },
+  {
    "addr": "0x400313e6",
    "stock": "4ef94004b860",
    "op": "keep2",

@@ -14,6 +14,10 @@ Git, and skips without it.
 The same command checks the DN2 machine registry. The
 [external C example](https://github.com/simonjohansson/digitone-2-mod-hack)
 checks its producer and kernels with `mise run test`.
+With `ELEKLOADER_DN2_SYX`, `ELEKLOADER_CROSS` and `ELEKLOADER_CF_CALL` set
+to DigiKit's `cf_call` executable, the registry suite also executes the
+compiled filter reader: parameter lookup maps clones, identity reads keep
+saved IDs, and registers and the stack are preserved.
 
 ```bash
 python tests/test_units.py        # includes SHARC; missing optional inputs are reported as skips

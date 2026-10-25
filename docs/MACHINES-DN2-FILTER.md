@@ -3,8 +3,8 @@
 Experimental, OS 1.12 only. `machines-dn2` 0.1 registers stock filter
 clones and custom SHARC filters in **FUNC+SYN → FLTR**. Filter selection
 is independent of the synth: a custom filter can process SINE or a stock
-synth. Require core-dn2 0.1. Custom filter hardware and timing
-qualification is incomplete.
+synth. Require core-dn2 0.1. Timing, full-polyphony and long-duration
+stability are unqualified.
 
 ## Registration
 
@@ -118,8 +118,8 @@ and [DSP stage research](https://github.com/angellinares/dn2_firmware_explore/bl
 
 ## Checks
 
-Build the external `digitone-2-mod-hack` consumer with `mise run build-c`;
-its firmware includes SINE (synth ID 6), LOWPASS (filter ID 8) and DigiHealth.
+Build the [paired C example](../examples/dn2-machines/README.md); its
+firmware includes SINE (synth ID 6), LOWPASS (filter ID 8) and DigiHealth.
 LOWPASS uses per-slot history and a fixed coefficient of 1/16 at 48 kHz
 (about 493 Hz cutoff). Compare its response with the input and check RESET
 on retriggers, slot reuse and returning from a stock filter.

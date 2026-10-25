@@ -3,10 +3,8 @@
 Experimental, OS 1.12 only. machines-dn2 0.1 can register an external C
 oscillator in the native FUNC+SYN selector. Its output passes through the
 voice envelope, the selected stock or [custom filter](MACHINES-DN2-FILTER.md),
-pan, sends and mixer. Physical multitrack, control and project-reload
-qualification is incomplete; see the
-[hardware checklist](https://github.com/simonjohansson/elekloader/issues/67).
-Timing is unqualified.
+pan, sends and mixer. Timing, full-polyphony and long-duration stability
+are unqualified.
 
 ## Author interface
 
@@ -89,8 +87,8 @@ The unit suite checks the generated adapter for this encoding defect.
 
 ## Example and checks
 
-The external `digitone-2-mod-hack` consumer includes the C SINE example;
-see the [paired build and checks](MACHINES-DN2-FILTER.md#checks). SINE
+The [paired C example](../examples/dn2-machines/README.md) builds SINE and
+LOWPASS together with DigiHealth. SINE
 supports integer MIDI pitches 36..84 and plays one octave above its input;
 fractional pitch rounds down and other pitches produce zeros. Each voice
 slot keeps independent phase and resets it on START.

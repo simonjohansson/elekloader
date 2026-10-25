@@ -233,4 +233,4 @@ newest core it has for the stock OS ([above](#how-a-build-picks-one)), so a
 on 1.73 (*"needs core ... or newer"*). Build 0.2 for 1.73 from the tree it
 was last in, commit 92a99c9 (`git worktree add ../core-ar2-0.2 92a99c9`,
 then its `mods/core-ar2` with the 1.73 stock file); the SDK writes
-`core-0.1.elemod` there.
+`core-0.2.elemod` there.

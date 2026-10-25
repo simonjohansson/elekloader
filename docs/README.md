@@ -24,7 +24,8 @@ docs match its code.
   command with the output it should print, every refusal with its fix, and a
   definition of done. Coding agents: start with [AGENTS.md](../AGENTS.md).
 - **[Digitone II machines](MACHINES-DN2.md)**: register synth clones,
-  [SHARC voices](MACHINES-DN2-VOICE.md) and [filters](MACHINES-DN2-FILTER.md).
+  [SHARC voices](MACHINES-DN2-VOICE.md) and [filters](MACHINES-DN2-FILTER.md),
+  with a [paired C example](../examples/dn2-machines/README.md).
 - **[Digitone II SHARC mods](../examples/sharc-sine/README.md)**
   (experimental): code for the DSP, at the master output, from C or
   assembly, built with the normal SDK. The

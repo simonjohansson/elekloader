@@ -1,6 +1,6 @@
 {
  "id": "machines-dn2",
- "version": "0.2",
+ "version": "0.1",
  "license": "GPL-2.0-or-later",
  "title": "DN2 synth and filter machines",
  "description": "Native synth/filter clones and SHARC voice synths/filters in the Digitone II machine selector. SHARC synths may have their own SYN pages. Needs core 0.1.",

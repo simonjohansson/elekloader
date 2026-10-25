@@ -16,7 +16,7 @@ struct mk2_synth {
     const char *name, *label;
 };
 
-/* machines-dn2 0.2: contribute a pointer to mk2_voice_pages to give a SHARC
+/* machines-dn2 0.1: contribute a pointer to mk2_voice_pages to give a SHARC
  * synth (mk2_voice_synths) its own SYN pages, 1..5 of 8 knobs. Page p, knob k
  * is sound slot 25 + 8p + k, saved with the sound. A NULL knob is an empty
  * slot. Labels are ASCII, 1..5 characters; defaults 0..127. SYN steps

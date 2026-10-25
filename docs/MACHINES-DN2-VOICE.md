@@ -1,6 +1,6 @@
 # Digitone II SHARC track synths
 
-Experimental, OS 1.12 only. machines-dn2 0.2 can register an external C
+Experimental, OS 1.12 only. machines-dn2 0.1 can register an external C
 oscillator in the native FUNC+SYN selector. Its output passes through the
 voice envelope, the selected stock or [custom filter](MACHINES-DN2-FILTER.md),
 pan, sends and mixer. Timing, full-polyphony and long-duration stability

@@ -190,6 +190,16 @@ uint32_t dn2_voice_page_count(uint32_t type)
     return page_count[type] ? page_count[type] : 1;
 }
 
+/* The synth type MIDI parameter lookups see: a clone's stock type; a voice or a missing ID its
+ * own, which no stock synth map has, so their synth CCs reach only a paged voice's knobs and never
+ * a MIDI track's parameters stored in the same slots. */
+uint32_t dn2_midi_type(uint32_t type)
+{
+    dn2_ensure();
+    return type >= FIRST && type < COUNT && registered[type] && !voices[type]
+           ? registered[type]->clone : type;
+}
+
 uintptr_t dn2_voice_page(uint32_t type, uint32_t page)
 {
     if (!dn2_is_voice(type))

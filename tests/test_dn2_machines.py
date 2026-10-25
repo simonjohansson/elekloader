@@ -99,6 +99,8 @@ class VoicePagesTests(unittest.TestCase):
                       (nrpn_code, [0, 8, 0, 201], 321), (nrpn_code, [0, 8, 0, 202], 0),
                       (nrpn_code, [0, 8, 0, 203], 323), (nrpn_code, [0, 0, 0, 201], 200),
                       (row_cc, [323], 42),
+                      # A missing synth (9) keeps its type: MIDI's CC 70 (slot 33) is not its parameter.
+                      (cc_code, [0, 4, 0, 70], 168), (cc_code, [0, 9, 0, 70], 0),
                       (value_class, [321], None), (value_class, [0xd5], None),
                       (value_class, [361], None), (value_class, [0], None)]
             request = stage / 'request.json'
@@ -174,7 +176,9 @@ class ParameterDispatchTests(unittest.TestCase):
                         for parameter in (False, True):
                             calls.append({'pc': hex(getter_pc if parameter else manifest['_map'][reader]),
                                           'args': [hex(owner if parameter else address)]})
-                            mapped = (0 if machine_id == first else (4 if kind == 'synth' else 0))
+                            # A missing synth keeps its own type for MIDI (no stock synth map has it);
+                            # a missing filter falls back to MULTI-MODE.
+                            mapped = (0 if machine_id == first else (machine_id if kind == 'synth' else 0))
                             expected.append(mapped if parameter and first <= machine_id < 32 and machine_id != 8
                                             else machine_id)
                     # Native MIDI handlers must reach the setter through the real owner getters.

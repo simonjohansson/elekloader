@@ -259,7 +259,7 @@ dn2_synth_parameter_type:
     SAVE
     mvs.b 0xde(%a0),%d0
     move.l %d0,-(%sp)
-    jsr dn2_dsp_type
+    jsr dn2_midi_type
     addq.l #4,%sp
     move.l %d0,(%sp)
     RESTORE

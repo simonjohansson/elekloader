@@ -114,6 +114,15 @@ static void check_midi(void)
     /* Without pages (8) or not a voice (0, the clone 5, a missing 6): the stock lookup. */
     assert(dn2_cc_code(0, 8, 0, 40) == 0 && dn2_cc_code(0, 8, 0, 23) == 300);
 #endif
+    /* MIDI's synth type: clones their stock type; voices, missing and stock IDs their own. */
+    for (uint32_t t = 0; t < 5; ++t)
+        assert(dn2_midi_type(t) == t);
+    assert(dn2_midi_type(6) == 6 && dn2_midi_type(32) == 32 && dn2_midi_type(0xffffffff) == 0xffffffff);
+#ifndef EMPTY
+    assert(dn2_midi_type(5) == 0 && dn2_midi_type(31) == 3 && dn2_midi_type(7) == 7);
+#else
+    assert(dn2_midi_type(5) == 5 && dn2_midi_type(7) == 7);
+#endif
     assert(dn2_cc_code(0, 0, 0, 40) == 200 && dn2_cc_code(0, 5, 0, 40) == 0);
     assert(dn2_cc_code(0, 6, 0, 95) == 10 && dn2_nrpn_code(0, 0, 0, 201) == 201);
 }

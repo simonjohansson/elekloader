@@ -54,7 +54,9 @@ registered stock clones and custom filters.
 
 With the companion present, a saved ID 5..31 whose mod is absent is kept,
 named MISSING by the name accessors and omitted from the selector. Its DSP
-type maps to MIDI (silence), rather than another mod's synth. The native
+type maps to MIDI (silence), rather than another mod's synth. Its synth
+MIDI CCs and NRPNs do nothing, so they cannot overwrite the saved values
+with a MIDI track's parameters. The native
 loader also checks assignment permissions, so missing IDs use MIDI's track
 mask to allow the saved sound to load without replacing its identity. Removing the companion
 restores stock OS behavior, which clamps an unknown saved type to FM TONE

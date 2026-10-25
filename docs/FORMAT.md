@@ -110,7 +110,7 @@ and the L1 bridge reservation untouched. The voice contract is in
 `elekloader/sdk/include/digitone-mk2/voice.h`; qualification is tracked in
 [MACHINES-DN2-VOICE.md](MACHINES-DN2-VOICE.md).
 
-**The object** has exactly these fields:
+**The master-output object** has exactly these fields:
 
 | field | value |
 |---|---|
@@ -133,7 +133,7 @@ example's at 176 and 238; both declare 128 bytes of stack.
   repeated), with no entry inside them, because the DSP fetches instructions
   ahead.
 
-When it links the mods, it also refuses unless:
+For master-output mods, linking also refuses unless:
 - only one mod in the build has `sharc`;
 - a mod with entries has a core whose bridge is the one the device profile
   pins: its bytes, its entry and its stack. That is core-dn2 0.2 or newer;
@@ -143,7 +143,7 @@ When it links the mods, it also refuses unless:
 
 **What the linker does.** It checks the stock DSP section (section 7) by
 its hash. Then it adds the mod's segments and zero ranges as new load and
-fill records, before the stream's FINAL record. For a mod with entries it
+fill records, before the stream's FINAL record. For a master-output mod with entries it
 also adds:
 - core's 1 KiB bridge, with the two callback addresses in its first 12
   bytes. The linker writes those; a mod cannot;

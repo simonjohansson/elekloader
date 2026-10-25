@@ -3097,9 +3097,7 @@ Some differences from an octabam build, by design:
   - To build it: GNU binutils, `configure --target=m68k-elf`, then
     `make all-gas all-ld all-binutils`.
 
-## 5. When the loader refuses: message → fix
-
-### Digitone II track synths (experimental)
+## Digitone II track synths (experimental)
 
 machines-dn2 0.2 accepts a pointer to the existing four-field `dn2_synth`
 descriptor in `dn2_voice_synths`. Use a permanent ID 5..31 distinct from
@@ -3116,6 +3114,8 @@ registration without its matching payload is also refused. The adapter's
 code and state are reserved; keep your entries and writes in the author
 area. `SHARC voice stack exceeds the profile limit` requires reducing
 the callback's declared stack to at most 128 bytes and testing its real use.
+
+## 5. When the loader refuses: message → fix
 
 | message contains | means | fix |
 |---|---|---|

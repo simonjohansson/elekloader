@@ -1,6 +1,7 @@
 # Digitone II synth clones
 
 Experimental, OS 1.12 only. `machines-dn2` is a companion to core-dn2 0.2.
+From 0.2 it also supports [SHARC track synths](MACHINES-DN2-VOICE.md).
 It puts external synth mods in the native **FUNC+SYN** selector. A clone
 keeps its own saved machine ID but uses a stock synth's DSP and parameter
 pages. This does not yet run a mod's own per-voice SHARC code.

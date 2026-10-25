@@ -14,7 +14,7 @@ def voice_artifact(code, data, render_offset_bytes, machine_id, stack_bytes):
     data. Return the normal SDK's JSON artifact, with a pinned adapter.
     """
     profile = DEVICE.releases['1.12'].sharc
-    if not isinstance(code, bytes) or not code or len(code) % 4 or len(code) > 14336 - 64:
+    if not isinstance(code, bytes) or not code or len(code) % 2 or len(code) > 14336 - 64:
         raise ValueError('DN2 voice code must fit 14 KiB with its 64-byte guard')
     if not isinstance(data, bytes) or not data or len(data) % 4 or len(data) > 15360:
         raise ValueError('DN2 voice data must fit 15 KiB and be four-byte aligned')

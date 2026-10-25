@@ -50,6 +50,9 @@ class EnvelopeTests(unittest.TestCase):
         sharc.module_payload(doc, PROFILE)
 
     def test_producer_bounds(self):
+        # SHARC instructions are short-word aligned; padding makes the load four-byte aligned.
+        doc = voice_artifact(bytes(6), bytes(4), 0, 5, 128)
+        self.assertEqual(len(bytes.fromhex(doc['segments'][1]['hex'])), 14336)
         for code, data in ((bytes(14336), bytes(4)), (bytes(4), bytes(15364)), (bytes(3), bytes(4))):
             with self.assertRaises(ValueError):
                 voice_artifact(code, data, 0, 5, 128)

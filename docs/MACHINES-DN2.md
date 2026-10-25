@@ -50,8 +50,10 @@ The synth clone shares its original's SYN, FLTR and AMP pages; page titles
 retain the stock synth's name. The native FLTR selector is unchanged.
 
 With the companion present, a saved ID 5..31 whose mod is absent is kept,
-named MISSING and denied assignment to a new track. Its DSP type maps to
-MIDI (silence), rather than another mod's synth. Removing the companion
+named MISSING by the name accessors and omitted from the selector. Its DSP
+type maps to MIDI (silence), rather than another mod's synth. The native
+loader also checks assignment permissions, so missing IDs use MIDI's track
+mask to allow the saved sound to load without replacing its identity. Removing the companion
 restores stock OS behavior, which clamps an unknown saved type to FM TONE
 when loading a sound. Keep backups of projects; do not save over the only
 copy when changing the installed mod set.
@@ -78,14 +80,33 @@ The first clone increment was checked with OS 1.12, core 0.2, DigiHealth
 - The build keeps DSP section 7 and the other non-main sections unchanged.
   Duplicate IDs are refused by both the Python and TypeScript engines.
 
-**Still open in #59:** a conclusive named-project/sound round-trip and the
-missing-mod runtime control. The scripted test wrote sound records carrying
-ID 5 and observed CLONE again after navigation, but subsequent checks did
-not reliably select that saved project after changing firmware. Those
-attempts are not a qualification of persistence or missing-mod behavior.
-The missing-ID behavior described above is covered by the firmware-free C
-test; its end-to-end behavior still needs checking. Hardware, undo and
-sound-pool transfer have not been qualified.
+The saved-project and missing-mod checks are qualified in the emulator:
+
+- Save `001 NEW PROJECT` with CLONE, select stock FM TONE, then load that
+  named project: CLONE and ID 5 return, with the reference audio unchanged.
+- Cold-load firmware without the fixture and load the same project. The
+  active voice retains ID 5, transmits MIDI type 4 and renders exact zeros.
+  The missing ID has no selected entry in the stock-only machine list.
+- Save the project again while CLONE is absent. Cold-load firmware with the
+  mod reinstated and load that project: ID 5, the CLONE marker and the
+  byte-identical reference audio return. The saved identity is not lost.
+- The companion with no registrations lists only IDs `0, 2, 1, 3, 4` and
+  its stock FM TONE capture is unchanged. Removing the companion entirely
+  makes the stock loader turn the saved unknown ID into FM TONE (ID 0).
+
+The qualified clone firmware SHA-256 is
+`404b9f170ffb548323f8475b7010a38c9d7284e0ff062df04ecbcd07ae3d2a3a`.
+The missing-fixture control is
+`f9d02d5b5a1f97c7b192b344d22322f0a7da3c111556bdb7a861fac311d8d8ca`.
+All controls include DigiHealth. No hardware, undo or dedicated sound-pool
+transfer qualification is claimed.
+
+For reproducible card tests, retain the emulator's formatted base image
+as well as the guest's write overlay. Applying those writes to a zero-filled
+file does not recreate the saved card. Wait for saving/loading to complete
+and verify the named project in the native load list before checking its
+machine. These are emulator qualification steps; the mod build command is
+unchanged. The separate DigiKit proof correction remains deferred in #65.
 
 ## Maintainer checks
 
@@ -95,8 +116,8 @@ name/descriptor/permission lookups, synth grouping, three parameter-page
 readers, parameter ownership, the audio frame's type and the saved type
 reader. Identity callers retain the real type; page logic sees the stock
 clone. The audio frame is indexed by allocated voice slot, not by track;
-qualification follows the owner map at `0x40288306 + 0x14*v` during note-on. A small wrapper gives the native track-type accessor the real
-reader without embedding a copied firmware function. The sound-load bound
+qualification follows the owner map at `0x40288306 + 0x14*v` during note-on.
+A small wrapper gives the native track-type accessor the real reader without embedding a copied firmware function. The sound-load bound
 accepts IDs through 31. Unused IDs never enter the cached list.
 
 Firmware-free C checks exercise registration order, gaps, missing mods,
@@ -112,8 +133,7 @@ cc -std=c99 -Wall -Werror -DEMPTY -I elekloader/sdk/include tests/test_dn2_machi
 `python tests/test_units.py` runs the C checks when a native `cc` is
 available (and reports a skip otherwise). It and the TypeScript suite
 check conflicting and distinct IDs. Runtime qualification must also
-exercise the native selector,
-stock-equivalent audio, both categories, another track, project save/load
+exercise the native selector, stock-equivalent audio, both categories, another track, project save/load
 and the missing-mod control. Firmware builds alone do not qualify these.
 
 Sources: [DigiKit's OS 1.12 machine paths](https://github.com/ElekLabs/digikit/blob/38dfbe4ae88263511eed95691c07fc07e17b6f26/docs/findings/02-machines-and-parameters.md),

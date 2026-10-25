@@ -3,7 +3,7 @@
 `machines-dn2` 0.1 adds stock filter clones to the native **FUNC+SYN →
 FLTR** category on OS 1.12. They work independently of synth registration:
 one track can retain SINE and select CLONE FILTER. Core-dn2 is 0.1.
-This increment adds no custom filter DSP.
+Filter clones use stock DSP; custom filter DSP is not supported.
 
 ```c
 #include "mk2/machines.h"
@@ -42,8 +42,8 @@ adapters and limits. Synths use `mk2_synths` and `mk2_voice_synths`, with
 
 ## OS 1.12 trace
 
-Checked against stock SHA-256
-`7e5b8a733d4ab1fdf7e5d22757f7d8eddaa3cbf71d0858874a791844c02ceb35`:
+OS 1.12 stock SHA-256:
+`7e5b8a733d4ab1fdf7e5d22757f7d8eddaa3cbf71d0858874a791844c02ceb35`.
 
 | Path | OS 1.12 finding |
 |---|---|
@@ -63,7 +63,6 @@ control IDs are `36..38`, `39..40`, `41..43`, `54..56`, `57..59`, and
 Sources: [DigiKit's machine/parameter investigation](https://github.com/ElekLabs/digikit/blob/38dfbe4ae88263511eed95691c07fc07e17b6f26/docs/findings/02-machines-and-parameters.md),
 [native selector research](https://github.com/angellinares/dn2_firmware_explore/blob/39815895720b84c59ce2fa0ff5b13bd47dc415d2/docs/machine-list.md)
 and [DSP stage research](https://github.com/angellinares/dn2_firmware_explore/blob/39815895720b84c59ce2fa0ff5b13bd47dc415d2/docs/waverider-feasibility.md).
-Their OS 1.11 addresses were checked against 1.12, rather than assumed.
 
 ## Checks
 
@@ -72,13 +71,10 @@ SINE, CLONE FILTER and DigiHealth. The host registry tests cover separate
 IDs, stock ordering, invalid registrations and missing filters. Python and
 TypeScript check conflicting IDs and produce matching firmware.
 
-The native selector, cutoff, preset copy/undo, saved project and missing-mod
-checks are exercised in the coupled emulator. Detailed evidence belongs in
-[issue #62](https://github.com/simonjohansson/elekloader/issues/62).
-
-For a device check, use the same build with DigiHealth. Select SINE and
+For runtime checks, use the same build with DigiHealth. Select SINE and
 CLONE FILTER on one track, compare it with MULTI-MODE at identical settings,
 and play a stock synth on a second track. Check cutoff, preset copy and
 project save/reload. Removing the filter registration must retain SINE's
 identity and the saved filter ID; reinstalling it must restore selection.
-Physical qualification is separate from the emulator checks.
+Run these checks in the coupled emulator and on the device for each
+changed workload.

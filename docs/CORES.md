@@ -31,7 +31,7 @@ older ones people still have:
 | Digitone mk1, Digitone Keys | 1.43, 1.44 | `core-dn1-4.1.1.elemod`, `core-dn1-4.1.1-os1.44.elemod` | on main, not released: build it ([below](#building-a-core)) |
 | Digitone mk1, Digitone Keys | 1.43, 1.44 | `core-dn1-2.0a.elemod`, `core-dn1-2.0a-os1.44.elemod` | the v0.4.0 release, built into its apps |
 | Digitakt II | 1.17 | `core-dt2-1.0.elemod` | not released: build it ([below](#building-a-core)) |
-| Digitone II | 1.12 | `core-dn2-0.1.elemod` | experimental: build it ([below](#building-a-core)); UI/input events, SysEx observers and bounded SHARC mods |
+| Digitone II | 1.12 | `core-dn2-0.1.elemod` | experimental, not released: build it ([below](#building-a-core)) |
 | Analog Rytm MKII | 1.74 | `core-ar2-0.3.elemod` | the [core-ar2-v0.3](https://github.com/irpina/elekloader/releases/tag/core-ar2-v0.3) pre-release, and the shop |
 | Analog Rytm MKII | 1.74 | `core-ar2-0.6.elemod` | on main, not released: build it ([below](#building-a-core)). Mods with pages built for 0.3 (rytm2_mods v1.2's lfo-rnd, voice-dac, euclid-accents, velocity-humanise, comp-preview) do not link with it: their sites overlap core's page sites |
 | Analog Rytm MKII | 1.73 | `core-ar2-0.2.elemod` | not released: the last core with 1.73; build it from commit 92a99c9 ([below](#building-a-core)) |

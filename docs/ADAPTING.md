@@ -1758,6 +1758,9 @@ the FLTR category, independently of its synth. See
 and missing-mod behavior. This interface is currently implemented only
 for the Digitone II.
 
+For a synth with its own DSP code, use the
+[track-synth contract](MACHINES-DN2-VOICE.md).
+
 ### Machines and stock parameters (core-dn1 3.1, Digitone mk1)
 
 On the Digitone mk1 the DSP (a second ColdFire) renders the eight FM voices,
@@ -3103,24 +3106,6 @@ Some differences from an octabam build, by design:
   - To build it: GNU binutils, `configure --target=m68k-elf`, then
     `make all-gas all-ld all-binutils`.
 
-## Digitone II track synths (experimental)
-
-machines-dn2 0.1 accepts a pointer to the existing four-field `mk2_synth`
-descriptor in `mk2_voice_synths`. Use a permanent ID 5..31 distinct from
-every clone. The same mod must carry a `dn2-voice-mono32-l2-v1` SHARC
-artifact with that `machine_id`. The companion supplies a named, empty
-SYN page and keeps the stock AMP/FLTR controls. It transmits the real
-voice type; the DSP callback writes that slot's 32 mono samples before
-the stock envelope and filter. See [the format](FORMAT.md#digitone-ii-sharc-mod)
-and `digitone-mk2/voice.h`. This first version has no custom SYN knobs.
-
-`SHARC voice machine_id must match its single native voice registration`
-means the descriptor and DSP artifact disagree or one is absent. A voice
-registration without its matching payload is also refused. The adapter's
-code and state are reserved; keep your entries and writes in the author
-area. `SHARC voice stack exceeds the profile limit` requires reducing
-the callback's declared stack to at most 128 bytes and testing its real use.
-
 ## 5. When the loader refuses: message → fix
 
 | message contains | means | fix |
@@ -3153,7 +3138,9 @@ the callback's declared stack to at most 128 bytes and testing its real use.
 | `is a DSP reference to a ColdFire address` (or the reverse) | a `dsp24` relocation names a ColdFire symbol, or a ColdFire one a DSP label | name the right symbol; DSP labels are word addresses on the DSP |
 | `dsp_asm is not installed` | the SDK needs octabam's DSP assembler | build octabam's `vendor/dsp56300` and set `ELEKLOADER_DSP_ASM` |
 | `the label N is part of a longer word here` (SDK) | dsp_asm would put N's address inside that word | rename the label |
-| `SHARC ABI does not match the device profile` | a SHARC mod's `abi` is not `dn2-master-mono32-l2-v1` | set it; the other ABI is core's bridge's |
+| `SHARC ABI does not match the device profile` | the artifact does not name a supported master-output or track-synth contract | build for the matching [SHARC contract](FORMAT.md#digitone-ii-sharc-mod); changing only the ABI string does not relocate code |
+| `SHARC voice machine_id must match its single native voice registration` / `DN2 voice registration requires a matching SHARC voice payload` | a voice descriptor and DSP artifact disagree, or the artifact is absent | package one matching descriptor and payload as the [track-synth contract](MACHINES-DN2-VOICE.md) describes |
+| `SHARC voice stack exceeds the profile limit` | the callback declares more than 128 stack bytes | reduce its stack use and declaration, then qualify the real workload |
 | `SHARC payload has a gap or overlap in its owner` | the segments and zero ranges do not cover the mod's 32 KiB exactly once | add a `zero` range for the bytes you do not use; fix overlapping offsets |
 | `SHARC mod code needs its profiled NOP read-ahead guard` | a code segment does not end in 64 bytes of NOPs (`0100` repeated) | pad the end of each code segment |
 | `SHARC entry is in the instruction read-ahead guard` / `SHARC entry is not in owned code` | a callback offset is in the guard, outside the code, or odd | link the callbacks inside a code segment, before its guard |

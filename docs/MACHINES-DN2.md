@@ -5,7 +5,7 @@ It also supports [SHARC track synths](MACHINES-DN2-VOICE.md) and independent
 [filter clones](MACHINES-DN2-FILTER.md), using the `mk2_*` interface.
 It puts external synth mods in the native **FUNC+SYN** selector. A clone
 keeps its own saved machine ID but uses a stock synth's DSP and parameter
-pages. This does not yet run a mod's own per-voice SHARC code.
+pages. A synth clone provides no custom DSP code.
 
 A mod needs one descriptor and one contribution, without firmware addresses
 or hook sites of its own:
@@ -93,5 +93,3 @@ Sources: [DigiKit's OS 1.12 machine paths](https://github.com/ElekLabs/digikit/b
 [cached list](https://github.com/ElekLabs/digikit/blob/38dfbe4ae88263511eed95691c07fc07e17b6f26/docs/findings/33-runtime-machines-dn2.md),
 [stable IDs](https://github.com/ElekLabs/digikit/blob/38dfbe4ae88263511eed95691c07fc07e17b6f26/docs/findings/52-sticky-machine-ids.md)
 and [reader/load corrections](https://github.com/angellinares/dn2_firmware_explore/blob/39815895720b84c59ce2fa0ff5b13bd47dc415d2/docs/machine-list.md).
-Addresses were checked against the owner's stock OS 1.12. No hardware
-qualification is claimed by this implementation.

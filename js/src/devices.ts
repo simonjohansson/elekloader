@@ -254,6 +254,7 @@ export const DIGITONE_MK2: Device = {
   stage: 0x40400000, flashAt: 0x80000, flashLimit: 0x380000, trailer: 'hmac', hmacKeyFrom: [2, 'Multiplier'],
   areas: { ddr: [0x47f00000, 0x47f40000] },
   ddr: [0x47f00000, 0x47f40000],
+  slotClaims: [['dn2_synths', 0, 32, 'dn2-synth']],   // stable type at descriptor +0
   recovery: 'hold FUNC while powering on for the STARTUP menu, press TRIG 4 (OS UPGRADE), '
     + 'then send the stock .syx over MIDI (not USB)',
 }

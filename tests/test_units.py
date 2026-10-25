@@ -555,6 +555,23 @@ def test_a_machine_claims_its_slot():
     assert not [p for p in link.check([mod('c', 36), mod('d', 37)], image) if 'claim' in p]
     assert mod('e', 53).implied_names(image) == []
 
+def test_dn2_synth_claims_its_stable_type():
+    dn = next(d for d in devices.devices() if d.key == 'digitone-mk2')
+    r = dn.releases['1.12']
+    image = bytes(r.main_len)
+
+    def mod(i, slot):
+        return link.Mod2({'elemod': 2, 'id': i, 'version': '1', 'target': devices.target_of(dn, r),
+                          'sections': {'.run': {'align': 4, 'parts': [['hex', '%08x' % slot + '00' * 12]]}},
+                          'symbols': {'m': ['.run', 0]},
+                          'contribute': [{'to': 'dn2_synths', 'data': '00000000',
+                                          'relocs': [[0, 'abs32', 'sym:m', 0]]}]}, i)
+    assert mod('a', 5).implied_names(image) == ['dn2-synth:5']
+    assert 'a 1 and b 1 both claim dn2-synth:5' in link.check([mod('a', 5), mod('b', 5)], image)
+    assert not [p for p in link.check([mod('a', 5), mod('b', 31)], image) if 'claim' in p]
+    assert mod('outside', 32).implied_names(image) == []
+
+
 def test_kept_bytes_refuse_every_write():
     """A device's `keep`: main OS bytes that look free but the OS reads, on the Octatrack the
     16 the stock DELAY reads past its coefficient table (octabam #771). A site that writes one

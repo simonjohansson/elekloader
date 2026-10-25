@@ -2,7 +2,7 @@
 // The linker's checks that need no firmware: tests/test_units.py's counterparts.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { ANALOG_RYTM_MK2, DIGITAKT_MK1, DIGITONE_MK1, OCTATRACK, devices, targetOf } from '../src/devices.ts'
+import { ANALOG_RYTM_MK2, DIGITONE_MK2, DIGITAKT_MK1, DIGITONE_MK1, OCTATRACK, devices, targetOf } from '../src/devices.ts'
 import { sha } from '../src/bytes.ts'
 import { Mod, check as check1 } from '../src/elemod.ts'
 import { Mod2, check, imageProblems } from '../src/link.ts'
@@ -50,6 +50,20 @@ test('a machine claims its slot (machine:<n>) on the Analog Rytm MKII', () => {
   assert.ok(check([mod('a', 36), mod('b', 36)], image).includes('a 1 and b 1 both claim machine:36'))
   assert.ok(!check([mod('c', 36), mod('d', 37)], image).some(p => p.includes('claim')))
   assert.deepEqual(mod('e', 53).impliedNames(image), [])
+})
+
+test('a DN2 synth claims its stable type independently of its manifest resource names', () => {
+  const dn = DIGITONE_MK2, r = dn.releases[0], image = new Uint8Array(r.mainLen)
+  const mod = (id: string, type: number) => new Mod2({
+    elemod: 2, id, version: '1', target: targetOf(dn, r),
+    sections: { '.run': { align: 4, parts: [['hex', type.toString(16).padStart(8, '0') + '00'.repeat(12)]] } },
+    symbols: { m: ['.run', 0] },
+    contribute: [{ to: 'dn2_synths', data: '00000000', relocs: [[0, 'abs32', 'sym:m', 0]] }],
+  }, id)
+  assert.deepEqual(mod('a', 5).impliedNames(image), ['dn2-synth:5'])
+  assert.ok(check([mod('a', 5), mod('b', 5)], image).includes('a 1 and b 1 both claim dn2-synth:5'))
+  assert.ok(!check([mod('a', 5), mod('b', 31)], image).some(p => p.includes('claim')))
+  assert.deepEqual(mod('outside', 32).impliedNames(image), [])
 })
 
 test('a site in bytes the device keeps stock is refused, in both formats, with the range and its reason', () => {

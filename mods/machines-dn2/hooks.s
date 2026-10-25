@@ -1,0 +1,136 @@
+| SPDX-License-Identifier: GPL-2.0-or-later
+    .text
+    .globl dn2_stock_names, dn2_stock_permit, dn2_stock_descriptors
+    .globl dn2_unknown_name, dn2_unknown_label
+    .set dn2_stock_names, STOCK_NAMES
+    .set dn2_stock_permit, STOCK_PERMIT
+    .set dn2_stock_descriptors, STOCK_DESCRIPTORS
+    .set dn2_unknown_name, UNKNOWN_NAME
+    .set dn2_unknown_label, UNKNOWN_LABEL
+
+    .macro SAVE
+    lea -16(%sp),%sp
+    movem.l %d0-%d1/%a0-%a1,(%sp)
+    .endm
+    .macro RESTORE
+    movem.l (%sp),%d0-%d1/%a0-%a1
+    lea 16(%sp),%sp
+    .endm
+
+| The cached vector has exactly the registered entries, without unused ID slots.
+    .globl dn2_list_alloc
+dn2_list_alloc:
+    SAVE
+    jsr dn2_ensure
+    RESTORE
+    move.l dn2_list_bytes,-(%sp)
+    clr.l CACHE_BEGIN
+    jmp LIST_ALLOC_CONTINUE
+
+    .globl dn2_list_end
+dn2_list_end:
+    subq.l #4,%sp
+    SAVE
+    move.l dn2_list_bytes,%d0
+    add.l #dn2_list,%d0
+    move.l %d0,16(%sp)
+    RESTORE
+    adda.l dn2_list_bytes,%a0
+    jmp LIST_END_CONTINUE
+
+    .globl dn2_group
+dn2_group:
+    cmpi.l #5,%d0
+    bcs.s 1f
+    cmpi.l #32,%d0
+    bcc.s 1f
+    moveq #0,%d0
+1:  moveq #3,%d1
+    cmp.l %d0,%d1
+    bge.s 2f
+    jmp GROUP_CONTINUE
+2:  jmp GROUP_SYNTH
+
+| Map only the stock function's own argument slot. Keep the live page/slot registers.
+    .macro MAP off
+    SAVE
+    move.l (16+\off,%sp),-(%sp)
+    jsr dn2_clone_type
+    move.l %d0,(20+\off,%sp)
+    addq.l #4,%sp
+    RESTORE
+    .endm
+
+    .globl dn2_page_count
+dn2_page_count:
+    MAP 4
+    moveq #4,%d1
+    move.l 4(%sp),%d0
+    jmp PAGE_COUNT_CONTINUE
+
+    .globl dn2_page
+dn2_page:
+    MAP 8
+    move.l 8(%sp),%d1
+    move.l 12(%sp),%d0
+    jmp PAGE_CONTINUE
+
+    .globl dn2_parameter
+dn2_parameter:
+    MAP 12
+    move.l 12(%sp),%d0
+    movea.l 16(%sp),%a1
+    jmp PARAM_CONTINUE
+
+| Audio mirror identity stays real; only the transmitted DSP type is the stock clone.
+    .globl dn2_frame_type
+dn2_frame_type:
+    lea -12(%sp),%sp
+    movem.l %d1/%a0-%a1,(%sp)
+    mvs.b 0xd8c(%a0),%d0
+    move.l %d0,-(%sp)
+    jsr dn2_clone_type
+    addq.l #4,%sp
+    movem.l (%sp),%d1/%a0-%a1
+    lea 12(%sp),%sp
+    jmp FRAME_CONTINUE
+
+| This entry preserves the original reader for identity callers without copying firmware.
+    .globl dn2_real_reader
+dn2_real_reader:
+    move.l 4(%sp),-(%sp)
+    jsr READER_FN
+dn2_real_return:
+    addq.l #4,%sp
+    rts
+
+    .globl dn2_reader
+dn2_reader:
+    mvs.b 0xde(%a0),%d0
+    move.l %d1,-(%sp)
+    move.l 8(%sp),%d1
+    .irp caller,RC0,RC1,RC2,RC3,RC4,RC5,RC6,RC7,RC8,dn2_real_return
+    cmpi.l #\caller,%d1
+    beq.w 1f
+    .endr
+    lea -8(%sp),%sp
+    movem.l %a0-%a1,(%sp)
+    move.l %d0,-(%sp)
+    jsr dn2_clone_type
+    addq.l #4,%sp
+    movem.l (%sp),%a0-%a1
+    lea 8(%sp),%sp
+1:  move.l (%sp)+,%d1
+    jmp READER_EPILOGUE
+
+    .globl dn2_owner
+dn2_owner:
+    SAVE
+    mvs.b 0xde(%a0),%d0
+    move.l %d0,-(%sp)
+    jsr dn2_clone_type
+    addq.l #4,%sp
+    move.l %d0,%d3
+    RESTORE
+    move.l %d2,-(%sp)
+    jmp OWNER_CONTINUE

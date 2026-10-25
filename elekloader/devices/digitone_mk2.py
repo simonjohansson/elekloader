@@ -109,6 +109,7 @@ DEVICE = Device(
         'ddr': (0x47F00000, 0x47F40000),          # above the DMA buffers, below the boot stack
     },
     ddr=(0x47F00000, 0x47F40000),
+    slot_claims=(('dn2_synths', 0, 32, 'dn2-synth'),),  # stable type at descriptor +0
     recovery=('hold FUNC while powering on for the STARTUP menu, press TRIG 4 (OS UPGRADE), '
               'then send the stock .syx over MIDI (not USB)'),
     toolchain={

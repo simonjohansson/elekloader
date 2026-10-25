@@ -1744,6 +1744,14 @@ root, so `pick` may open another list. NO closes a submenu like the menu, and
 holding a track key always opens the root. The machines mod's MACHINES
 entry opens one (below).
 
+### Synth clones (machines-dn2 0.1, Digitone II)
+
+The experimental `machines-dn2` companion adds external stock synth clones
+in **FUNC+SYN** on OS 1.12. A mod contributes a stable ID, stock synth type
+and names; its firmware hooks live in the companion. See
+[Digitone II synth clones](MACHINES-DN2.md) for the descriptor and build.
+This uses stock synthesis and pages; per-voice custom DSP is separate.
+
 ### Machines and stock parameters (core-dn1 3.1, Digitone mk1)
 
 On the Digitone mk1 the DSP (a second ColdFire) renders the eight FM voices,

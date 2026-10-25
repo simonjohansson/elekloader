@@ -108,9 +108,9 @@ uint32_t dn2_permit(uint32_t type, uint32_t track)
         return 0;
     if (type >= FIRST) {
         dn2_ensure();
-        if (!registered[type])
-            return 0;
-        type = registered[type]->clone;
+        /* The OS also checks this when loading a sound: rejecting it loses the saved ID.
+         * Missing IDs stay out of the selector; MIDI permissions let their silent fallback load. */
+        type = registered[type] ? registered[type]->clone : 4;
     }
     return ((dn2_stock_permit[type] >> 16) >> track) & 1;
 }

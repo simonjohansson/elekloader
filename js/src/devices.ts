@@ -252,7 +252,7 @@ export const DIGITONE_MK2: Device = {
         l2Abi: 'dn2-master-mono32-l2-v1', l2AppRange: [0x20090000, 0x20098000],
         voiceAbi: 'dn2-voice-mono32-l2-v1',
         voiceTable: 'mk2_voice_synths', voiceCloneTable: 'mk2_synths',
-        voiceAdapterSha256: '7e4f1147a0017c07d330aba3ac3b1ffa64a9fe892c3ab90e5bf27325fe7528e0',
+        voiceAdapterSha256: 'c8e0e9866e16980b4249dcc43334bd4f632cecec49ce479b1f698d5cafe05457',
         voiceAdapterBytes: 2048, voiceStateBytes: 1024, voiceBindingOffset: 32256, voiceStackMax: 128,
         voiceHook: [0x20004a36, '8715ffffeeff', '3e06bc000080'],
         coreRange: [0x282dd600, 0x282dda00], stackMax: 544, codeGuardBytes: 64,

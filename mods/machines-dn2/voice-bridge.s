@@ -147,7 +147,9 @@ R3=1;
 R3=R1 AND R3;
 R3=PASS R3;
 IF EQ JUMP type_low;
-R2=LSHIFT R2 BY -16;
+// Register counts avoid this Selache pin's malformed negative immediates.
+R3=-16;
+R2=LSHIFT R2 BY R3;
 type_low:
 R3=0xffff;
 R2=R2 AND R3;
@@ -168,7 +170,8 @@ seen:
 R1=DM(0x25c4ac);
 R2=DM(0x25c4b0);
 R1=R1 OR R2;
-R1=LSHIFT R1 BY -16;
+R3=-16;
+R1=LSHIFT R1 BY R3;
 R1=R1 AND R7;
 R2=DM(0x20097e0c);
 R3=R2 AND R7;
@@ -199,7 +202,8 @@ R3=1;
 R3=R1 AND R3;
 R3=PASS R3;
 IF EQ JUMP pitch_low;
-R2=LSHIFT R2 BY -16;
+R3=-16;
+R2=LSHIFT R2 BY R3;
 pitch_low:
 R3=0xffff;
 R2=R2 AND R3;

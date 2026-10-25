@@ -87,7 +87,7 @@ DEVICE = Device(
                 'voice_abi': 'dn2-voice-mono32-l2-v1',
                 'voice_table': 'mk2_voice_synths',
                 'voice_clone_table': 'mk2_synths',
-                'voice_adapter_sha256': '7e4f1147a0017c07d330aba3ac3b1ffa64a9fe892c3ab90e5bf27325fe7528e0',
+                'voice_adapter_sha256': 'c8e0e9866e16980b4249dcc43334bd4f632cecec49ce479b1f698d5cafe05457',
                 'voice_adapter_bytes': 2048,
                 'voice_state_bytes': 1024,
                 'voice_binding_offset': 32256,

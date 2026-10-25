@@ -3,12 +3,12 @@
 Experimental, OS 1.12 only. machines-dn2 0.1 can register an external C
 oscillator in the native FUNC+SYN selector. Its output passes through the
 stock voice envelope, filter, pan, sends and mixer. Other tracks retain
-their stock synthesis in the coupled emulator. **The current voice-synth
-firmware is silent on hardware, including stock synths.** Memory-only and
-machine/filter-only controls produce audio; the voice integration remains
-blocked by [issue #69](https://github.com/simonjohansson/elekloader/issues/69).
-Use the voice callback for emulator development until that issue is fixed
-and physical qualification passes. No timing qualification is claimed.
+their stock synthesis in the coupled emulator. Physical DN2 USB captures
+confirm native SINE selection and audible SINE and stock FM in the same
+firmware, with DigiHealth included. Multitrack, control and project-reload
+qualification continues in
+[issue #67](https://github.com/simonjohansson/elekloader/issues/67).
+No timing qualification is claimed.
 
 ## Author interface
 
@@ -76,9 +76,15 @@ the voice pipeline at `0x1c9459`. Its guarded six-byte stack adjustment is
 `8715ffffeeff`; the adapter executes it and continues at `0xb8251e`.
 The master hook and its L1 reservation are unchanged. Rebuild the adapter
 from `mods/machines-dn2/voice-bridge.s` with `rebuild_voice.py`; the checked
-Selache pin is `2b26d3b75c53063575bc5c820fa0d38879335187`. Its 1,696 code
+Selache pin is `2b26d3b75c53063575bc5c820fa0d38879335187`. Its 1,702 code
 bytes are padded to 2 KiB, SHA-256
-`7e4f1147a0017c07d330aba3ac3b1ffa64a9fe892c3ab90e5bf27325fe7528e0`.
+`c8e0e9866e16980b4249dcc43334bd4f632cecec49ce479b1f698d5cafe05457`.
+
+The adapter uses register counts for right shifts. This Selache pin omits
+the required sign-extension bits in negative immediate shifts, which can
+halt the physical DSP even when emulation passes. See the
+[DN2 instruction investigation](https://github.com/angellinares/dn2_firmware_explore/blob/main/docs/waverider-dsp-compare.md#11-the-cause-found-on-silicon-negative-shift-immediates-2026-09-29).
+The unit suite checks the generated adapter for this encoding defect.
 
 ## Example and checks
 

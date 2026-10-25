@@ -44,11 +44,17 @@ an FM TONE clone, SYN1 knob A is CC 40 and NRPN 1:73), turning it sends
 that CC, and a number whose slot is empty does nothing. A slot the clone
 gives no CC (FM TONE: 34 and 50..57) has none. Knobs take parameter locks as on a
 stock synth (hold a step and turn): the OS puts the locked value in the
-voice that plays the trig, so a kernel needs no code for them. The render callback receives
-the values in `param`. The companion ignores an
-invalid entry (an unregistered or non-SHARC ID, a second entry for one
-ID, a count outside 1..5, a bad label or default) and the synth keeps its
-empty page. The linker refuses two mods that give pages to one ID.
+voice that plays the trig, so a kernel needs no code for them.
+
+Declared knobs appear by label in all three LFO destination lists and in
+the TRACK setup's modulation lists (**FUNC+FLTR**): velocity, aftertouch,
+pitch bend, mod wheel, breath controller and key tracking. Empty slots are
+omitted. Route them as on a stock synth; the OS applies their modulation
+before the callback receives each voice's values in `param`.
+
+The companion ignores an invalid entry (an unregistered or non-SHARC ID,
+a second entry for one ID, a count outside 1..5, a bad label or default)
+and the synth keeps its empty page. The linker refuses two mods that give pages to one ID.
 
 The same mod must carry a `dn2-voice-mono32-l2-v1` artifact with a matching
 `machine_id` and `entries: {"render_offset_bytes": ...}`. Require `core`
@@ -134,7 +140,8 @@ fractional pitch rounds down and other pitches produce zeros. Each voice
 slot keeps independent phase and resets it on START. Its two pages show
 how a kernel reads `param`: LEV (`param[0]`) is the level, TUNE
 (`param[1]`) transposes in semitones around 64 and OCT (`param[8]`) in
-octaves, one per 16; FINE (`param[12]`) is declared but unused.
+octaves, one per 16; FINE (`param[12]`) is declared but unused. This
+example rounds fractional TUNE values down.
 
 Run `python tests/test_units.py` and the TypeScript suite for the artifact,
 registration, callback binding and stack-bound checks. Runtime checks must

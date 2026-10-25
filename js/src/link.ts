@@ -350,7 +350,8 @@ export function check(mods: Mod2[], image: Uint8Array): string[] {
     if (app.sharc!.machineId !== undefined) {
       const contributions = app.contribute.filter(c => c.to === 'dn2_voice_synths')
       if (contributions.length !== 1 || contributions[0].data.length !== 4 ||
-        JSON.stringify(app.impliedNames(image, 'dn2_voice_synths')) !== JSON.stringify([`dn2-synth:${app.sharc!.machineId}`]))
+        JSON.stringify(app.impliedNames(image, 'dn2_voice_synths')) !== JSON.stringify([`dn2-synth:${app.sharc!.machineId}`]) ||
+        app.impliedNames(image, 'dn2_synths').includes(`dn2-synth:${app.sharc!.machineId}`))
         bad.push(`${app.label()}: SHARC voice machine_id must match its single native voice registration`)
       continue
     }

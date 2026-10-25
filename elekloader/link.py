@@ -342,7 +342,8 @@ def check(mods, image):
         if 'machine_id' in app.sharc:
             contributions = [c for c in app.contribute if c['to'] == 'dn2_voice_synths']
             if len(contributions) != 1 or len(contributions[0]['data']) != 4 \
-                    or app.implied_names(image, 'dn2_voice_synths') != ['dn2-synth:%d' % app.sharc['machine_id']]:
+                    or app.implied_names(image, 'dn2_voice_synths') != ['dn2-synth:%d' % app.sharc['machine_id']] \
+                    or 'dn2-synth:%d' % app.sharc['machine_id'] in app.implied_names(image, 'dn2_synths'):
                 bad.append('%s: SHARC voice machine_id must match its single native voice registration' % app.label())
             continue
         if app.sharc['entries'] is None:

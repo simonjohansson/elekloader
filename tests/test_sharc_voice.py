@@ -95,6 +95,12 @@ class LinkTests(unittest.TestCase):
             self.assertIn('voice-test 0.1: SHARC voice machine_id must match its single native voice registration',
                           link.check([core,machines,link.Mod2(bad,'bad')], image))
             bad = copy.deepcopy(voice.doc)
+            clone = copy.deepcopy(bad['contribute'][0])
+            clone['to'] = 'dn2_synths'
+            bad['contribute'].append(clone)
+            self.assertIn('voice-test 0.1: SHARC voice machine_id must match its single native voice registration',
+                          link.check([core,machines,link.Mod2(bad,'dual-role')], image))
+            bad = copy.deepcopy(voice.doc)
             del bad['sharc']
             self.assertIn('voice-test 0.1: DN2 voice registration requires a matching SHARC voice payload',
                           link.check([core,machines,link.Mod2(bad,'bad')], image))

@@ -35,7 +35,7 @@ static const struct mk2_param level = {"lev", 100}, detune = {"DET", 64}, last =
 static const struct mk2_param loud = {"LOUD", 128}, wide = {"TOOWIDE", 1}, blank = {"", 1};
 static const struct mk2_page sine_pages[2] = {{{&level, 0, &detune}}, {{0, 0, 0, 0, 0, 0, 0, &last}}};
 static const struct mk2_page bad_default[1] = {{{&loud}}}, bad_label[1] = {{{&wide}}};
-static const struct mk2_page empty_label[1] = {{{&blank}}}, roomy_pages[4] = {{{0}}};
+static const struct mk2_page empty_label[1] = {{{&blank}}}, roomy_pages[6] = {{{0}}};
 static const struct mk2_voice_pages pages_sine = {7, 2, sine_pages};
 static const struct mk2_voice_pages pages_again = {7, 1, sine_pages};
 static const struct mk2_voice_pages pages_clone = {5, 1, sine_pages};
@@ -44,11 +44,12 @@ static const struct mk2_voice_pages pages_none = {8, 0, sine_pages};
 static const struct mk2_voice_pages pages_default = {8, 1, bad_default};
 static const struct mk2_voice_pages pages_label = {8, 1, bad_label};
 static const struct mk2_voice_pages pages_blank = {8, 1, empty_label};
+static const struct mk2_voice_pages pages_six = {9, 6, roomy_pages};      /* over the ceiling */
 static const struct mk2_voice_pages pages_full = {9, 4, roomy_pages};     /* 2 + 4 > 5 pages */
 const struct mk2_voice_pages *const mk2_voice_pages[] = {
 #ifndef EMPTY
     &pages_clone, &pages_missing, &pages_none, &pages_default, &pages_label, &pages_blank,
-    &pages_sine, &pages_again, &pages_full,
+    &pages_six, &pages_sine, &pages_again, &pages_full,
 #endif
     0
 };
@@ -92,7 +93,7 @@ static void check_pages(void)
 #ifdef EMPTY
     assert(dn2_voice_page_count(7) == 0 && dn2_voice_code(7, SLOT) == 0);
     (void)pages_sine; (void)pages_again; (void)pages_clone; (void)pages_missing; (void)pages_none;
-    (void)pages_default; (void)pages_label; (void)pages_blank; (void)pages_full;
+    (void)pages_default; (void)pages_label; (void)pages_blank; (void)pages_full; (void)pages_six;
 #else
     assert(dn2_voice_page_count(7) == 2);
     const struct descriptor *one = (const struct descriptor *)dn2_voice_page(7, 0);

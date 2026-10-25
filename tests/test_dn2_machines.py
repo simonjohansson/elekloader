@@ -64,6 +64,7 @@ class VoicePagesTests(unittest.TestCase):
             (stage / 'machine.c').write_text(
                 '#include "mk2/machines.h"\n'
                 'const struct mk2_synth voice = {8, 0, "PAGED", "PAGED"};\n'
+                'const struct mk2_synth clone = {5, 1, "CLONE", "CLONE"};\n'
                 'static const struct mk2_param a = {"ALPH", 100}, b = {"BETA", 3};\n'
                 'static const struct mk2_page two[2] = {{{&a, 0, &b}}, {{0}}};\n'
                 'const struct mk2_voice_pages pages = {8, 2, two};\n')
@@ -73,7 +74,7 @@ class VoicePagesTests(unittest.TestCase):
                 'sources': ['machine.c'], 'sharc': {'artifact': 'kernel.json'},
                 'resources': {'core': '0.1'}, 'requires': ['core', 'machines-dn2'],
                 'contribute': [{'to': table, 'data': '00000000', 'relocs': [[0, 'abs32', 'sym:' + symbol, 0]]}
-                               for table, symbol in (('mk2_voice_synths', 'voice'),
+                               for table, symbol in (('mk2_voice_synths', 'voice'), ('mk2_synths', 'clone'),
                                                      ('mk2_voice_pages', 'pages'))]}))
             mod = sdk.build(str(stage), STOCK, str(stage / 'build'))[0]
             outputs, _manifest = patch.build(STOCK, base + [mod], 'TEST', log=lambda *args: None)
@@ -81,7 +82,11 @@ class VoicePagesTests(unittest.TestCase):
             firmware.write_bytes(outputs['syx'])
             page_count, slot_code, row_slot, row_cc, value_class = (
                 0x400c2636, 0x400dc18e, 0x400dbe28, 0x400dc406, 0x400c257c)
-            checks = [(page_count, [8], 2), (page_count, [0], 4),
+            # Stock synths keep their counts (FM TONE 4, WAVETONE 3, FM DRUM 4, SWARMER 1, MIDI 1);
+            # a clone has its original's.
+            checks = [(page_count, [8], 2), (page_count, [0], 4), (page_count, [1], 3),
+                      (page_count, [2], 4), (page_count, [3], 1), (page_count, [4], 1),
+                      (page_count, [5], 3),
                       (slot_code, [25, 8, 0], 321), (slot_code, [26, 8, 0], 0),
                       (slot_code, [27, 8, 0], 323), (slot_code, [33, 8, 0], 0),
                       (slot_code, [41, 8, 0], 0),

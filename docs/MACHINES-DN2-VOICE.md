@@ -36,8 +36,9 @@ const struct mk2_voice_pages sine_layout = {7, 1, sine_pages};
 ```
 
 Page `p`, knob `k` is sound slot `25 + 8p + k`. The value is saved with
-the sound and copied with it, as a stock synth's. Tabs read SYN1..SYN5 and
-the title is the synth's name. The render callback does not receive the
+the sound and copied with it, as a stock synth's. SYN steps through the
+pages, as on a stock synth; the header reads the synth's name and the page,
+such as `SINE (2/2)`. The render callback does not receive the
 values yet, and the knobs have no MIDI CC. The companion ignores an
 invalid entry (an unregistered or non-SHARC ID, a second entry for one
 ID, a count outside 1..5, a bad label or default) and the synth keeps its

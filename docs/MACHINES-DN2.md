@@ -56,6 +56,37 @@ restores stock OS behavior, which clamps an unknown saved type to FM TONE
 when loading a sound. Keep backups of projects; do not save over the only
 copy when changing the installed mod set.
 
+## Qualification status
+
+The first clone increment was checked with OS 1.12, core 0.2, DigiHealth
+1.5 and the coupled DigiKit emulator at
+`ded547e14e63977c1a6e808812d46243e13c43d0`. The external consumer is
+`digitone-2-mod-hack`'s `machines` branch.
+
+- FUNC+SYN lists CLONE; one YES assigns it and moves the selected marker.
+- Reopening the selector and visiting its FLTR category retain the marker.
+- CLONE's SYN, FLTR and AMP control areas match FM TONE. The animated top
+  status/title strip is excluded from the control comparison.
+- Track 1's CLONE and FM TONE first-note captures are byte-identical:
+  48,000 stereo frames, WAV SHA-256
+  `06b2e1fb1cff83605275df3b52bebc025877e9da59c9505d5eeb70c38c8710b0`.
+- Switching back to stock uses the next allocated voice with identity 0;
+  the earlier voice slot keeps its old identity, as expected.
+- Track 2's first CLONE note uses voice slot 0 owned by track 2, with
+  identity 5 and transmitted type 0. Its WAV matches the fresh FM TONE
+  reference. A subsequent track-1 note retains stock identity 0.
+- The build keeps DSP section 7 and the other non-main sections unchanged.
+  Duplicate IDs are refused by both the Python and TypeScript engines.
+
+**Still open in #59:** a conclusive named-project/sound round-trip and the
+missing-mod runtime control. The scripted test wrote sound records carrying
+ID 5 and observed CLONE again after navigation, but subsequent checks did
+not reliably select that saved project after changing firmware. Those
+attempts are not a qualification of persistence or missing-mod behavior.
+The missing-ID behavior described above is covered by the firmware-free C
+test; its end-to-end behavior still needs checking. Hardware, undo and
+sound-pool transfer have not been qualified.
+
 ## Maintainer checks
 
 The manifest in `mods/machines-dn2/mod.json` holds every exact OS 1.12 byte
@@ -63,7 +94,8 @@ guard and address. The adapters cover the cached list's allocation/end,
 name/descriptor/permission lookups, synth grouping, three parameter-page
 readers, parameter ownership, the audio frame's type and the saved type
 reader. Identity callers retain the real type; page logic sees the stock
-clone. A small wrapper gives the native track-type accessor the real
+clone. The audio frame is indexed by allocated voice slot, not by track;
+qualification follows the owner map at `0x40288306 + 0x14*v` during note-on. A small wrapper gives the native track-type accessor the real
 reader without embedding a copied firmware function. The sound-load bound
 accepts IDs through 31. Unused IDs never enter the cached list.
 
@@ -77,8 +109,10 @@ cc -std=c99 -Wall -Werror -DEMPTY -I elekloader/sdk/include tests/test_dn2_machi
 /tmp/dn2-machines-empty-test
 ```
 
-`python tests/test_units.py` and the TypeScript suite check conflicting and
-distinct IDs. Runtime qualification must also exercise the native selector,
+`python tests/test_units.py` runs the C checks when a native `cc` is
+available (and reports a skip otherwise). It and the TypeScript suite
+check conflicting and distinct IDs. Runtime qualification must also
+exercise the native selector,
 stock-equivalent audio, both categories, another track, project save/load
 and the missing-mod control. Firmware builds alone do not qualify these.
 

@@ -560,16 +560,21 @@ def test_dn2_synth_claims_its_stable_type():
     r = dn.releases['1.12']
     image = bytes(r.main_len)
 
-    def mod(i, slot):
+    def mod(i, slot, table='mk2_synths'):
         return link.Mod2({'elemod': 2, 'id': i, 'version': '1', 'target': devices.target_of(dn, r),
                           'sections': {'.run': {'align': 4, 'parts': [['hex', '%08x' % slot + '00' * 12]]}},
                           'symbols': {'m': ['.run', 0]},
-                          'contribute': [{'to': 'dn2_synths', 'data': '00000000',
+                          'contribute': [{'to': table, 'data': '00000000',
                                           'relocs': [[0, 'abs32', 'sym:m', 0]]}]}, i)
-    assert mod('a', 5).implied_names(image) == ['dn2-synth:5']
-    assert 'a 1 and b 1 both claim dn2-synth:5' in link.check([mod('a', 5), mod('b', 5)], image)
+    assert mod('a', 5).implied_names(image) == ['mk2-synth:5']
+    assert 'a 1 and b 1 both claim mk2-synth:5' in link.check([mod('a', 5), mod('b', 5)], image)
     assert not [p for p in link.check([mod('a', 5), mod('b', 31)], image) if 'claim' in p]
     assert mod('outside', 32).implied_names(image) == []
+    assert mod('filter', 6, 'mk2_filters').implied_names(image) == ['mk2-filter:6']
+    assert 'a 1 and b 1 both claim mk2-filter:6' in link.check(
+        [mod('a', 6, 'mk2_filters'), mod('b', 6, 'mk2_filters')], image)
+    assert not [p for p in link.check(
+        [mod('synth', 6), mod('filter', 6, 'mk2_filters')], image) if 'claim' in p]
 
 
 def test_kept_bytes_refuse_every_write():

@@ -251,7 +251,7 @@ export const DIGITONE_MK2: Device = {
         abi: 'dn2-master-mono32-v1', pitchRange: [0x282dda00, 0x282dde00],
         l2Abi: 'dn2-master-mono32-l2-v1', l2AppRange: [0x20090000, 0x20098000],
         voiceAbi: 'dn2-voice-mono32-l2-v1',
-        voiceTable: 'dn2_voice_synths', voiceCloneTable: 'dn2_synths',
+        voiceTable: 'mk2_voice_synths', voiceCloneTable: 'mk2_synths',
         voiceAdapterSha256: '7e4f1147a0017c07d330aba3ac3b1ffa64a9fe892c3ab90e5bf27325fe7528e0',
         voiceAdapterBytes: 2048, voiceStateBytes: 1024, voiceBindingOffset: 32256, voiceStackMax: 128,
         voiceHook: [0x20004a36, '8715ffffeeff', '3e06bc000080'],
@@ -268,7 +268,8 @@ export const DIGITONE_MK2: Device = {
   stage: 0x40400000, flashAt: 0x80000, flashLimit: 0x380000, trailer: 'hmac', hmacKeyFrom: [2, 'Multiplier'],
   areas: { ddr: [0x47f00000, 0x47f40000] },
   ddr: [0x47f00000, 0x47f40000],
-  slotClaims: [['dn2_synths', 0, 32, 'dn2-synth'], ['dn2_voice_synths', 0, 32, 'dn2-synth']],
+  slotClaims: [['mk2_synths', 0, 32, 'mk2-synth'], ['mk2_voice_synths', 0, 32, 'mk2-synth'],
+    ['mk2_filters', 0, 32, 'mk2-filter']],
   recovery: 'hold FUNC while powering on for the STARTUP menu, press TRIG 4 (OS UPGRADE), '
     + 'then send the stock .syx over MIDI (not USB)',
 }

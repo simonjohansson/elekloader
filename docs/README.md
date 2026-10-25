@@ -24,6 +24,7 @@ docs match its code.
   command with the output it should print, every refusal with its fix, and a
   definition of done. Coding agents: start with [AGENTS.md](../AGENTS.md).
 - **[Digitone II synth clones](MACHINES-DN2.md)**: a stock synth clone in the native selector, with a stable saved ID; [SHARC track synths](MACHINES-DN2-VOICE.md) add a C oscillator before the stock envelope and filter (emulator qualification).
+- **[Digitone II filter clones](MACHINES-DN2-FILTER.md)**: register a stock filter separately from the synth; emulator qualification is in progress.
 - **[Digitone II SHARC mods](../examples/sharc-sine/README.md)**
   (experimental): code for the DSP, at the master output, from C or
   assembly, built with the normal SDK. The

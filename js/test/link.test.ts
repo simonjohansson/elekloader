@@ -52,18 +52,22 @@ test('a machine claims its slot (machine:<n>) on the Analog Rytm MKII', () => {
   assert.deepEqual(mod('e', 53).impliedNames(image), [])
 })
 
-test('a DN2 synth claims its stable type independently of its manifest resource names', () => {
+test('DN2 synth and filter claims use separate stable ID namespaces', () => {
   const dn = DIGITONE_MK2, r = dn.releases[0], image = new Uint8Array(r.mainLen)
-  const mod = (id: string, type: number) => new Mod2({
+  const mod = (id: string, type: number, table = 'mk2_synths') => new Mod2({
     elemod: 2, id, version: '1', target: targetOf(dn, r),
     sections: { '.run': { align: 4, parts: [['hex', type.toString(16).padStart(8, '0') + '00'.repeat(12)]] } },
     symbols: { m: ['.run', 0] },
-    contribute: [{ to: 'dn2_synths', data: '00000000', relocs: [[0, 'abs32', 'sym:m', 0]] }],
+    contribute: [{ to: table, data: '00000000', relocs: [[0, 'abs32', 'sym:m', 0]] }],
   }, id)
-  assert.deepEqual(mod('a', 5).impliedNames(image), ['dn2-synth:5'])
-  assert.ok(check([mod('a', 5), mod('b', 5)], image).includes('a 1 and b 1 both claim dn2-synth:5'))
+  assert.deepEqual(mod('a', 5).impliedNames(image), ['mk2-synth:5'])
+  assert.ok(check([mod('a', 5), mod('b', 5)], image).includes('a 1 and b 1 both claim mk2-synth:5'))
   assert.ok(!check([mod('a', 5), mod('b', 31)], image).some(p => p.includes('claim')))
   assert.deepEqual(mod('outside', 32).impliedNames(image), [])
+  assert.deepEqual(mod('filter', 6, 'mk2_filters').impliedNames(image), ['mk2-filter:6'])
+  assert.ok(check([mod('a', 6, 'mk2_filters'), mod('b', 6, 'mk2_filters')], image)
+    .includes('a 1 and b 1 both claim mk2-filter:6'))
+  assert.ok(!check([mod('synth', 6), mod('filter', 6, 'mk2_filters')], image).some(p => p.includes('claim')))
 })
 
 test('a site in bytes the device keeps stock is refused, in both formats, with the range and its reason', () => {

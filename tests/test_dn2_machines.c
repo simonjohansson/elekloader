@@ -14,21 +14,79 @@ const struct descriptor dn2_stock_descriptors[5] = {
     {"FM DRUM", "DRUM", {33}}, {"SWARMER", "SW", {44}}, {"MIDI", "MIDI", {55}}
 };
 const char dn2_unknown_name[] = "unknown", dn2_unknown_label[] = "?";
-static const struct dn2_synth low = {5, 0, "CLONE", "CLONE"}, high = {31, 3, "OTHER", "OTHER"};
-static const struct dn2_synth bad_id = {32, 0, "BAD", "BAD"}, bad_clone = {6, 4, "BAD", "BAD"};
-const struct dn2_synth *const dn2_synths[] = {
+static const struct mk2_synth low = {5, 0, "CLONE", "CLONE"}, high = {31, 3, "OTHER", "OTHER"};
+static const struct mk2_synth bad_id = {32, 0, "BAD", "BAD"}, bad_clone = {6, 4, "BAD", "BAD"};
+const struct mk2_synth *const mk2_synths[] = {
 #ifndef EMPTY
     &high, &bad_id, &bad_clone, &low,
 #endif
     0
 };
-static const struct dn2_synth sine = {7, 0, "SINE", "SINE"};
-const struct dn2_synth *const dn2_voice_synths[] = {
+static const struct mk2_synth sine = {7, 0, "SINE", "SINE"};
+const struct mk2_synth *const mk2_voice_synths[] = {
 #ifndef EMPTY
     &sine,
 #endif
     0
 };
+
+const struct names dn2_stock_filter_names[6] = {
+    {"MULTI-MODE", "MM", 0}, {"LOWPASS 4", "LP4", 0}, {"EQUALIZER", "EQ", 0},
+    {"COMB-", "C-", 0}, {"LEGACY LP/HP", "LPHP", 0}, {"COMB+", "C+", 0}
+};
+const struct descriptor dn2_stock_filter_descriptors[6] = {
+    {"MM", "MM", {45,46,47,48,36,37,38,49,10}}, {"LP4", "LP4", {39}},
+    {"EQ", "EQ", {41}}, {"C-", "C-", {54}}, {"LPHP", "LPHP", {57}}, {"C+", "C+", {318}}
+};
+static const struct mk2_filter filter_low = {6, 0, "CLONE FILTER", "CLONE"};
+static const struct mk2_filter filter_high = {31, 5, "comb clone", "comb"};
+static const struct mk2_filter filter_same_id = {7, 1, "SAME ID", "SAME"};
+static const struct mk2_filter filter_bad = {8, 6, "BAD", "BAD"};
+static const struct mk2_filter filter_outside = {32, 0, "BAD", "BAD"};
+static const struct mk2_filter filter_stock = {5, 0, "BAD", "BAD"};
+const struct mk2_filter *const mk2_filters[] = {
+#ifndef EMPTY
+    &filter_high, &filter_bad, &filter_outside, &filter_stock, &filter_low, &filter_same_id,
+    &filter_low,
+#endif
+    0
+};
+
+static void check_filters(void)
+{
+    dn2_filters_ensure();
+    const uint32_t stock[] = {0, 1, 4, 3, 5, 2};
+    assert(!memcmp(dn2_filter_list, stock, sizeof(stock)));
+    for (unsigned i = 0; i < 6; ++i) {
+        assert(dn2_filter_clone(i) == i);
+        assert(dn2_filter_descriptor(i) == (uintptr_t)&dn2_stock_filter_descriptors[i]);
+        assert(dn2_filter_name(i) == (uintptr_t)dn2_stock_filter_names[i].name);
+        assert(dn2_filter_label(i) == (uintptr_t)dn2_stock_filter_names[i].label);
+    }
+#ifdef EMPTY
+    assert(dn2_filter_list_bytes == 24);
+    assert(dn2_filter_clone(31) == 0);
+    assert(!strcmp((const char *)dn2_filter_name(6), "MISSING"));
+    (void)filter_low; (void)filter_high; (void)filter_same_id;
+    (void)filter_bad; (void)filter_outside; (void)filter_stock;
+#else
+    assert(dn2_filter_list_bytes == 36);
+    assert(dn2_filter_list[6] == 6 && dn2_filter_list[7] == 7 && dn2_filter_list[8] == 31);
+    assert(dn2_filter_clone(6) == 0 && dn2_filter_clone(7) == 1 && dn2_filter_clone(31) == 5);
+    assert(dn2_is_voice(7) && dn2_dsp_type(7) == 7);  /* Same ID, separate categories. */
+    const struct descriptor *d = (const struct descriptor *)dn2_filter_descriptor(31);
+    assert(d->params[0] == 318 && !strcmp(d->name, "COMB CLONE"));
+    assert(filter_strings[31][0].references == -1);
+    assert(!strcmp((const char *)dn2_filter_label(31), "comb"));
+#endif
+    assert(dn2_filter_clone(8) == 0 && dn2_filter_clone(0xffffffff) == 0xffffffff);
+    assert(dn2_filter_name(32) == (uintptr_t)dn2_unknown_name);
+    assert(dn2_filter_label(32) == (uintptr_t)dn2_unknown_label);
+    assert(dn2_filter_descriptor(8) == (uintptr_t)&dn2_stock_filter_descriptors[0]);
+    unsigned size = dn2_filter_list_bytes;
+    dn2_filters_ensure();
+    assert(size == dn2_filter_list_bytes);
+}
 
 int main(void)
 {
@@ -78,5 +136,6 @@ int main(void)
     }
     dn2_ensure();
     assert(dn2_list_bytes == 4*n);
+    check_filters();
     return 0;
 }

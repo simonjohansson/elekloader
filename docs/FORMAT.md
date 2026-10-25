@@ -89,8 +89,8 @@ makes one from C or assembly.
 For a selectable track synth, the additional experimental ABI is
 `dn2-voice-mono32-l2-v1`. It uses the same fields below, plus `machine_id`
 (5..31), and `entries` contains only `render_offset_bytes`. A matching
-descriptor must be contributed by that same mod to `dn2_voice_synths` in
-machines-dn2 0.2. A voice registration without its DSP payload is refused.
+descriptor must be contributed by that same mod to `mk2_voice_synths` in
+machines-dn2 0.3. A voice registration without its DSP payload is refused.
 IDs conflict with clone IDs too. One DSP mod still owns the reservation.
 
 The voice artifact starts with the profiled 2 KiB adapter code segment,

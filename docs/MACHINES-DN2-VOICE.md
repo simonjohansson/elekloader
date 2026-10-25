@@ -1,6 +1,6 @@
 # Digitone II SHARC track synths
 
-Experimental, OS 1.12 only. machines-dn2 0.2 can register an external C
+Experimental, OS 1.12 only. machines-dn2 0.3 can register an external C
 oscillator in the native FUNC+SYN selector. Its output passes through the
 stock voice envelope, filter, pan, sends and mixer. Other tracks retain
 their stock synthesis. This callback has been checked in the coupled
@@ -8,9 +8,9 @@ emulator; no hardware or timing qualification is claimed.
 
 ## Author interface
 
-Use the existing four-field `dn2_synth` descriptor from
-`digitone-mk2/machines.h`, contributing its pointer to `dn2_voice_synths`
-instead of `dn2_synths`. The fields remain stable ID, stock defaults type,
+Use the existing four-field `mk2_synth` descriptor from
+`mk2/machines.h`, contributing its pointer to `mk2_voice_synths`
+instead of `mk2_synths`. The fields remain stable ID, stock defaults type,
 name and short label. Use permanent IDs 5..31; clones share that namespace.
 The companion supplies a named empty SYN page and stock AMP/FLTR controls.
 The native machine selector identifies the engine as SINE.

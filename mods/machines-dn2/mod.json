@@ -1,9 +1,9 @@
 {
  "id": "machines-dn2",
- "version": "0.2",
+ "version": "0.3",
  "license": "GPL-2.0-or-later",
- "title": "DN2 synth machines",
- "description": "Native synth clones and SHARC voice synths in the Digitone II machine selector. Needs core 0.2.",
+ "title": "DN2 synth and filter machines",
+ "description": "Native synth/filter clones and SHARC voice synths in the Digitone II machine selector. Needs core 0.2.",
  "device": "digitone-mk2",
  "os": "1.12",
  "sources": [
@@ -36,7 +36,23 @@
   "RC5": "0x4005cd68",
   "RC6": "0x400d5bdc",
   "RC7": "0x400d68c8",
-  "RC8": "0x400d7312"
+  "RC8": "0x400d7312",
+  "FILTER_NAMES": "0x401f7bbc",
+  "FILTER_DESCRIPTORS": "0x424339cc",
+  "FILTER_CACHE_BEGIN": "0x405cdfa4",
+  "FILTER_LIST_ALLOC_CONTINUE": "0x4004db16",
+  "FILTER_LIST_END_CONTINUE": "0x4004db36",
+  "FILTER_FRAME_CONTINUE": "0x4002758c",
+  "FILTER_READER_FN": "0x4004b860",
+  "FILTER_READER_EPILOGUE": "0x4004b88c",
+  "FRC0": "0x40045940",
+  "FRC1": "0x40045a5e",
+  "FRC2": "0x40045b34",
+  "FRC3": "0x4004607a",
+  "FRC4": "0x40071ece",
+  "FRC5": "0x400d5be8",
+  "FRC6": "0x400d68fc",
+  "FRC7": "0x400d7324"
  },
  "sites": [
   {
@@ -141,20 +157,88 @@
    "op": "bytes",
    "new": "7421",
    "kind": "code"
+  },
+  {
+   "addr": "0x400c2614",
+   "stock": "7205202f0004",
+   "op": "jmp",
+   "target": "dn2_filter_descriptor"
+  },
+  {
+   "addr": "0x4004db0c",
+   "stock": "4878001842b9405cdfa4",
+   "op": "jmp",
+   "target": "dn2_filter_list_alloc"
+  },
+  {
+   "addr": "0x4004db2c",
+   "stock": "4879401de16841e80018",
+   "op": "jmp",
+   "target": "dn2_filter_list_end"
+  },
+  {
+   "addr": "0x4004db36",
+   "stock": "4879401de150",
+   "op": "keep2",
+   "target": "dn2_filter_list"
+  },
+  {
+   "addr": "0x400dc508",
+   "stock": "7205202f0004",
+   "op": "jmp",
+   "target": "dn2_filter_name"
+  },
+  {
+   "addr": "0x400dc52e",
+   "stock": "7205202f0004",
+   "op": "jmp",
+   "target": "dn2_filter_label"
+  },
+  {
+   "addr": "0x40027586",
+   "stock": "10280d8d2046",
+   "op": "jmp",
+   "target": "dn2_filter_frame_type"
+  },
+  {
+   "addr": "0x4004b884",
+   "stock": "712800df6002",
+   "op": "jmp",
+   "target": "dn2_filter_reader"
+  },
+  {
+   "addr": "0x400313e6",
+   "stock": "4ef94004b860",
+   "op": "keep2",
+   "target": "dn2_filter_real_reader"
+  },
+  {
+   "addr": "0x400dd420",
+   "stock": "143c0007",
+   "op": "bytes",
+   "new": "143c0021",
+   "kind": "code"
   }
  ],
  "collections": {
-  "dn2_synths": 4,
-  "dn2_voice_synths": 4
+  "mk2_synths": 4,
+  "mk2_voice_synths": 4,
+  "mk2_filters": 4
  },
  "resources": {
   "core": "0.2",
   "names": [
-   "dn2-synth:0",
-   "dn2-synth:1",
-   "dn2-synth:2",
-   "dn2-synth:3",
-   "dn2-synth:4"
+   "mk2-synth:0",
+   "mk2-synth:1",
+   "mk2-synth:2",
+   "mk2-synth:3",
+   "mk2-synth:4",
+   "mk2-filter:0",
+   "mk2-filter:1",
+   "mk2-filter:2",
+   "mk2-filter:3",
+   "mk2-filter:4",
+   "mk2-filter:5"
   ]
  },
  "requires": [

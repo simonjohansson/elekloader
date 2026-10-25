@@ -63,14 +63,17 @@ class LinkTests(unittest.TestCase):
     def test_matching_native_registration_and_checked_hook(self):
         with tempfile.TemporaryDirectory() as tmp:
             p = Path(tmp)
-            (p / 'voice.c').write_text('#include "digitone-mk2/machines.h"\n'
-                                      'const struct dn2_synth sine = {5,0,"SINE","SINE"};\n')
+            (p / 'voice.c').write_text('#include "mk2/machines.h"\n'
+                                      'const struct mk2_synth sine = {5,0,"SINE","SINE"};\n'
+                                      'const struct mk2_filter filter = {6,0,"CLONE FILTER","CLONE"};\n')
             (p / 'voice.json').write_text(json.dumps(artifact()))
             manifest = {'id': 'voice-test', 'version': '0.1', 'device': 'digitone-mk2', 'os': '1.12',
                         'sources': ['voice.c'], 'sharc': {'artifact': 'voice.json'},
                         'resources': {'core': '0.2'}, 'requires': ['core', 'machines-dn2'],
-                        'contribute': [{'to': 'dn2_voice_synths', 'data': '00000000',
-                                        'relocs': [[0,'abs32','sym:sine',0]]}]}
+                        'contribute': [{'to': 'mk2_voice_synths', 'data': '00000000',
+                                        'relocs': [[0,'abs32','sym:sine',0]]},
+                                       {'to': 'mk2_filters', 'data': '00000000',
+                                        'relocs': [[0,'abs32','sym:filter',0]]}]}
             (p / 'mod.json').write_text(json.dumps(manifest))
             paths = [sdk.build(str(src), STOCK, str(p / name))[0] for name, src in
                      (('core', ROOT/'mods/core-dn2'), ('machines', ROOT/'mods/machines-dn2'), ('voice',p))]
@@ -79,6 +82,15 @@ class LinkTests(unittest.TestCase):
             image = formats.main_image(stock, dev)
             self.assertEqual(link.check([core, machines, voice], image), [])
             out = link.link([core, machines, voice], image, sharc_stream=stock.section(7))
+            # Every filter detour must land on its own handler, not just alter a site.
+            filter_sites = {s['addr']: s['target'] for s in json.loads(
+                (ROOT/'mods/machines-dn2/mod.json').read_text())['sites']
+                if s.get('op') == 'jmp' and s.get('target', '').startswith('dn2_filter_')}
+            self.assertEqual(len(filter_sites), 7)
+            for addr, target in filter_sites.items():
+                off = int(addr, 0) - dev.main_load
+                expected = bytes.fromhex('4ef9') + struct.pack('>I', out.map['machines-dn2:' + target])
+                self.assertEqual(out.image[off:off+6], expected, target)
             records = sharc.parse(out.sharc_stream, rel.sharc)
             binding = next(r for r in records if r.target == 0x20097e00)
             self.assertEqual(binding.raw[16:], struct.pack('<II', 0xbc8400, 5))
@@ -96,7 +108,7 @@ class LinkTests(unittest.TestCase):
                           link.check([core,machines,link.Mod2(bad,'bad')], image))
             bad = copy.deepcopy(voice.doc)
             clone = copy.deepcopy(bad['contribute'][0])
-            clone['to'] = 'dn2_synths'
+            clone['to'] = 'mk2_synths'
             bad['contribute'].append(clone)
             self.assertIn('voice-test 0.1: SHARC voice machine_id must match its single native voice registration',
                           link.check([core,machines,link.Mod2(bad,'dual-role')], image))

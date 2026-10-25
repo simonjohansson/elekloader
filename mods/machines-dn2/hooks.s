@@ -7,6 +7,9 @@
     .set dn2_stock_descriptors, STOCK_DESCRIPTORS
     .set dn2_unknown_name, UNKNOWN_NAME
     .set dn2_unknown_label, UNKNOWN_LABEL
+    .globl dn2_stock_filter_names, dn2_stock_filter_descriptors
+    .set dn2_stock_filter_names, FILTER_NAMES
+    .set dn2_stock_filter_descriptors, FILTER_DESCRIPTORS
 
     .macro SAVE
     lea -16(%sp),%sp
@@ -52,10 +55,10 @@ dn2_group:
 2:  jmp GROUP_SYNTH
 
 | Map only the stock function's own argument slot. Keep the live page/slot registers.
-    .macro MAP off
+    .macro MAP off,fn=dn2_clone_type
     SAVE
     move.l (16+\off,%sp),-(%sp)
-    jsr dn2_clone_type
+    jsr \fn
     move.l %d0,(20+\off,%sp)
     addq.l #4,%sp
     RESTORE
@@ -116,6 +119,7 @@ dn2_parameter:
 1:  RESTORE
 2:
     MAP 12
+    MAP 16,dn2_filter_clone
     move.l 12(%sp),%d0
     movea.l 16(%sp),%a1
     jmp PARAM_CONTINUE
@@ -178,3 +182,64 @@ dn2_owner:
     RESTORE
     move.l %d2,-(%sp)
     jmp OWNER_CONTINUE
+
+    .globl dn2_filter_list_alloc
+dn2_filter_list_alloc:
+    SAVE
+    jsr dn2_filters_ensure
+    RESTORE
+    move.l dn2_filter_list_bytes,-(%sp)
+    clr.l FILTER_CACHE_BEGIN
+    jmp FILTER_LIST_ALLOC_CONTINUE
+
+    .globl dn2_filter_list_end
+dn2_filter_list_end:
+    subq.l #4,%sp
+    SAVE
+    move.l dn2_filter_list_bytes,%d0
+    add.l #dn2_filter_list,%d0
+    move.l %d0,16(%sp)
+    RESTORE
+    adda.l dn2_filter_list_bytes,%a0
+    jmp FILTER_LIST_END_CONTINUE
+
+    .globl dn2_filter_frame_type
+dn2_filter_frame_type:
+    lea -12(%sp),%sp
+    movem.l %d1/%a0-%a1,(%sp)
+    mvs.b 0xd8d(%a0),%d0
+    move.l %d0,-(%sp)
+    jsr dn2_filter_clone
+    addq.l #4,%sp
+    movem.l (%sp),%d1/%a0-%a1
+    lea 12(%sp),%sp
+    movea.l %d6,%a0
+    jmp FILTER_FRAME_CONTINUE
+
+    .globl dn2_filter_real_reader
+dn2_filter_real_reader:
+    move.l 4(%sp),-(%sp)
+    jsr FILTER_READER_FN
+dn2_filter_real_return:
+    addq.l #4,%sp
+    rts
+
+| Clipboard, undo and identity callers retain the filter ID; defaults see its clone.
+    .globl dn2_filter_reader
+dn2_filter_reader:
+    mvs.b 0xdf(%a0),%d0
+    move.l %d1,-(%sp)
+    move.l 8(%sp),%d1
+    .irp caller,FRC0,FRC1,FRC2,FRC3,FRC4,FRC5,FRC6,FRC7,dn2_filter_real_return
+    cmpi.l #\caller,%d1
+    beq.w 1f
+    .endr
+    lea -8(%sp),%sp
+    movem.l %a0-%a1,(%sp)
+    move.l %d0,-(%sp)
+    jsr dn2_filter_clone
+    addq.l #4,%sp
+    movem.l (%sp),%a0-%a1
+    lea 8(%sp),%sp
+1:  move.l (%sp)+,%d1
+    jmp FILTER_READER_EPILOGUE

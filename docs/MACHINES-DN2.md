@@ -10,8 +10,8 @@ A mod needs one descriptor and one contribution, without firmware addresses
 or hook sites of its own:
 
 ```c
-#include "digitone-mk2/machines.h"
-const struct dn2_synth my_synth = {5, 0, "CLONE", "CLONE"};
+#include "mk2/machines.h"
+const struct mk2_synth my_synth = {5, 0, "CLONE", "CLONE"};
 ```
 
 ```json
@@ -19,7 +19,7 @@ const struct dn2_synth my_synth = {5, 0, "CLONE", "CLONE"};
  "id": "synth-clone", "version": "0.1", "license": "GPL-2.0-or-later",
  "device": "digitone-mk2", "os": "1.12", "sources": ["clone.c"],
  "contribute": [
-  {"to": "dn2_synths", "data": "00000000",
+  {"to": "mk2_synths", "data": "00000000",
    "relocs": [[0, "abs32", "sym:my_synth", 0]]}
  ],
  "resources": {"core": "0.2"}, "requires": ["core", "machines-dn2"]
@@ -43,7 +43,7 @@ The companion leaves section 7 unchanged.
 python -m elekloader.sdk.build mods/core-dn2 --stock Digitone_II_OS1.12.syx --out out/core
 python -m elekloader.sdk.build mods/machines-dn2 --stock Digitone_II_OS1.12.syx --out out/machines
 python -m elekloader.sdk.build /path/to/my-mod --stock Digitone_II_OS1.12.syx --out out/clone
-python -m elekloader.patch --stock Digitone_II_OS1.12.syx --mod out/core/core-0.2.elemod --mod out/machines/machines-dn2-0.1.elemod --mod out/clone/synth-clone-0.1.elemod --mod /path/to/digihealth.elemod --out out/clone.syx --version MC01
+python -m elekloader.patch --stock Digitone_II_OS1.12.syx --mod out/core/core-0.2.elemod --mod out/machines/machines-dn2-0.3.elemod --mod out/clone/synth-clone-0.1.elemod --mod /path/to/digihealth.elemod --out out/clone.syx --version MC01
 ```
 
 The menu lists stock synths first, added synths by stable ID, then MIDI.

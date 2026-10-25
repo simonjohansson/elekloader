@@ -1752,6 +1752,12 @@ and names; its firmware hooks live in the companion. See
 [Digitone II synth clones](MACHINES-DN2.md) for the descriptor and build.
 This uses stock synthesis and pages; per-voice custom DSP is separate.
 
+From `machines-dn2` 0.3, a mod can also register a stock filter clone in
+the FLTR category, independently of its synth. See
+[Digitone II filter clones](MACHINES-DN2-FILTER.md) for `mk2_filters`, IDs
+and missing-mod behavior. This interface is currently implemented only
+for the Digitone II.
+
 ### Machines and stock parameters (core-dn1 3.1, Digitone mk1)
 
 On the Digitone mk1 the DSP (a second ColdFire) renders the eight FM voices,
@@ -3099,8 +3105,8 @@ Some differences from an octabam build, by design:
 
 ## Digitone II track synths (experimental)
 
-machines-dn2 0.2 accepts a pointer to the existing four-field `dn2_synth`
-descriptor in `dn2_voice_synths`. Use a permanent ID 5..31 distinct from
+machines-dn2 0.3 accepts a pointer to the existing four-field `mk2_synth`
+descriptor in `mk2_voice_synths`. Use a permanent ID 5..31 distinct from
 every clone. The same mod must carry a `dn2-voice-mono32-l2-v1` SHARC
 artifact with that `machine_id`. The companion supplies a named, empty
 SYN page and keeps the stock AMP/FLTR controls. It transmits the real

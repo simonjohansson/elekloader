@@ -42,7 +42,9 @@ such as `SINE (2/2)`. MIDI CC and NRPN reach a knob by position:
 a knob uses the number the clone's stock synth has for the same slot (for
 an FM TONE clone, SYN1 knob A is CC 40 and NRPN 1:73), turning it sends
 that CC, and a number whose slot is empty does nothing. A slot the clone
-gives no CC (FM TONE: 34 and 50..57) has none. The render callback receives
+gives no CC (FM TONE: 34 and 50..57) has none. Knobs take parameter locks as on a
+stock synth (hold a step and turn): the OS puts the locked value in the
+voice that plays the trig, so a kernel needs no code for them. The render callback receives
 the values in `param`. The companion ignores an
 invalid entry (an unregistered or non-SHARC ID, a second entry for one
 ID, a count outside 1..5, a bad label or default) and the synth keeps its

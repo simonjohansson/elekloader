@@ -9,6 +9,7 @@ struct descriptor { const char *name, *label; uint32_t params[9]; };
 struct string_rep { uint32_t length, capacity; int32_t references; char text[32]; };
 
 extern const struct dn2_synth *const dn2_synths[];
+extern const struct dn2_synth *const dn2_voice_synths[];
 extern const struct names dn2_stock_names[5];
 extern const uint32_t dn2_stock_permit[5];
 extern const struct descriptor dn2_stock_descriptors[5];
@@ -16,6 +17,7 @@ extern const char dn2_unknown_name[], dn2_unknown_label[];
 
 uint32_t dn2_list[COUNT], dn2_list_bytes;
 static const struct dn2_synth *registered[COUNT];
+static uint8_t voices[COUNT];
 static struct descriptor descriptors[COUNT];
 static struct string_rep strings[COUNT][2];
 static uint32_t ready;
@@ -38,13 +40,18 @@ void dn2_ensure(void)
     if (ready)
         return;
     const struct dn2_synth *const *e;
-    for (e = dn2_synths; *e; ++e) {
+    for (unsigned voice = 0; voice < 2; ++voice)
+    for (e = voice ? dn2_voice_synths : dn2_synths; *e; ++e) {
         const struct dn2_synth *s = *e;
         if (s->id < FIRST || s->id >= COUNT || s->clone > 3 || !s->name || !s->label
                 || registered[s->id])
             continue;
         registered[s->id] = s;
+        voices[s->id] = voice;
         descriptors[s->id] = dn2_stock_descriptors[s->clone];
+        if (voice)
+            for (unsigned i = 0; i < 9; ++i)
+                descriptors[s->id].params[i] = 0;
         descriptors[s->id].name = representation(&strings[s->id][0], s->name, 31);
         descriptors[s->id].label = representation(&strings[s->id][1], s->label, 7);
     }
@@ -66,6 +73,24 @@ uint32_t dn2_clone_type(uint32_t type)
     dn2_ensure();
     /* A missing mod keeps its saved identity, but sends MIDI's silent type to the DSP. */
     return registered[type] ? registered[type]->clone : 4;
+}
+
+uint32_t dn2_is_voice(uint32_t type)
+{
+    dn2_ensure();
+    return type < COUNT && voices[type];
+}
+
+uint32_t dn2_dsp_type(uint32_t type)
+{
+    return dn2_is_voice(type) ? type : dn2_clone_type(type);
+}
+
+uintptr_t dn2_voice_page(uint32_t type, uint32_t page)
+{
+    if (!dn2_is_voice(type))
+        return 0;
+    return (uintptr_t)(page ? &dn2_stock_descriptors[4] : &descriptors[type]);
 }
 
 uintptr_t dn2_descriptor(uint32_t type)

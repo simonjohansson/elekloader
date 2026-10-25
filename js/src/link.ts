@@ -208,9 +208,10 @@ export class Mod2 implements AnyMod {
    * so or not. `image` is the stock main OS the mod is for: a descriptor's bytes may be stock parts. A descriptor
    * this cannot read (outside the mod's own bytes, or relocated there) claims nothing. check() adds them to the
    * mod's names. link.Mod2.implied_names. */
-  impliedNames(image: Uint8Array): string[] {
+  impliedNames(image: Uint8Array, onlyTable?: string): string[] {
     const out: string[] = []
     for (const [table, at, count, prefix] of this.dev.slotClaims) {
+      if (onlyTable !== undefined && table !== onlyTable) continue
       for (const c of this.contribute) {
         if (c.to !== table) continue
         for (const [off, typ, tgt, add] of c.relocs) {
@@ -342,7 +343,17 @@ export function check(mods: Mod2[], image: Uint8Array): string[] {
   }
   const sharcMods = mods.filter(m => m.sharc && !m.sections.has('.boot'))
   if (sharcMods.length > 1) bad.push('only one SHARC mod may own the DN2 reservation')
+  for (const m of mods)
+    if (m.contribute.some(c => c.to === 'dn2_voice_synths') && m.sharc?.machineId === undefined)
+      bad.push(`${m.label()}: DN2 voice registration requires a matching SHARC voice payload`)
   for (const app of sharcMods) {
+    if (app.sharc!.machineId !== undefined) {
+      const contributions = app.contribute.filter(c => c.to === 'dn2_voice_synths')
+      if (contributions.length !== 1 || contributions[0].data.length !== 4 ||
+        JSON.stringify(app.impliedNames(image, 'dn2_voice_synths')) !== JSON.stringify([`dn2-synth:${app.sharc!.machineId}`]))
+        bad.push(`${app.label()}: SHARC voice machine_id must match its single native voice registration`)
+      continue
+    }
     if (app.sharc!.entries === null) continue
     const core = cores.length === 1 ? cores[0] : null
     if (!core?.sharc) { bad.push('active SHARC mod requires a qualified matching core bridge'); continue }
@@ -501,7 +512,7 @@ export type Layout = {
   reserve?: { units: number; end: number }   // a core sized to the mods: the pages it takes, and where they end
   dsp?: Record<string, DspLayout>              // words: P addresses of each payload's area
   sharc?: { owner: [number, number]; decoded: number; decoded_sha256: string;
-    stored: number; stored_sha256: string; app: string; core?: [number, number]; hook?: number }
+    stored: number; stored_sha256: string; app: string; core?: [number, number]; hook?: number; machine_id?: number }
 }
 
 export type Linked = {
@@ -545,7 +556,18 @@ export function link(mods: Mod2[], image: Uint8Array, lock: store.Lock | null = 
     let loads: [number, Uint8Array][] = payload.segments.map(([off, , data]) => [base + off, data])
     let fills: [number, number, number][] = payload.zero.map(([off, count]) => [base + off, count, 0])
     let patches: [number, Uint8Array, Uint8Array][] = []
-    if (payload.entries !== null) {
+    if (payload.machineId !== undefined) {
+      const at = rel.sharc!.voiceBindingOffset!
+      const binding = new Uint8Array(8), words = new DataView(binding.buffer)
+      words.setUint32(0, sharcRecords.pc16(rel.sharc!, base + payload.entries!.render_offset_bytes), true)
+      words.setUint32(4, payload.machineId, true)
+      const lo = payload.owner[1] - rel.sharc!.voiceStateBytes!
+      fills = fills.filter(([address]) => address !== lo)
+      fills.push([lo, base + at - lo, 0], [base + at + 8, payload.owner[1] - base - at - 8, 0])
+      loads.push([base + at, binding])
+      const [site, old, replacement] = rel.sharc!.voiceHook!
+      patches = [[site, hexBytes(old, 'SHARC stock hook'), hexBytes(replacement, 'SHARC bridge hook')]]
+    } else if (payload.entries !== null) {
       const bridge = core.sharc!
       const pc16 = (off: number) => sharcRecords.pc16(rel.sharc!, base + off)
       const binding = new Uint8Array(12), words = new DataView(binding.buffer)
@@ -905,7 +927,10 @@ export function link(mods: Mod2[], image: Uint8Array, lock: store.Lock | null = 
   if (sharcMods.length) layout.sharc = { owner: sharcMods[0].sharc!.owner,
     decoded: dspStream!.length, decoded_sha256: sha(dspStream!),
     stored: dspStored!.length, stored_sha256: sha(dspStored!), app: sharcMods[0].id }
-  if (sharcMods.length && sharcMods[0].sharc!.entries !== null) {
+  if (sharcMods.length && sharcMods[0].sharc!.machineId !== undefined) {
+    layout.sharc!.hook = rel.sharc!.voiceHook![0]
+    layout.sharc!.machine_id = sharcMods[0].sharc!.machineId
+  } else if (sharcMods.length && sharcMods[0].sharc!.entries !== null) {
     layout.sharc!.core = core.sharc!.owner
     layout.sharc!.hook = rel.sharc!.hook![0]
   }

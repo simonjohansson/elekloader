@@ -22,6 +22,13 @@ const struct dn2_synth *const dn2_synths[] = {
 #endif
     0
 };
+static const struct dn2_synth sine = {7, 0, "SINE", "SINE"};
+const struct dn2_synth *const dn2_voice_synths[] = {
+#ifndef EMPTY
+    &sine,
+#endif
+    0
+};
 
 int main(void)
 {
@@ -34,8 +41,18 @@ int main(void)
     for (unsigned t = 0; t < 16; ++t)
         assert(dn2_permit(5, t) == dn2_permit(4, t));
     (void)low; (void)high; (void)bad_id; (void)bad_clone;
+    (void)sine;
+    assert(!dn2_is_voice(5) && dn2_dsp_type(5) == 4);
 #else
-    assert(n == 7 && dn2_list[4] == 5 && dn2_list[5] == 31);
+    assert(n == 8 && dn2_list[4] == 5 && dn2_list[5] == 7 && dn2_list[6] == 31);
+    assert(dn2_is_voice(7) && dn2_dsp_type(7) == 7 && dn2_clone_type(7) == 0);
+    assert(!dn2_is_voice(5) && dn2_dsp_type(5) == 0);
+    const struct descriptor *page = (const struct descriptor *)dn2_voice_page(7, 0);
+    assert(page && !strcmp(page->name, "SINE"));
+    for (unsigned i = 0; i < 9; ++i)
+        assert(page->params[i] == 0);
+    assert(dn2_voice_page(7, 1) == (uintptr_t)&dn2_stock_descriptors[4]);
+    assert(!dn2_voice_page(5, 0) && !dn2_is_voice(32));
     assert(dn2_clone_type(5) == 0 && dn2_clone_type(31) == 3);
     assert(!strcmp((const char *)dn2_name(5), "CLONE"));
     assert(!strcmp((const char *)dn2_label(31), "OTHER"));

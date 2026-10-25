@@ -62,7 +62,7 @@ frame read back as type 5. This checks the stock pipeline's custom-type
 path in the emulator; it does not establish native transmission from the
 registration, coexistence or the final build workflow.
 
-## Proposed next boundary (approval pending)
+## Approved boundary (runtime qualification in progress)
 
 - Add `dn2_voice_synths`, a separate contribution table using the existing
   four-field synth descriptor. Existing compiled clone descriptors remain
@@ -80,6 +80,23 @@ registration, coexistence or the final build workflow.
   C. Keep independent phase per slot and use the stock envelope for
   release. The existing external C source advances phase twice per sample;
   preserve its documented octave-up tuning for this increment.
+
+The voice artifact uses ABI `dn2-voice-mono32-l2-v1`, `machine_id` and
+`entries: {"render_offset_bytes": ...}`. `voice.h` defines the 16-byte
+input: output pointer, slot, unsigned 8.8 pitch, and START flag. The
+adapter silences a trigger edge's block, then sets START on the next
+block. The callback writes 32 floats and returns nothing. It owns no
+envelope or output outside that voice buffer.
+
+The adapter preserves PEx R0–R15 in full through PX, both halves of PX,
+I0–I5/I12/I13, M0–M7/M13–M15, L0–L5, MODE1 and both ASTAT/STKY pairs.
+It pins M5=0, M6=1, M7=-1, M13=0, M14=1, M15=-1, L0–L5=0, SIMD off,
+32-bit floating-point rounding on, saturation/truncation off. Preserve
+everything else, including the other processing element, register banks,
+interrupt masks, accumulator, loop/PC/status stacks and stack bases/lengths.
+Use the existing short-word C call/return convention and return I6/I7
+unchanged. The eight-byte call frame is additional to the declared callback
+stack. Neither a declaration nor a build passing measures actual use.
 
 Before acceptance, test the real external source build with DigiHealth,
 callback omission or mutation, overlapping notes, release/retrigger and

@@ -1,9 +1,9 @@
 {
  "id": "machines-dn2",
- "version": "0.1",
+ "version": "0.2",
  "license": "GPL-2.0-or-later",
  "title": "DN2 synth machines",
- "description": "Stock synth clones in the Digitone II native machine selector. External mods contribute a stable ID, stock synth type and names; the stock engine and parameter pages are retained. Needs core 0.2.",
+ "description": "Native synth clones and SHARC voice synths in the Digitone II machine selector. Needs core 0.2.",
  "device": "digitone-mk2",
  "os": "1.12",
  "sources": [
@@ -144,7 +144,8 @@
   }
  ],
  "collections": {
-  "dn2_synths": 4
+  "dn2_synths": 4,
+  "dn2_voice_synths": 4
  },
  "resources": {
   "core": "0.2",

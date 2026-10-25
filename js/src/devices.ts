@@ -30,6 +30,13 @@ export type SharcProfile = {
   pitchRange?: Range
   l2Abi?: string
   l2AppRange?: Range
+  voiceAbi?: string
+  voiceAdapterSha256?: string
+  voiceAdapterBytes?: number
+  voiceStateBytes?: number
+  voiceBindingOffset?: number
+  voiceStackMax?: number
+  voiceHook?: [number, string, string]
   coreRange?: Range
   stackMax?: number
   codeGuardBytes?: number
@@ -241,10 +248,14 @@ export const DIGITONE_MK2: Device = {
           [0x2839c000, 0x283a0000, 'L1 block 3 cache']],
         abi: 'dn2-master-mono32-v1', pitchRange: [0x282dda00, 0x282dde00],
         l2Abi: 'dn2-master-mono32-l2-v1', l2AppRange: [0x20090000, 0x20098000],
+        voiceAbi: 'dn2-voice-mono32-l2-v1',
+        voiceAdapterSha256: '7e4f1147a0017c07d330aba3ac3b1ffa64a9fe892c3ab90e5bf27325fe7528e0',
+        voiceAdapterBytes: 2048, voiceStateBytes: 1024, voiceBindingOffset: 32256, voiceStackMax: 128,
+        voiceHook: [0x20004a36, '8715ffffeeff', '3e06bc000080'],
         coreRange: [0x282dd600, 0x282dda00], stackMax: 544, codeGuardBytes: 64,
         keyedPitchTable: [920, '314d5900969c5e00d23c6400b1326a004c837000073477009b4a7e0015cd8500e1c18d00c92f9600031e9f002e94a800'],
         ownedRanges: [[0x282dd600, 0x282dde00], [0x20090000, 0x20098000]],
-        patchRanges: [[0x2838489a, 0x283848a0]],
+        patchRanges: [[0x2838489a, 0x283848a0], [0x20004a36, 0x20004a3c]],
         activeKeyedCore: { segments: [[12, 'code', 'af2f375dc58a8ccd4b8abd89b1fb526441baa6fb5da9266c2b664e69d90fc829']],
           zero: [[1008, 16]], entries: { hook_offset_bytes: 12 }, stackBytes: 116 },
         hook: [0x2838489a, '8715ffff78ff', '3e06160006eb'],
@@ -254,7 +265,7 @@ export const DIGITONE_MK2: Device = {
   stage: 0x40400000, flashAt: 0x80000, flashLimit: 0x380000, trailer: 'hmac', hmacKeyFrom: [2, 'Multiplier'],
   areas: { ddr: [0x47f00000, 0x47f40000] },
   ddr: [0x47f00000, 0x47f40000],
-  slotClaims: [['dn2_synths', 0, 32, 'dn2-synth']],   // stable type at descriptor +0
+  slotClaims: [['dn2_synths', 0, 32, 'dn2-synth'], ['dn2_voice_synths', 0, 32, 'dn2-synth']],
   recovery: 'hold FUNC while powering on for the STARTUP menu, press TRIG 4 (OS UPGRADE), '
     + 'then send the stock .syx over MIDI (not USB)',
 }

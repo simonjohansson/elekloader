@@ -63,6 +63,16 @@ dn2_group:
 
     .globl dn2_page_count
 dn2_page_count:
+    SAVE
+    move.l 20(%sp),-(%sp)
+    jsr dn2_is_voice
+    addq.l #4,%sp
+    tst.l %d0
+    beq.s 1f
+    RESTORE
+    moveq #1,%d0
+    rts
+1:  RESTORE
     MAP 4
     moveq #4,%d1
     move.l 4(%sp),%d0
@@ -70,6 +80,18 @@ dn2_page_count:
 
     .globl dn2_page
 dn2_page:
+    SAVE
+    move.l 28(%sp),-(%sp)
+    move.l 28(%sp),-(%sp)
+    jsr dn2_voice_page
+    addq.l #8,%sp
+    tst.l %d0
+    beq.s 1f
+    move.l %d0,(%sp)
+    RESTORE
+    move.l (%sp)+,%d2
+    rts
+1:  RESTORE
     MAP 8
     move.l 8(%sp),%d1
     move.l 12(%sp),%d0
@@ -77,6 +99,22 @@ dn2_page:
 
     .globl dn2_parameter
 dn2_parameter:
+    SAVE
+    move.l 28(%sp),-(%sp)
+    jsr dn2_is_voice
+    addq.l #4,%sp
+    tst.l %d0
+    beq.s 1f
+    RESTORE
+    move.l %a0,%d0
+    subi.l #25,%d0
+    cmpi.l #39,%d0
+    bhi.s 2f
+    moveq #0,%d0
+    move.l (%sp)+,%d2
+    rts
+1:  RESTORE
+2:
     MAP 12
     move.l 12(%sp),%d0
     movea.l 16(%sp),%a1
@@ -89,7 +127,7 @@ dn2_frame_type:
     movem.l %d1/%a0-%a1,(%sp)
     mvs.b 0xd8c(%a0),%d0
     move.l %d0,-(%sp)
-    jsr dn2_clone_type
+    jsr dn2_dsp_type
     addq.l #4,%sp
     movem.l (%sp),%d1/%a0-%a1
     lea 12(%sp),%sp
@@ -116,7 +154,13 @@ dn2_reader:
     lea -8(%sp),%sp
     movem.l %a0-%a1,(%sp)
     move.l %d0,-(%sp)
-    jsr dn2_clone_type
+    jsr dn2_is_voice
+    tst.l %d0
+    beq.s 2f
+    move.l (%sp),%d0
+    bra.s 3f
+2:  jsr dn2_clone_type
+3:
     addq.l #4,%sp
     movem.l (%sp),%a0-%a1
     lea 8(%sp),%sp

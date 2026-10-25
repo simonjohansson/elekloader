@@ -84,12 +84,19 @@ DEVICE = Device(
                 # Bounded L2 mod reservation; not a general free-memory map.
                 'l2_abi': 'dn2-master-mono32-l2-v1',
                 'l2_app_range': (0x20090000, 0x20098000),
+                'voice_abi': 'dn2-voice-mono32-l2-v1',
+                'voice_adapter_sha256': '7e4f1147a0017c07d330aba3ac3b1ffa64a9fe892c3ab90e5bf27325fe7528e0',
+                'voice_adapter_bytes': 2048,
+                'voice_state_bytes': 1024,
+                'voice_binding_offset': 32256,
+                'voice_stack_max': 128,
+                'voice_hook': (0x20004a36, '8715ffffeeff', '3e06bc000080'),
                 'core_range': (0x282dd600, 0x282dda00),
                 'stack_max': 544,
                 'code_guard_bytes': 64,
                 'keyed_pitch_table': (920, '314d5900969c5e00d23c6400b1326a004c837000073477009b4a7e0015cd8500e1c18d00c92f9600031e9f002e94a800'),
                 'owned_ranges': ((0x282dd600, 0x282dde00), (0x20090000, 0x20098000)),
-                'patch_ranges': ((0x2838489a, 0x283848a0),),
+                'patch_ranges': ((0x2838489a, 0x283848a0), (0x20004a36, 0x20004a3c)),
                 'active_keyed_core': {'segments': ((12, 'code', 'af2f375dc58a8ccd4b8abd89b1fb526441baa6fb5da9266c2b664e69d90fc829'),),
                                       'zero': ((1008, 16),),
                                       'entries': {'hook_offset_bytes': 12}, 'stack_bytes': 116},
@@ -109,7 +116,8 @@ DEVICE = Device(
         'ddr': (0x47F00000, 0x47F40000),          # above the DMA buffers, below the boot stack
     },
     ddr=(0x47F00000, 0x47F40000),
-    slot_claims=(('dn2_synths', 0, 32, 'dn2-synth'),),  # stable type at descriptor +0
+    slot_claims=(('dn2_synths', 0, 32, 'dn2-synth'),
+                 ('dn2_voice_synths', 0, 32, 'dn2-synth')),  # shared stable IDs
     recovery=('hold FUNC while powering on for the STARTUP menu, press TRIG 4 (OS UPGRADE), '
               'then send the stock .syx over MIDI (not USB)'),
     toolchain={

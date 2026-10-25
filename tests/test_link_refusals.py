@@ -155,6 +155,10 @@ external('check', '<> has unqualified active SHARC core bytes or entry', 'tests/
          'unqualified active SHARC core bytes or entry')
 external('check', 'active SHARC stack exceeds the profile limit', 'tests/test_sharc_active.py',
          'active SHARC stack exceeds the profile limit')
+external('check', '<>: DN2 voice registration requires a matching SHARC voice payload',
+         'tests/test_sharc_voice.py', 'DN2 voice registration requires a matching SHARC voice payload')
+external('check', '<>: SHARC voice machine_id must match its single native voice registration',
+         'tests/test_sharc_voice.py', 'SHARC voice machine_id must match its single native voice registration')
 external('link', 'SHARC mod needs the stock section-7 stream', 'tests/test_sharc_active.py',
          'SHARC mod needs the stock section-7 stream')
 external('link', 'SHARC stored section exceeds the profile limit', 'tests/test_sharc_active.py',

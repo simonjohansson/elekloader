@@ -190,3 +190,27 @@ test('SHARC owner-stock exact no-op', { skip: !process.env.ELEKLOADER_DN2_SYX },
   assert.deepEqual(Buffer.from(outputs.syx), raw)
   formats.verify(outputs, parsed, formats.mainImage(parsed, device), device)
 })
+
+test('DN2 voice artifacts pin only the adapter and bound the author kernel', () => {
+  const prefix = JSON.parse(readFileSync(new URL('../../elekloader/sdk/include/digitone-mk2/voice-bridge.json', import.meta.url), 'utf8'))
+  const artifact = { abi: profile.voiceAbi, machine_id: 6, stack_bytes: 128,
+    entries: { render_offset_bytes: 2048 },
+    segments: [prefix, { offset_bytes: 2048, kind: 'code', hex: '0100'.repeat(7168) },
+      { offset_bytes: 16384, kind: 'data', hex: '00000000' }],
+    zero: [{ offset_bytes: 16388, size_bytes: 15356 }, { offset_bytes: 31744, size_bytes: 1024 }] }
+  assert.equal(sharc.modulePayload(artifact, profile).machineId, 6)
+  for (const [change, error] of [
+    [(d: any) => { d.machine_id = 32 }, 'SHARC voice machine_id must be 5..31'],
+    [(d: any) => { d.machine_id = true }, 'SHARC voice machine_id must be 5..31'],
+    [(d: any) => { d.stack_bytes = 129 }, 'SHARC voice stack exceeds the profile limit'],
+    [(d: any) => { d.entries = null }, 'SHARC voice payload needs a render entry'],
+    [(d: any) => { d.entries.render_offset_bytes = 0 }, 'SHARC voice mod overlaps the adapter reservation'],
+    [(d: any) => { d.segments[0].hex = '0000' + d.segments[0].hex.slice(4) }, 'SHARC voice adapter does not match the qualified prefix'],
+  ] as const) {
+    const bad = structuredClone(artifact)
+    change(bad)
+    refusal(() => sharc.modulePayload(bad, profile), error)
+  }
+  artifact.segments[1].hex = '0000' + artifact.segments[1].hex.slice(4)
+  sharc.modulePayload(artifact, profile)
+})

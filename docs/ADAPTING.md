@@ -3099,6 +3099,24 @@ Some differences from an octabam build, by design:
 
 ## 5. When the loader refuses: message → fix
 
+### Digitone II track synths (experimental)
+
+machines-dn2 0.2 accepts a pointer to the existing four-field `dn2_synth`
+descriptor in `dn2_voice_synths`. Use a permanent ID 5..31 distinct from
+every clone. The same mod must carry a `dn2-voice-mono32-l2-v1` SHARC
+artifact with that `machine_id`. The companion supplies a named, empty
+SYN page and keeps the stock AMP/FLTR controls. It transmits the real
+voice type; the DSP callback writes that slot's 32 mono samples before
+the stock envelope and filter. See [the format](FORMAT.md#digitone-ii-sharc-mod)
+and `digitone-mk2/voice.h`. This first version has no custom SYN knobs.
+
+`SHARC voice machine_id must match its single native voice registration`
+means the descriptor and DSP artifact disagree or one is absent. A voice
+registration without its matching payload is also refused. The adapter's
+code and state are reserved; keep your entries and writes in the author
+area. `SHARC voice stack exceeds the profile limit` requires reducing
+the callback's declared stack to at most 128 bytes and testing its real use.
+
 | message contains | means | fix |
 |---|---|---|
 | `made for a firmware elekloader does not know` | the target or stock file is not a supported release | use the exact stock file; check its hash against `devices/` |

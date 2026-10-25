@@ -86,6 +86,30 @@ so no SHARC compiler runs during build, lint or patch. Any compiler or
 assembler can make one; the [sine example](../examples/sharc-sine/README.md)
 makes one from C or assembly.
 
+For a selectable track synth, the additional experimental ABI is
+`dn2-voice-mono32-l2-v1`. It uses the same fields below, plus `machine_id`
+(5..31), and `entries` contains only `render_offset_bytes`. A matching
+descriptor must be contributed by that same mod to `dn2_voice_synths` in
+machines-dn2 0.2. A voice registration without its DSP payload is refused.
+IDs conflict with clone IDs too. One DSP mod still owns the reservation.
+
+The voice artifact starts with the profiled 2 KiB adapter code segment,
+and ends with exactly 1 KiB of zeroed adapter state. Author code and data
+cannot overlap them, and the render entry must point into author code.
+Each code segment retains its 64-byte NOP guard. The callback may declare
+at most 128 stack bytes; the adapter adds an eight-byte call frame.
+`elekloader.sdk.sharc.voice_artifact` packages prelinked code and data in
+this layout without invoking a compiler. Kernel code links at PC16
+`0xbc8400`; data starts at `0x20094000`. This leaves 14 KiB of code,
+guard included, and 15 KiB of data inside the existing 32 KiB reservation.
+
+For this ABI, the linker binds the render PC and machine ID at
+`0x20097e00`, adds the pinned adapter, and replaces the guarded six-byte
+instruction at the voice helper (`0x20004a36`). It leaves the master hook
+and the L1 bridge reservation untouched. The voice contract is in
+`elekloader/sdk/include/digitone-mk2/voice.h`; qualification is tracked in
+[MACHINES-DN2-VOICE.md](MACHINES-DN2-VOICE.md).
+
 **The object** has exactly these fields:
 
 | field | value |

@@ -170,6 +170,7 @@ export function insert(stream: Uint8Array, profile: SharcProfile,
 }
 
 export type SharcPayload = {
+  machineId?: number
   segments: [number, 'code' | 'data', Uint8Array][]
   zero: [number, number][]
   entries: { [name: string]: number } | null
@@ -180,10 +181,12 @@ export type SharcPayload = {
 /** Validate the narrow prelinked format-2 payload; offsets are owner bytes. */
 export function modulePayload(doc: any, profile: SharcProfile | undefined, core = false): SharcPayload {
   if (!profile?.abi) throw new ModError('SHARC payload has no supported device ABI')
-  const keys = ['abi', 'entries', 'segments', 'stack_bytes', 'zero']
+  const voice = !core && profile.voiceAbi !== undefined && doc?.abi === profile.voiceAbi
+  const keys = ['abi', 'entries', ...(voice ? ['machine_id'] : []), 'segments', 'stack_bytes', 'zero']
   if (!doc || typeof doc !== 'object' || Array.isArray(doc) || Object.keys(doc).sort().join(',') !== keys.join(','))
-    throw new ModError('SHARC payload needs exactly abi, segments, zero, entries, stack_bytes')
-  const abi = core ? profile.abi : profile.l2Abi
+    throw new ModError(voice ? 'SHARC voice payload needs exactly abi, segments, zero, entries, stack_bytes, machine_id'
+      : 'SHARC payload needs exactly abi, segments, zero, entries, stack_bytes')
+  const abi = core ? profile.abi : voice ? profile.voiceAbi : profile.l2Abi
   if (!abi || doc.abi !== abi) throw new ModError('SHARC ABI does not match the device profile')
   const owner = core ? profile.coreRange! : profile.l2AppRange!
   const size = owner[1] - owner[0]
@@ -218,7 +221,7 @@ export function modulePayload(doc: any, profile: SharcProfile | undefined, core 
   if (at !== size) throw new ModError('SHARC payload has a gap or overlap in its owner')
   const entries = doc.entries
   if (entries !== null) {
-    const entryKeys = core ? 'hook_offset_bytes' : 'init_offset_bytes,render_offset_bytes'
+    const entryKeys = core ? 'hook_offset_bytes' : voice ? 'render_offset_bytes' : 'init_offset_bytes,render_offset_bytes'
     if (!entries || typeof entries !== 'object' || Array.isArray(entries) || Object.keys(entries).sort().join(',') !== entryKeys)
       throw new ModError('SHARC entries do not match core/mod role')
     for (const off of Object.values(entries))
@@ -236,8 +239,24 @@ export function modulePayload(doc: any, profile: SharcProfile | undefined, core 
         throw new ModError('SHARC entry is in the instruction read-ahead guard')
     }
   }
+  if (voice) {
+    const prefix = profile.voiceAdapterBytes!, state = size - profile.voiceStateBytes!
+    if (!uint32(doc.machine_id) || doc.machine_id < 5 || doc.machine_id >= 32)
+      throw new ModError('SHARC voice machine_id must be 5..31')
+    if (entries === null) throw new ModError('SHARC voice payload needs a render entry')
+    if (segments[0][0] !== 0 || segments[0][1] !== 'code' || segments[0][2].length !== prefix ||
+      sha(segments[0][2]) !== profile.voiceAdapterSha256)
+      throw new ModError('SHARC voice adapter does not match the qualified prefix')
+    if (!zero.some(([off, count]) => off === state && count === profile.voiceStateBytes) ||
+      segments.slice(1).some(([off, , data]) => off < prefix || off + data.length > state) ||
+      zero.some(([off, count]) => off !== state && (off < prefix || off + count > state)) ||
+      entries.render_offset_bytes < prefix)
+      throw new ModError('SHARC voice mod overlaps the adapter reservation')
+  }
   const stack = doc.stack_bytes
+  if (voice && (!uint32(stack) || stack > profile.voiceStackMax!))
+    throw new ModError('SHARC voice stack exceeds the profile limit')
   if (!uint32(stack) || stack > profile.stackMax!) throw new ModError('SHARC stack contribution exceeds the profile limit')
   if (entries === null && stack) throw new ModError('inert SHARC payload must declare zero stack')
-  return { segments, zero, entries, stackBytes: stack, owner }
+  return { segments, zero, entries, stackBytes: stack, owner, ...(voice ? { machineId: doc.machine_id } : {}) }
 }

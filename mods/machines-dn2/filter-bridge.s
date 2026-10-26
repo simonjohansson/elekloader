@@ -183,7 +183,7 @@ IF LE JUMP flags_ready;
 R3=1;
 flags_ready:
 DM(0x20097d08)=R3;
-// This block's cutoff and resonance, kept for the slot by dn2_filter_capture.
+// This block's cutoff, resonance and G, kept for the slot by dn2_filter_capture.
 R1=DM(0x20097d04);
 R1=LSHIFT R1 BY 2;
 R2=0x20097d40;
@@ -193,6 +193,8 @@ R2=DM(0,I4);
 DM(0x20097d0c)=R2;
 R2=DM(16,I4);
 DM(0x20097d10)=R2;
+R2=DM(32,I4);
+DM(0x20097d14)=R2;
 // Pin the C context, preserving the firmware register bank and interrupt setup.
 M5=0;
 M6=1;
@@ -343,8 +345,8 @@ I4=0x8052dbc0;
 JUMP 0x1c958a;
 
 // The filter setup table's internal type 0 entry: every voice with a custom filter
-// comes here with its final normalized cutoff in F8, resonance at DM(-22,I5) and its
-// slot in R3. Keep both for the slot, then continue as stock. The continuation
+// comes here with its final normalized cutoff in F8, resonance at DM(-22,I5), G (slot 66)
+// at DM(-24,I5) and its slot in R3. Keep the three for the slot, then continue as stock. The continuation
 // overwrites R2, R4 and I4 before reading them.
 .GLOBAL dn2_filter_capture;
 dn2_filter_capture:
@@ -360,6 +362,8 @@ I4=R2;
 DM(0,I4)=R8;
 R2=DM(-22,I5);
 DM(16,I4)=R2;
+R2=DM(-24,I5);
+DM(32,I4)=R2;
 captured:
 R2=DM(0x20097d38);
 ASTATX=R2;

@@ -35,6 +35,7 @@ class ParameterTableSitesTests(unittest.TestCase):
                   (line.split()[1:3] for line in source.splitlines() if line.startswith('#define '))}
         mod = json.loads((ROOT / 'mods/machines-dn2/mod.json').read_text())
         self.assertEqual(int(mod['defsym']['T1_ROWS']), define['ROWS'])
+        self.assertEqual(define['G_CODE'], define['ROWS'] + define['ADDED'])  # G's row ends the table
         bounds = [s for s in mod['sites'] if s['op'] == 'bytes' and len(s['stock']) == 12]
         self.assertEqual(len(bounds), 54)
         for site in bounds:
@@ -42,7 +43,7 @@ class ParameterTableSitesTests(unittest.TestCase):
             self.assertEqual(stock[:2], new[:2], site['addr'])
             self.assertIn(int.from_bytes(stock[2:], 'big'), (define['ROWS'], define['ROWS'] - 1))
             self.assertEqual(int.from_bytes(new[2:], 'big') - int.from_bytes(stock[2:], 'big'),
-                             define['ADDED'], site['addr'])
+                             define['G_CODE'] + 1 - define['ROWS'], site['addr'])
         self.assertEqual(sum(s.get('target') == 'dn2_t1' for s in mod['sites']), 56)
 
 
@@ -100,7 +101,7 @@ class VoicePagesTests(unittest.TestCase):
                       # A missing synth (9) keeps its type: MIDI's CC 70 (slot 33) is not its parameter.
                       (cc_code, [0, 4, 0, 70], 168), (cc_code, [0, 9, 0, 70], 0),
                       (value_class, [321], None), (value_class, [0xd5], None),
-                      (value_class, [361], None), (value_class, [0], None)]
+                      (value_class, [362], None), (value_class, [0], None)]
             request = stage / 'request.json'
             request.write_text(json.dumps({'calls': [{'pc': hex(pc), 'args': [str(a) for a in args]}
                                                      for pc, args, _ in checks]}))
@@ -175,16 +176,16 @@ class ParameterDispatchTests(unittest.TestCase):
                         for mode, pc in pcs.items():
                             calls.append({'pc': hex(pc), 'args': [hex(owner if mode == 'parameter' else address)]})
                             modes.append(mode)
-                            # A custom synth keeps its ID and a custom filter reads as LOWPASS 4, its
-                            # host. A missing synth keeps its own type for MIDI (no stock synth map has
-                            # it) but the stock reader sees MIDI's; a missing filter falls back to
-                            # MULTI-MODE.
+                            # A custom machine keeps its ID for MIDI, whose lookups map it, and the
+                            # stock reader sees a custom filter as LOWPASS 4, its host. A missing synth
+                            # keeps its own type for MIDI (no stock synth map has it) but the stock
+                            # reader sees MIDI's; a missing filter falls back to MULTI-MODE.
                             if mode == 'identity' or not first <= machine_id < 32:
                                 expected.append(machine_id)
                             elif kind == 'synth':
                                 expected.append(machine_id if machine_id == 8 or mode == 'parameter' else 4)
                             else:
-                                expected.append(1 if machine_id == 8 else 0)
+                                expected.append(0 if machine_id != 8 else 8 if mode == 'parameter' else 1)
                     # Native MIDI handlers must reach the setter through the real owner getters; a
                     # custom filter's FREQ CC and NRPN set the parameter LOWPASS 4's set.
                     owner_vtable, setter, allowed = 0x47f3a200, 0x47f3a320, 0x47f3a300
@@ -229,6 +230,72 @@ class ParameterDispatchTests(unittest.TestCase):
                         self.assertTrue(row['ok'], row)
                         self.assertEqual(row['d'][0], 1, row)
                         self.assertEqual(row['reads'], dispatched[0]['reads'])
+
+    def test_g_takes_the_row_after_a_full_synth_and_leaves_stock_filters_alone(self):
+        from elekloader import patch, syx
+        from elekloader.sdk import build as sdk
+        from elekloader.sdk.sharc import filter_artifact, voice_artifact
+
+        stock = syx.Syx.load(STOCK)
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            mods = [sdk.build(str(ROOT / 'mods' / source), STOCK, str(work / source))[0]
+                    for source in ('core-dn2', 'machines-dn2')]
+            knobs = ', '.join('{"K%d", %d}' % (n, n) for n in range(40))
+            for name, source, artifact, table, symbol in (
+                    ('full', 'static const struct mk2_param k[40] = {%s};\n'
+                             'static const struct mk2_page five[5] = {%s};\n'
+                             'const struct mk2_synth voice = {8, "FULL", "FULL"};\n'
+                             'const struct mk2_voice_pages pages = {8, 5, five};\n'
+                     % (knobs, ', '.join('{{%s}}' % ', '.join('&k[%d]' % (8 * p + i) for i in range(8))
+                                         for p in range(5))),
+                     voice_artifact, 'mk2_voice_synths', 'voice'),
+                    ('g', 'static const struct mk2_param g = {"MODE", 9};\n'
+                          'const struct mk2_filter filter = {9, "GEE", "GEE", 0, &g};\n',
+                     filter_artifact, 'mk2_voice_filters', 'filter')):
+                stage = work / name
+                stage.mkdir()
+                (stage / 'machine.c').write_text('#include "mk2/machines.h"\n' + source)
+                (stage / 'kernel.json').write_text(json.dumps(artifact(bytes(4), bytes(4), 0, 8 if name == 'full' else 9, 12)))
+                contribute = [{'to': table, 'data': '00000000', 'relocs': [[0, 'abs32', 'sym:' + symbol, 0]]}]
+                if name == 'full':
+                    contribute.append({'to': 'mk2_voice_pages', 'data': '00000000',
+                                       'relocs': [[0, 'abs32', 'sym:pages', 0]]})
+                (stage / 'mod.json').write_text(json.dumps({
+                    'id': name, 'version': '0.1', 'device': 'digitone-mk2', 'os': '1.12',
+                    'sources': ['machine.c'], 'sharc': {'artifact': 'kernel.json'},
+                    'resources': {'core': '0.1'}, 'requires': ['core', 'machines-dn2'], 'contribute': contribute}))
+                mods.append(sdk.build(str(stage), STOCK, str(stage / 'build'))[0])
+            outputs, _manifest = patch.build(STOCK, mods, 'TEST', log=lambda *args: None)
+            firmware = work / 'test.syx'
+            firmware.write_bytes(outputs['syx'])
+            slot_code, row_slot, row_cc, value_class, cc_code, nrpn_code = (
+                0x400dc18e, 0x400dbe28, 0x400dc406, 0x400c257c, 0x400dc978, 0x400dca5a)
+            # The synth's 40 rows are 321..360 and G's is 361, after them. Slot 66 is G's only for
+            # the custom filter: MULTI-MODE keeps TYPE (38), as a missing filter (6) does, and
+            # LOWPASS 4 has none; CC 18 and NRPN 1:22 follow.
+            checks = [(slot_code, [25, 8, 0], 321), (slot_code, [64, 8, 0], 360),
+                      (slot_code, [66, 8, 9], 361), (slot_code, [66, 0, 9], 361),
+                      (slot_code, [66, 0, 0], 38), (slot_code, [66, 0, 1], 0), (slot_code, [66, 8, 6], 38),
+                      (slot_code, [67, 0, 9], 39),
+                      (row_slot, [361], 66), (row_slot, [360], 64), (row_cc, [361], 18),
+                      (cc_code, [0, 8, 9, 18], 361), (nrpn_code, [0, 8, 9, 150], 361),
+                      (cc_code, [0, 0, 1, 18], 0), (cc_code, [0, 0, 0, 18], 38), (cc_code, [0, 0, 9, 16], 39),
+                      (cc_code, [0, 8, 9, 40], 321),
+                      (value_class, [361], None), (value_class, [38], None)]
+            request = work / 'request.json'
+            request.write_text(json.dumps({'calls': [{'pc': hex(pc), 'args': [str(a) for a in args]}
+                                                     for pc, args, _ in checks]}))
+            result = subprocess.run([CF_CALL, str(firmware), str(request), '--base-sha', stock.sha256],
+                                    capture_output=True, text=True, timeout=300)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            rows = [json.loads(line) for line in result.stdout.splitlines() if line.startswith('{')]
+            self.assertEqual(len(rows), len(checks))
+            for row, (pc, args, want) in zip(rows, checks):
+                self.assertTrue(row['ok'], row)
+                if want is not None:
+                    self.assertEqual(row['d'][0], want, (hex(pc), args))
+            self.assertEqual(rows[-2]['d'][0], rows[-1]['d'][0])  # G's value class is TYPE's
 
     def test_curve_plotter_draws_only_inside_the_graph(self):
         from elekloader import patch, syx

@@ -44,10 +44,11 @@ needs independently qualified firmware adapters and limits. Synths use
 
 LOWPASS 4, the host type, supplies the FLTR page, defaults, knobs, CC and
 NRPN, but not the audio: the stock algorithm never runs for the custom ID.
-Its page shows ATK/DEC/SUS/REL, FREQ/RESO, a dotted empty G and ENV under the
-stock envelope graphic, and FUNC+A edits pre-delay. The response graph
-stays empty unless the descriptor's optional last field, `curve`, draws
-it. The kernel receives the resulting cutoff and resonance; it
+Its page shows ATK/DEC/SUS/REL, FREQ/RESO, G and ENV under the
+stock envelope graphic, and FUNC+A edits pre-delay. G is a dotted empty
+cell unless the descriptor's optional `g` declares it (below). The
+response graph stays empty unless the descriptor's optional `curve` draws
+it. The kernel receives the resulting cutoff and resonance, and G; it
 does not implement pre-delay, the envelope or ENV itself. The same mod
 must carry a
 `dn2-filter-mono32-l2-v1` artifact with the matching `machine_id` and
@@ -69,8 +70,24 @@ the graph (screen x 21..71, y 40..56). It hooks the page's curve dispatch
 at `0x4006eca0`, which stock filter types pass through unchanged. Keep it
 short: it runs on every redraw of the page.
 
-The twenty-byte input contains `float *samples`, `uint32_t slot`,
-`uint32_t flags`, `float cutoff` and `float resonance`.
+G is an `mk2_param`: a label of 1..5 printable ASCII characters, shown in
+capitals, and a default of 0..127. It is sound slot 66, the slot of the
+stock filters' third knob (MULTI-MODE's TYPE), so it answers their CC 18
+and NRPN 1:22, takes locks and is saved with the sound:
+
+```c
+static const struct mk2_param mode = {"MODE", 0};
+const struct mk2_filter my_filter = {8, "LOWPASS", "LOWPASS", curve, &mode};
+```
+
+The linker refuses an invalid G. The companion adds one parameter row for
+it, after the synths' 40: a copy of MULTI-MODE's slot-66 row owned by
+LOWPASS 4, which the stock filters never show. A build has one custom
+filter, so one row serves it. The cell shows its label and value; the
+picture above it stays empty.
+
+The 24-byte input contains `float *samples`, `uint32_t slot`,
+`uint32_t flags`, `float cutoff`, `float resonance` and `float g`.
 Process 32 mono floats at 48 kHz in place before the stock AMP stage and
 return nothing. Slot is 0..15, not a track number; keep independent state
 per slot. `DN2_FILTER_RESET` is set on the first callback after entering this filter
@@ -82,7 +99,8 @@ block, once per 32 samples and not smoothed; smoothing belongs to the
 kernel. `cutoff` is normalized: FREQ/128, plus the stock filter envelope
 (pre-delay, ATK/DEC/SUS/REL scaled by ENV, which is bipolar) and key
 tracking, clamped to 0..1.
-`resonance` is RESO/128 (0..0.992). The callback receives no pitch.
+`resonance` is RESO/128 (0..0.992). `g` is G/127 (0..1) when the filter
+declares G; otherwise ignore it. The callback receives no pitch.
 One custom synth and one custom filter can coexist; a master-output mod
 cannot be combined with either.
 
@@ -117,9 +135,10 @@ The controls come from the stock filter preparation, which runs for every
 voice before the render loop and leaves the final cutoff in F8. The
 linker points entry 0 of its setup table (`0x8052dba4`, internal type 0,
 which only custom filters use) at the adapter's capture entry instead of
-PC16 `0x1c927e`. That entry keeps F8 and the resonance word for the voice
-(R3, the same slot the render hook sees) in two 16-entry arrays at
-`0x20097d40` and `0x20097d80`, preserves ASTATX, and continues at
+PC16 `0x1c927e`. That entry keeps F8, the resonance word and slot 66's
+word, two words below it, for the voice (R3, the same slot the render hook
+sees) in three 16-entry arrays at `0x20097d40`, `0x20097d80` and
+`0x20097dc0`, preserves ASTATX, and continues at
 `0x1c927e`. It makes no identity check; the render gate below is the only
 one.
 
@@ -130,9 +149,9 @@ the callback when the stock internal filter type has settled to zero.
 The first block after selection may still use the previous stock filter.
 Other IDs follow the stock path.
 
-`mods/machines-dn2/filter-bridge.s` produces 1,680 code bytes, padded to
+`mods/machines-dn2/filter-bridge.s` produces 1,698 code bytes, padded to
 2 KiB, SHA-256
-`266742031d024d17c88afc0d84c06caf65dde710ed6866901a08105c81b20fe2`.
+`25ecf301d2dfc322b5311afa58cd00f89316f0afe7df66a45e62c0aca590538c`.
 The [adapter rebuild instructions](MACHINES-DN2-VOICE.md#context-and-memory)
 cover both machine adapters. Native sites are declared in
 `mods/machines-dn2/mod.json`; the DSP hook and limits live in the device

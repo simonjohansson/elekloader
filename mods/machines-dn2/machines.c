@@ -7,7 +7,7 @@
 struct names { const char *name, *label, *hint; };
 struct descriptor { const char *name, *label; uint32_t params[9]; };
 struct string_rep { uint32_t length, capacity; int32_t references; char text[32]; };
-/* The stock parameter table's 60-byte row; the bound sites in mod.json allow ROWS + ADDED. */
+/* The stock parameter table's 60-byte row; the bound sites in mod.json allow G_CODE + 1. */
 struct row {
     int32_t owner, slot, min, max, def, flag;
     int16_t cc, cc_low;
@@ -19,6 +19,10 @@ struct row {
 #define ADDED 40                    /* five pages of eight knobs */
 #define TEMPLATE 0xd5               /* A Env Decay: a plain 0..127 knob */
 #define SLOT 25
+#define G_CODE 361                  /* ROWS + ADDED: a custom filter's G, the table's last row */
+#define G_TEMPLATE 0x26             /* MULTI-MODE's TYPE: the stock rows for slot 66 */
+#define G_SLOT 66
+#define G_CELL 6                    /* G's place in the FLTR page's descriptor */
 #define PAGE_END 10                 /* Track Level ends a stock page */
 #define SYNTH_HOST 0                /* FM TONE: the stock type the OS sees for a custom synth */
 #define FILTER_HOST 1               /* LOWPASS 4: the same for a custom filter */
@@ -35,7 +39,7 @@ static const struct mk2_synth *registered[COUNT];
 static struct descriptor descriptors[COUNT];
 static struct string_rep strings[COUNT][2];
 static uint32_t ready;
-struct row dn2_t1[ROWS + ADDED];    /* the stock rows are copied in at boot (start.s) */
+struct row dn2_t1[G_CODE + 1];     /* the stock rows are copied in at boot (start.s) */
 static struct descriptor pages[ADDED / 8];
 static uint8_t first_page[COUNT], page_count[COUNT];
 static struct string_rep tabs[ADDED / 8];
@@ -87,6 +91,22 @@ static int16_t host_cc(int32_t slot)
     return -1;
 }
 
+/* A row copied from a stock one; the caller sets what differs. Field by field: a struct copy
+ * is a call to memcpy. */
+static void copy_row(struct row *r, const struct row *t)
+{
+    r->flag = t->flag;
+    r->cc = t->cc;
+    r->cc_low = t->cc_low;
+    r->kind = t->kind;
+    r->unknown = t->unknown;
+    r->mask = t->mask;
+    r->format = t->format;
+    r->end = t->end;
+    r->min = 0;
+    r->max = 127 << 8;
+}
+
 /* Each declared knob gets a parameter row after the stock ones, copied from TEMPLATE. */
 static void build_pages(void)
 {
@@ -109,18 +129,9 @@ static void build_pages(void)
                 if (!m)
                     continue;
                 struct row *r = &dn2_t1[code];
-                const struct row *t = &dn2_t1[TEMPLATE];      /* field by field: a struct copy is a call to memcpy */
-                r->flag = t->flag;
-                r->cc_low = t->cc_low;
-                r->kind = t->kind;
-                r->unknown = t->unknown;
-                r->mask = t->mask;
-                r->format = t->format;
-                r->end = t->end;
+                copy_row(r, &dn2_t1[TEMPLATE]);
                 r->owner = SYNTH_HOST;
                 r->slot = SLOT + 8 * i + k;
-                r->min = 0;
-                r->max = 127 << 8;
                 r->def = m->def << 8;
                 r->cc = host_cc(r->slot);
                 r->name = r->label = representation(&labels[code - ROWS], m->label, 5);
@@ -208,10 +219,15 @@ uint32_t dn2_voice_code(uint32_t type, uint32_t slot)
  * never reach a MIDI track's parameters stored in the same slots. */
 typedef uint32_t lookup(uint32_t track, uint32_t synth, uint32_t filter, uint32_t key);
 extern lookup dn2_stock_cc, dn2_stock_nrpn;
+static uint32_t filter_lookup(lookup *stock, uint32_t track, uint32_t synth, uint32_t *filter,
+                              uint32_t key);
 
 static uint32_t voice_lookup(lookup *stock, uint32_t track, uint32_t synth, uint32_t filter,
                              uint32_t key)
 {
+    uint32_t g = filter_lookup(stock, track, synth, &filter, key);
+    if (g)
+        return g;
     if (dn2_is_voice(synth) && page_count[synth]) {
         uint32_t code = stock(track, SYNTH_HOST, filter, key);
         if (code < ROWS && dn2_t1[code].owner == SYNTH_HOST && dn2_t1[code].slot >= SLOT
@@ -234,7 +250,7 @@ uint32_t dn2_nrpn_code(uint32_t track, uint32_t synth, uint32_t filter, uint32_t
 /* An added row's value-class object is its template's. */
 uint32_t dn2_value_code(uint32_t code)
 {
-    return code >= ROWS && code < ROWS + ADDED ? TEMPLATE : code;
+    return code == G_CODE ? G_TEMPLATE : code >= ROWS && code < G_CODE ? TEMPLATE : code;
 }
 
 uintptr_t dn2_descriptor(uint32_t type)
@@ -289,6 +305,27 @@ static const struct mk2_filter *filters[COUNT];
 static struct descriptor filter_descriptors[COUNT];
 static struct string_rep filter_strings[COUNT][2];
 static uint32_t filters_ready;
+static uint32_t g_filter;           /* the custom filter G's row belongs to, or 0 */
+static struct string_rep g_label;
+
+/* G's row: MULTI-MODE's slot-66 row, owned by the host, with the filter's label and default.
+ * The linker allows one SHARC filter a build, so one row serves it; another registration's G
+ * is ignored, as an invalid one is. */
+static void add_g(const struct mk2_filter *f)
+{
+    const struct mk2_param *m = f->g;
+    if (!m || g_filter || m->def > 127 || !label_length(m->label))
+        return;
+    struct row *r = &dn2_t1[G_CODE];
+    copy_row(r, &dn2_t1[G_TEMPLATE]);
+    r->owner = dn2_t1[G_TEMPLATE].owner + FILTER_HOST;   /* filter rows: 5 + the filter type */
+    r->slot = G_SLOT;
+    r->def = m->def << 8;
+    r->name = r->label = representation(&g_label, m->label, 5);
+    r->owner_name = dn2_t1[G_TEMPLATE].owner_name;
+    filter_descriptors[f->id].params[G_CELL] = G_CODE;
+    g_filter = f->id;
+}
 
 void dn2_filters_ensure(void)
 {
@@ -303,6 +340,7 @@ void dn2_filters_ensure(void)
         filter_descriptors[f->id] = dn2_stock_filter_descriptors[FILTER_HOST];
         filter_descriptors[f->id].name = representation(&filter_strings[f->id][0], f->name, 31);
         filter_descriptors[f->id].label = representation(&filter_strings[f->id][1], f->label, 7);
+        add_g(f);
     }
     const uint32_t stock[] = {0, 1, 4, 3, 5, 2};
     unsigned n = 0;
@@ -327,6 +365,33 @@ uint32_t dn2_filter_dsp_type(uint32_t type)
 {
     dn2_filters_ensure();
     return type < COUNT && filters[type] ? type : dn2_filter_host_type(type);
+}
+
+/* The parameter code of a filter's sound slot that its host has no row for: G's, or 0. */
+uint32_t dn2_filter_code(uint32_t slot, uint32_t type)
+{
+    dn2_filters_ensure();
+    return slot == G_SLOT && g_filter && type == g_filter ? G_CODE : 0;
+}
+
+/* The stock maps know no custom filter: it asks its host's, and G's number is the one the
+ * stock filters have for slot 66 (MULTI-MODE's). Sets *filter to the type to look up with. */
+static uint32_t filter_lookup(lookup *stock, uint32_t track, uint32_t synth, uint32_t *filter,
+                              uint32_t key)
+{
+    if (*filter < 6 || *filter >= COUNT)
+        return 0;
+    dn2_filters_ensure();
+    if (!filters[*filter])
+        return 0;
+    uint32_t code = 0;
+    if (*filter == g_filter) {
+        code = stock(track, synth, 0, key);
+        code = code < ROWS && dn2_t1[code].owner == dn2_t1[G_TEMPLATE].owner
+               && dn2_t1[code].slot == G_SLOT ? G_CODE : 0;
+    }
+    *filter = FILTER_HOST;
+    return code;
 }
 
 uintptr_t dn2_filter_descriptor(uint32_t type)

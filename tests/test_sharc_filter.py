@@ -125,6 +125,31 @@ class PairLinkTests(unittest.TestCase):
     def linked(self, *mods):
         return link.link(self.base + list(mods), self.image, sharc_stream=self.stream)
 
+    def test_refuses_an_invalid_g_and_links_a_valid_one(self):
+        refusal = 'g-%s 0.1: DN2 filter G needs a label of 1..5 printable ASCII characters and a default of 0..127'
+        cases = {'valid': ('"MODE", 0', True), 'top': ('"HIGH5", 127', True), 'none': (None, True),
+                 'default': ('"MODE", 128', False), 'long': ('"TOOWIDE", 1', False),
+                 'empty': ('"", 1', False), 'unprintable': ('"M\\tX", 1', False), 'nolabel': ('0, 1', False)}
+        for name, (param, ok) in cases.items():
+            with self.subTest(name=name):
+                p = Path(self.tmp.name) / ('g-' + name)
+                p.mkdir()
+                g = 'static const struct mk2_param g = {%s};\n' % param if param else ''
+                (p / 'machine.c').write_text('#include "mk2/machines.h"\n' + g +
+                    'const struct mk2_filter f = {8, "G", "G", 0, %s};\n' % ('&g' if param else '0'))
+                (p / 'kernel.json').write_text(json.dumps(filter_artifact(bytes(4), bytes(4), 0, 8, 12)))
+                (p / 'mod.json').write_text(json.dumps({
+                    'id': 'g-' + name, 'version': '0.1', 'device': 'digitone-mk2', 'os': '1.12',
+                    'sources': ['machine.c'], 'sharc': {'artifact': 'kernel.json'},
+                    'resources': {'core': '0.1'}, 'requires': ['core', 'machines-dn2'],
+                    'contribute': [{'to': PROFILE['filter_table'], 'data': '00000000',
+                                    'relocs': [[0, 'abs32', 'sym:f', 0]]}]}))
+                mod = elemod.load_any(sdk.build(str(p), STOCK, str(p / 'build'))[0])
+                errors = link.check(self.base + [mod], self.image)
+                self.assertEqual(errors == [], ok, errors)
+                if not ok:
+                    self.assertEqual(errors, [refusal % name])
+
     def at(self, stream, address, size=6):
         rec = next(r for r in sharc.parse(stream, PROFILE) if r.flags == sharc.LOAD
                    and r.target <= address and address + size <= r.target + r.count)

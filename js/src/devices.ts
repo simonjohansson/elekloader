@@ -42,6 +42,7 @@ export type SharcProfile = {
   filterAbi?: string
   filterRange?: Range
   filterTable?: string
+  filterGAt?: number
   filterAdapterSha256?: string
   filterAdapterBytes?: number
   filterStateBytes?: number
@@ -266,11 +267,11 @@ export const DIGITONE_MK2: Device = {
         voiceAdapterBytes: 2048, voiceStateBytes: 1024, voiceBindingOffset: 15872, voiceStackMax: 128,
         voiceHook: [0x20004a36, '8715ffffeeff', '3e06bc000080'],
         filterAbi: 'dn2-filter-mono32-l2-v1', filterRange: [0x20094000, 0x20098000],
-        filterTable: 'mk2_voice_filters',
-        filterAdapterSha256: '266742031d024d17c88afc0d84c06caf65dde710ed6866901a08105c81b20fe2',
+        filterTable: 'mk2_voice_filters', filterGAt: 16,
+        filterAdapterSha256: '25ecf301d2dfc322b5311afa58cd00f89316f0afe7df66a45e62c0aca590538c',
         filterAdapterBytes: 2048, filterStateBytes: 1024, filterBindingOffset: 15872, filterStackMax: 20,
         filterHook: [0x28392b0e, '140f5280c0db', '3e06bc0000a0'],
-        filterCapture: [0x8052dba4, '7e921c00', '25a3bc00'],
+        filterCapture: [0x8052dba4, '7e921c00', '2aa3bc00'],
         coreRange: [0x282dd600, 0x282dda00], stackMax: 544, codeGuardBytes: 64,
         keyedPitchTable: [920, '314d5900969c5e00d23c6400b1326a004c837000073477009b4a7e0015cd8500e1c18d00c92f9600031e9f002e94a800'],
         ownedRanges: [[0x282dd600, 0x282dde00], [0x20090000, 0x20098000]],

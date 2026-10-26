@@ -15,9 +15,11 @@ struct dn2_filter_input {
     /* This block's stock controls for the slot, once per 32 samples and not
      * smoothed. cutoff is FREQ/128 plus the stock filter envelope (pre-delay,
      * ATK/DEC/SUS/REL scaled by the bipolar ENV) and key tracking, clamped
-     * to 0..1. resonance is RESO/128, 0..0.992. */
+     * to 0..1. resonance is RESO/128, 0..0.992. g is G/127, 0..1, when the
+     * filter declares G (mk2/machines.h); without it, ignore g. */
     float cutoff;
     float resonance;
+    float g;
 };
 void sharc_filter_render(const struct dn2_filter_input *input);
 #endif

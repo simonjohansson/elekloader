@@ -124,7 +124,18 @@ dn2_parameter:
     move.l (%sp)+,%d2
     rts
 1:  RESTORE
-2:
+2:  SAVE                         | a custom filter's G: a slot its host has no row for
+    move.l 32(%sp),-(%sp)
+    move.l %a0,-(%sp)
+    jsr dn2_filter_code
+    addq.l #8,%sp
+    tst.l %d0
+    beq.s 3f
+    move.l %d0,(%sp)
+    RESTORE
+    move.l (%sp)+,%d2
+    rts
+3:  RESTORE
     MAP 12
     MAP 16,dn2_filter_host_type
     move.l 12(%sp),%d0
@@ -254,25 +265,27 @@ dn2_filter_real_return:
     addq.l #4,%sp
     rts
 
-| The MIDI filter parameter owner reads the sound directly, outside the identity readers.
+| The MIDI filter parameter owner reads the sound directly, outside the identity readers. Its
+| only callers pass the type to dn2_cc_code and dn2_nrpn_code, which map a custom filter (G).
     .globl dn2_filter_parameter_type
 dn2_filter_parameter_type:
     SAVE
     mvs.b 0xdf(%a0),%d0
     move.l %d0,-(%sp)
-    jsr dn2_filter_host_type
+    jsr dn2_filter_dsp_type
     addq.l #4,%sp
     move.l %d0,(%sp)
     RESTORE
     rts
 
 | Pages, defaults and parameters use the host type; missing IDs use MULTI-MODE's.
+| FRC9 and FRC10 are the FLTR page's knob lookups: a custom filter's own descriptor has G.
     .globl dn2_filter_reader
 dn2_filter_reader:
     mvs.b 0xdf(%a0),%d0
     move.l %d1,-(%sp)
     move.l 8(%sp),%d1
-    .irp caller,FRC0,FRC1,FRC2,FRC3,FRC4,FRC5,FRC6,FRC7,FRC8,dn2_filter_real_return
+    .irp caller,FRC0,FRC1,FRC2,FRC3,FRC4,FRC5,FRC6,FRC7,FRC8,FRC9,FRC10,dn2_filter_real_return
     cmpi.l #\caller,%d1
     beq.w 1f
     .endr

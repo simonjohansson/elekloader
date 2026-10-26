@@ -234,6 +234,28 @@ for (const kind of ['voice', 'filter'] as const) test(`DN2 ${kind} artifacts pin
   sharc.modulePayload(artifact, profile)
 })
 
+test('DN2 filter G: a valid one links and an invalid one is refused', () => {
+  const rel = DIGITONE_MK2.releases[0], target = targetOf(DIGITONE_MK2, rel)
+  const image = new Uint8Array(rel.mainLen)
+  const core = new Mod2({ elemod: 2, id: 'core', version: '0.1', target,
+    sections: { '.boot': { align: 4, parts: [['hex', '00000000']] } },
+    collections: { mk2_voice_filters: { entry: 4 } } }, 'core')
+  const ascii = (text: string) => [...text].map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join('')
+  // The descriptor {8, name, label, curve, g} at 0, G {label, default} at 20 and its label at 28.
+  const mod = (label: string | null, def: number, g = true) => new Mod2({ elemod: 2, id: 'g', version: '0.1', target,
+    sections: { '.run': { align: 4, parts: [['hex', '00000008' + '00'.repeat(20) + def.toString(16).padStart(8, '0')
+      + ascii(label ?? '') + '00']] } },
+    symbols: { descriptor: ['.run', 0], g: ['.run', 20], label: ['.run', 28] },
+    relocs: [...(g ? [['.run', 16, 'abs32', 'sym:g', 0]] : []), ...(label === null ? [] : [['.run', 20, 'abs32', 'sym:label', 0]])],
+    contribute: [{ to: 'mk2_voice_filters', data: '00000000', relocs: [[0, 'abs32', 'sym:descriptor', 0]] }],
+    sharc: machineArtifact('filter', 8) }, 'g')
+  const refusal = 'g 0.1: DN2 filter G needs a label of 1..5 printable ASCII characters and a default of 0..127'
+  for (const [label, def] of [['MODE', 0], ['HIGH5', 127]] as const) assert.deepEqual(check([core, mod(label, def)], image), [])
+  assert.deepEqual(check([core, mod(null, 0, false)], image), [])
+  for (const [label, def] of [['MODE', 128], ['TOOWIDE', 1], ['', 1], ['M\tX', 1], [null, 1]] as const)
+    assert.deepEqual(check([core, mod(label, def)], image), [refusal], `${label} ${def}`)
+})
+
 test('DN2 combines one synth and one filter with matching independent identities', () => {
   const rel = DIGITONE_MK2.releases[0], target = targetOf(DIGITONE_MK2, rel)
   const image = new Uint8Array(rel.mainLen)
@@ -242,7 +264,7 @@ test('DN2 combines one synth and one filter with matching independent identities
     collections: { mk2_voice_synths: { entry: 4 }, mk2_voice_filters: { entry: 4 } } }, 'core')
   const doc = (kind: 'voice' | 'filter', id = 6, name: string = kind): Record<string, any> => ({
     elemod: 2, id: name, version: '0.1', target,
-    sections: { '.run': { align: 4, parts: [['hex', id.toString(16).padStart(8, '0') + '00'.repeat(12)]] } },
+    sections: { '.run': { align: 4, parts: [['hex', id.toString(16).padStart(8, '0') + '00'.repeat(16)]] } },
     symbols: { descriptor: ['.run', 0] },
     contribute: [{ to: profile[`${kind}Table`], data: '00000000', relocs: [[0, 'abs32', 'sym:descriptor', 0]] }],
     sharc: machineArtifact(kind, id),

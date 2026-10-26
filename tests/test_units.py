@@ -628,6 +628,34 @@ def test_dn2_machines_declares_only_custom_machine_tables():
         assert not [p for p in link.check([machines, registration(table)], image) if 'adds to table' in p]
 
 
+def test_dn2_filter_g_is_refused_unless_valid():
+    from elekloader.sdk.sharc import filter_artifact
+    dn = next(d for d in devices.devices() if d.key == 'digitone-mk2')
+    r = dn.releases['1.12']
+    target, image = devices.target_of(dn, r), bytes(r.main_len)
+    core = link.Mod2({'elemod': 2, 'id': 'core', 'version': '0.1', 'target': target,
+                      'sections': {'.boot': {'align': 4, 'parts': [['hex', '00000000']]}},
+                      'collections': {'mk2_voice_filters': {'entry': 4}}}, 'core')
+
+    def mod(label, default, g=True):
+        """The descriptor {8, name, label, curve, g} at 0, G {label, default} at 20 and its label at 28."""
+        text = '00000008' + '00' * 20 + '%08x' % default + (label or '').encode('latin1').hex() + '00'
+        return link.Mod2({'elemod': 2, 'id': 'g', 'version': '0.1', 'target': target,
+                          'sections': {'.run': {'align': 4, 'parts': [['hex', text]]}},
+                          'symbols': {'descriptor': ['.run', 0], 'g': ['.run', 20], 'label': ['.run', 28]},
+                          'relocs': ([['.run', 16, 'abs32', 'sym:g', 0]] if g else [])
+                          + ([['.run', 20, 'abs32', 'sym:label', 0]] if label is not None else []),
+                          'contribute': [{'to': 'mk2_voice_filters', 'data': '00000000',
+                                          'relocs': [[0, 'abs32', 'sym:descriptor', 0]]}],
+                          'sharc': filter_artifact(bytes(4), bytes(4), 0, 8, 12)}, 'g')
+    refusal = 'g 0.1: DN2 filter G needs a label of 1..5 printable ASCII characters and a default of 0..127'
+    for label, default in (('MODE', 0), ('HIGH5', 127)):
+        assert link.check([core, mod(label, default)], image) == []
+    assert link.check([core, mod(None, 0, g=False)], image) == []
+    for label, default in (('MODE', 128), ('TOOWIDE', 1), ('', 1), ('M\tX', 1), (None, 1)):
+        assert link.check([core, mod(label, default)], image) == [refusal], (label, default)
+
+
 def test_dn2_machine_ids_can_span_stored_parts():
     from elekloader.sdk.sharc import voice_artifact
     dn = next(d for d in devices.devices() if d.key == 'digitone-mk2')

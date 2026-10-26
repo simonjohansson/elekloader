@@ -44,13 +44,14 @@ guard and address. The adapters cover the cached list's allocation/end,
 name/descriptor/permission lookups, synth grouping, three parameter-page
 readers, parameter ownership, the audio frame's type and the saved type
 reader. Identity callers retain the real type; page logic sees the host
-type. The audio frame is indexed by allocated voice slot, not by track;
+type, except the FLTR page's knob lookups (`0x4006efcc`, `0x4006f004`),
+which read a custom filter's own descriptor, where G may be declared. The audio frame is indexed by allocated voice slot, not by track;
 qualification follows the owner map at `0x40288306 + 0x14*v` during note-on.
 A small wrapper gives the native track-type accessor the real reader without embedding a copied firmware function. SHARC synth pages add
 parameter rows after the stock table's 321: at boot, before the OS's
 initializers, the companion copies the table (`0x401f83a4`) to its RAM,
 points the table's 56 references at the copy and raises its 54 row bounds
-by 40; the value-class accessor (`0x400c257c`) gives an added row its
+by 41, for 40 synth knobs and a filter's G; the value-class accessor (`0x400c257c`) gives an added row its
 template's object, and the bounds that end loops keep the stock count. The CC
 and NRPN lookups (`0x400dc978`, `0x400dca5a`) ask FM TONE's map for a paged
 synth, and an FM TONE row found there becomes the synth's row for its slot. The sound-load bound

@@ -96,14 +96,15 @@ DEVICE = Device(
                 'filter_abi': 'dn2-filter-mono32-l2-v1',
                 'filter_range': (0x20094000, 0x20098000),
                 'filter_table': 'mk2_voice_filters',
-                'filter_adapter_sha256': '266742031d024d17c88afc0d84c06caf65dde710ed6866901a08105c81b20fe2',
+                'filter_g_at': 16,              # mk2_filter's g (mk2/machines.h)
+                'filter_adapter_sha256': '25ecf301d2dfc322b5311afa58cd00f89316f0afe7df66a45e62c0aca590538c',
                 'filter_adapter_bytes': 2048,
                 'filter_state_bytes': 1024,
                 'filter_binding_offset': 15872,
                 'filter_stack_max': 20,
                 'filter_hook': (0x28392b0e, '140f5280c0db', '3e06bc0000a0'),
                 # The filter setup table's internal type 0 entry, sent to the adapter's capture entry.
-                'filter_capture': (0x8052dba4, '7e921c00', '25a3bc00'),
+                'filter_capture': (0x8052dba4, '7e921c00', '2aa3bc00'),
                 'core_range': (0x282dd600, 0x282dda00),
                 'stack_max': 544,
                 'code_guard_bytes': 64,

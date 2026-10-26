@@ -308,11 +308,12 @@ class ParameterDispatchTests(unittest.TestCase):
                     for source in ('core-dn2', 'machines-dn2')]
             stage = work / 'curve'
             stage.mkdir()
-            # In range, above 16 (drawn at the top) and 0xff (no dot), across all 51 columns.
+            # In range, above 16 (drawn at the top) and 0xff (no dot), across all 51 columns; g is 0
+            # without a declared G.
             (stage / 'machine.c').write_text('#include "mk2/machines.h"\n'
-                'static void curve(uint32_t freq, uint32_t reso, uint8_t y[51]) {\n'
+                'static void curve(uint32_t freq, uint32_t reso, uint32_t g, uint8_t y[51]) {\n'
                 '    for (unsigned x = 0; x < 51; ++x) y[x] = x % 4 == 3 ? 0xff : x < 17 ? x : 200;\n'
-                '    y[0] = freq >> 8; y[1] = reso >> 8; }\n'
+                '    y[0] = freq >> 8; y[1] = reso >> 8; y[2] = g; }\n'
                 'const struct mk2_filter custom = {8,"CURVE","CURVE",curve};\n')
             (stage / 'kernel.json').write_text(json.dumps(filter_artifact(bytes(4), bytes(4), 0, 8, 20)))
             (stage / 'mod.json').write_text(json.dumps({
@@ -332,7 +333,7 @@ class ParameterDispatchTests(unittest.TestCase):
             header[12:16], header[16:20] = (2).to_bytes(4, 'big'), data.to_bytes(4, 'big')
             pokes = [{'addr': hex(canvas), 'hex': header.hex()}, {'addr': hex(data), 'hex': '00' * 1024}]
             draw = manifest['_map']['dn2_filter_draw_curve']
-            calls = [{'pc': hex(draw), 'args': [str(t), hex(canvas), '0x0c00', '0x0500'],
+            calls = [{'pc': hex(draw), 'args': [str(t), hex(canvas), '0x0c00', '0x0500', '0'],
                       'reads': [{'addr': hex(data), 'len': 1024}]} for t in (8, 1, 6, 9)]
             request = stage / 'request.json'
             request.write_text(json.dumps({'pokes': pokes, 'calls': calls}))
@@ -343,7 +344,7 @@ class ParameterDispatchTests(unittest.TestCase):
             self.assertEqual(len(rows), 4)
             expected = set()
             for x in range(51):
-                v = 12 if x == 0 else 5 if x == 1 else None if x % 4 == 3 else min(x, 16)
+                v = 12 if x == 0 else 5 if x == 1 else 0 if x == 2 else None if x % 4 == 3 else min(x, 16)
                 if v is not None:
                     expected.add((21 + x, 7 + v))  # canvas y counts from the bottom
             # The canvas persists across the calls: only the custom ID draws, the others add nothing.

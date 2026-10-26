@@ -56,12 +56,18 @@ const struct descriptor dn2_stock_filter_descriptors[6] = {
     {"MM", "MM", {45,46,47,48,36,37,38,49,10}}, {"LP4", "LP4", {39}},
     {"EQ", "EQ", {41}}, {"C-", "C-", {54}}, {"LPHP", "LPHP", {57}}, {"C+", "C+", {318}}
 };
-static uint32_t curve_args[2];
-static void test_curve(uint32_t freq, uint32_t reso, uint8_t y[51])
+static uint32_t curve_args[3];
+static void test_curve(uint32_t freq, uint32_t reso, uint32_t g, uint8_t y[51])
 {
-    curve_args[0] = freq; curve_args[1] = reso;
+    curve_args[0] = freq; curve_args[1] = reso; curve_args[2] = g;
     for (unsigned x = 0; x < 51; ++x)
         y[x] = x % 3 == 0 ? 0xff : (uint8_t)(x * 2);  /* 0xff skipped, above 16 clamped */
+}
+/* The page's shown value: only G's row is asked for, on the page the hook passes. */
+uint32_t dn2_shown(void *page, uint32_t code, uint8_t *flag)
+{
+    assert(page == (void *)0x5678 && code == G_CODE && flag);
+    return 0x7f00;
 }
 static int32_t dots[51][2];
 static unsigned dot_count;
@@ -72,7 +78,7 @@ void dn2_pixel(void *canvas, int32_t x, int32_t y, int32_t on)
 }
 static const struct mk2_param mode = {"mode", 5}, loud_g = {"LOUD", 128}, wide_g = {"TOOWIDE", 1};
 static const struct mk2_filter filter_low = {6, "LOW FILTER", "LOWF", 0, &loud_g};
-static const struct mk2_filter filter_high = {31, "comb high", "comb", 0, &mode};   /* a second G */
+static const struct mk2_filter filter_high = {31, "comb high", "comb", test_curve, &mode};   /* a second G */
 static const struct mk2_filter filter_unity = {7, "UNITY", "UNITY", test_curve, &mode};
 static const struct mk2_filter filter_wide = {9, "WIDE", "WIDE", 0, &wide_g};
 static const struct mk2_filter filter_duplicate = {6, "DUPLICATE", "DUP", test_curve};
@@ -242,12 +248,15 @@ static void check_filters(void)
     assert(size == dn2_filter_list_bytes);
     /* Only a registered custom filter with a curve draws: not one without, a missing ID or a stray type. */
     for (unsigned type = 0; type < 40; ++type)
-        if (type != 7)
-            dn2_filter_draw_curve(type, (void *)0x1234, 1, 2);
+        if (type != 7 && type != 31)
+            dn2_filter_draw_curve(type, (void *)0x1234, 1, 2, (void *)0x5678);
     assert(dot_count == 0);
 #ifndef EMPTY
-    dn2_filter_draw_curve(7, (void *)0x1234, 0x4000, 0x2180);
-    assert(curve_args[0] == 0x4000 && curve_args[1] == 0x2180);
+    dn2_filter_draw_curve(31, (void *)0x1234, 0x4000, 0x2180, (void *)0x5678);
+    assert(curve_args[0] == 0x4000 && curve_args[1] == 0x2180 && curve_args[2] == 0);  /* no G: 0 */
+    dot_count = 0;
+    dn2_filter_draw_curve(7, (void *)0x1234, 0x4000, 0x2180, (void *)0x5678);
+    assert(curve_args[0] == 0x4000 && curve_args[1] == 0x2180 && curve_args[2] == 0x7f00);  /* G's shown word */
     unsigned n = 0;
     for (unsigned x = 0; x < 51; ++x) {
         if (x % 3 == 0)

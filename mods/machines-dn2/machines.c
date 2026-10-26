@@ -421,11 +421,13 @@ uintptr_t dn2_filter_label(uint32_t type)
                                    : dn2_unknown_label);
 }
 
-/* The stock pixel writer the page's line drawing uses: bounds-checked, on its canvas. */
+/* The stock pixel writer the page's line drawing uses: bounds-checked, on its canvas; and the
+ * page's shown value of a parameter, a lock being edited included, as it reads FREQ and RESO. */
 extern void dn2_pixel(void *canvas, int32_t x, int32_t y, int32_t on);
+extern uint32_t dn2_shown(void *page, uint32_t code, uint8_t *flag);
 
 /* A custom filter's response graph: canvas x 21..71, y 7..23 from the bottom (screen y 56..40). */
-void dn2_filter_draw_curve(uint32_t type, void *canvas, uint32_t freq, uint32_t reso)
+void dn2_filter_draw_curve(uint32_t type, void *canvas, uint32_t freq, uint32_t reso, void *page)
 {
     if (type >= COUNT)
         return;
@@ -433,10 +435,10 @@ void dn2_filter_draw_curve(uint32_t type, void *canvas, uint32_t freq, uint32_t 
     const struct mk2_filter *f = filters[type];
     if (!f || !f->curve)
         return;
-    uint8_t y[51];
+    uint8_t y[51], flag;
     for (unsigned x = 0; x < 51; ++x)
         y[x] = 0xff;
-    f->curve(freq, reso, y);
+    f->curve(freq, reso, type == g_filter ? dn2_shown(page, G_CODE, &flag) : 0, y);
     for (unsigned x = 0; x < 51; ++x)
         if (y[x] != 0xff)
             dn2_pixel(canvas, 21 + x, 7 + (y[x] > 16 ? 16 : y[x]), 1);

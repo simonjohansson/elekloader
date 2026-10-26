@@ -43,11 +43,12 @@ struct mk2_voice_pages {
 struct mk2_filter {
     uint32_t id;
     const char *name, *label;
-    /* Optional, custom filters only: draws the FLTR page's response graph. freq and reso
-     * are the page's shown FREQ and RESO, locks included, as 16-bit words (64.00 is
-     * 0x4000). Fill y[0..50], one per column left to right, with 0 (bottom) to 16 (top),
-     * or 0xff for no dot; larger values are drawn at 16. Without it the graph stays empty. */
-    void (*curve)(uint32_t freq, uint32_t reso, uint8_t y[51]);
+    /* Optional, custom filters only: draws the FLTR page's response graph. freq, reso and g
+     * are the page's shown FREQ, RESO and G, locks included, as 16-bit words (64.00 is
+     * 0x4000); g is 0 without a declared G. Fill y[0..50], one per column left to right, with
+     * 0 (bottom) to 16 (top), or 0xff for no dot; larger values are drawn at 16. Without it
+     * the graph stays empty. */
+    void (*curve)(uint32_t freq, uint32_t reso, uint32_t g, uint8_t y[51]);
     /* Optional, custom filters only: the FLTR page's G knob (sound slot 66), with its label
      * (1..5 ASCII characters, shown in capitals) and default (0..127). It answers G's CC 18
      * and NRPN, takes locks and is saved with the sound; the kernel gets it in its input.

@@ -7,8 +7,9 @@
     .set dn2_stock_descriptors, STOCK_DESCRIPTORS
     .set dn2_unknown_name, UNKNOWN_NAME
     .set dn2_unknown_label, UNKNOWN_LABEL
-    .globl dn2_stock_filter_names, dn2_stock_filter_descriptors, dn2_pixel
+    .globl dn2_stock_filter_names, dn2_stock_filter_descriptors, dn2_pixel, dn2_shown
     .set dn2_pixel, PIXEL
+    .set dn2_shown, SHOWN
     .set dn2_stock_filter_names, FILTER_NAMES
     .set dn2_stock_filter_descriptors, FILTER_DESCRIPTORS
 
@@ -307,11 +308,12 @@ dn2_filter_curve:
     bcs.s 1f
     jmp CURVE_STOCK
 1:  SAVE
+    move.l %a2,-(%sp)
     move.l %d7,-(%sp)
     move.l %d6,-(%sp)
     move.l %d3,-(%sp)
     move.l %d4,-(%sp)
     jsr dn2_filter_draw_curve
-    lea 16(%sp),%sp
+    lea 20(%sp),%sp
     RESTORE
     jmp CURVE_SKIP

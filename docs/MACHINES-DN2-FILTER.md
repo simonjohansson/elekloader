@@ -61,9 +61,11 @@ void sharc_filter_render(const struct dn2_filter_input *in);
 ```
 
 The `curve` callback runs on the ColdFire when the FLTR page draws:
-`void curve(uint32_t freq, uint32_t reso, uint8_t y[51])`. `freq` and `reso`
-are the shown FREQ and RESO, including a lock being edited, as 16-bit
-words (the whole value in the high byte: 64.00 is `0x4000`). Fill one entry
+`void curve(uint32_t freq, uint32_t reso, uint32_t g, uint8_t y[51])`. `freq`,
+`reso` and `g` are the shown FREQ, RESO and G, including a lock being edited,
+as 16-bit words (the whole value in the high byte: 64.00 is `0x4000`); `g`
+is 0 without a declared G, and a curve may ignore it. The companion reads
+G's as the page reads the others (`0x4006538e`). Fill one entry
 per graph column, left to right, with 0 (bottom) to 16 (top), or `0xff`
 for no dot; the core draws values above 16 at the top and nothing outside
 the graph (screen x 21..71, y 40..56). It hooks the page's curve dispatch
@@ -73,7 +75,9 @@ short: it runs on every redraw of the page.
 G is an `mk2_param`: a label of 1..5 printable ASCII characters, shown in
 capitals, and a default of 0..127. It is sound slot 66, the slot of the
 stock filters' third knob (MULTI-MODE's TYPE), so it answers their CC 18
-and NRPN 1:22, takes locks and is saved with the sound:
+and NRPN 1:22, takes locks and is saved with the sound. Selecting the
+filter keeps the sound's slot-66 value, as the stock filters do, so the
+kernel should treat any value as valid:
 
 ```c
 static const struct mk2_param mode = {"MODE", 0};

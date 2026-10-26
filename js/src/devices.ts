@@ -50,6 +50,7 @@ export type SharcProfile = {
   filterBindingOffset?: number
   filterStackMax?: number
   filterHook?: [number, string, string]
+  filterCapture?: [number, string, string]      // the filter setup table's internal type 0 entry, sent to the adapter
   coreRange?: Range
   stackMax?: number
   codeGuardBytes?: number
@@ -268,13 +269,15 @@ export const DIGITONE_MK2: Device = {
         voiceHook: [0x20004a36, '8715ffffeeff', '3e06bc000080'],
         filterAbi: 'dn2-filter-mono32-l2-v1', filterRange: [0x20094000, 0x20098000],
         filterTable: 'mk2_voice_filters', filterCloneTable: 'mk2_filters',
-        filterAdapterSha256: 'dea368ada96b1b08665e6f3399111aef43c84281a2fe4f85f585acd288e9dd32',
+        filterAdapterSha256: '266742031d024d17c88afc0d84c06caf65dde710ed6866901a08105c81b20fe2',
         filterAdapterBytes: 2048, filterStateBytes: 1024, filterBindingOffset: 15872, filterStackMax: 20,
         filterHook: [0x28392b0e, '140f5280c0db', '3e06bc0000a0'],
+        filterCapture: [0x8052dba4, '7e921c00', '25a3bc00'],
         coreRange: [0x282dd600, 0x282dda00], stackMax: 544, codeGuardBytes: 64,
         keyedPitchTable: [920, '314d5900969c5e00d23c6400b1326a004c837000073477009b4a7e0015cd8500e1c18d00c92f9600031e9f002e94a800'],
         ownedRanges: [[0x282dd600, 0x282dde00], [0x20090000, 0x20098000]],
-        patchRanges: [[0x2838489a, 0x283848a0], [0x20004a36, 0x20004a3c], [0x28392b0e, 0x28392b14]],
+        patchRanges: [[0x2838489a, 0x283848a0], [0x20004a36, 0x20004a3c], [0x28392b0e, 0x28392b14],
+          [0x8052dba4, 0x8052dba8]],
         activeKeyedCore: { segments: [[12, 'code', 'af2f375dc58a8ccd4b8abd89b1fb526441baa6fb5da9266c2b664e69d90fc829']],
           zero: [[1008, 16]], entries: { hook_offset_bytes: 12 }, stackBytes: 116 },
         hook: [0x2838489a, '8715ffff78ff', '3e06160006eb'],

@@ -581,8 +581,9 @@ export function link(mods: Mod2[], image: Uint8Array, lock: store.Lock | null = 
         fills = fills.filter(([address]) => address !== lo)
         fills.push([lo, base + at - lo, 0], [base + at + 8, payload.owner[1] - base - at - 8, 0])
         loads.push([base + at, binding])
-        const [site, old, replacement] = rel.sharc![`${kind}Hook`]!
-        patches = [[site, hexBytes(old, 'SHARC stock hook'), hexBytes(replacement, 'SHARC bridge hook')]]
+        const capture = kind === 'filter' ? rel.sharc!.filterCapture : undefined
+        patches = [rel.sharc![`${kind}Hook`]!, ...(capture ? [capture] : [])].map(([site, old, replacement]) =>
+          [site, hexBytes(old, 'SHARC stock hook'), hexBytes(replacement, 'SHARC bridge hook')])
       } else if (payload.entries !== null) {
         const bridge = core.sharc!
         const pc16 = (off: number) => sharcRecords.pc16(rel.sharc!, base + off)

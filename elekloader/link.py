@@ -567,8 +567,10 @@ def link(mods, image, lock=None, *, sharc_stream=None):
                 fills = [f for f in fills if f[0] != lo]
                 fills += [(lo, base + at - lo, 0), (base + at + 8, payload['owner'][1] - base - at - 8, 0)]
                 loads.append((base + at, binding))
-                site, old, new = rel.sharc[kind + '_hook']
-                patches.append((site, bytes.fromhex(old), bytes.fromhex(new)))
+                for hook in (kind + '_hook', kind + '_capture'):
+                    if hook in rel.sharc:
+                        site, old, new = rel.sharc[hook]
+                        patches.append((site, bytes.fromhex(old), bytes.fromhex(new)))
             elif payload['entries'] is not None:
                 bridge = core.sharc
                 def pc16(off):

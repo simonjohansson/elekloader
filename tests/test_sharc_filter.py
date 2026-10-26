@@ -125,11 +125,11 @@ class PairLinkTests(unittest.TestCase):
     def linked(self, *mods):
         return link.link(self.base + list(mods), self.image, sharc_stream=self.stream)
 
-    def at(self, stream, address):
+    def at(self, stream, address, size=6):
         rec = next(r for r in sharc.parse(stream, PROFILE) if r.flags == sharc.LOAD
-                   and r.target <= address and address + 6 <= r.target + r.count)
+                   and r.target <= address and address + size <= r.target + r.count)
         offset = 16 + address - rec.target
-        return rec.raw[offset:offset + 6]
+        return rec.raw[offset:offset + size]
 
     def owned_records(self, stream, kind):
         lo, hi = PROFILE[kind + '_range']
@@ -151,6 +151,8 @@ class PairLinkTests(unittest.TestCase):
             site, _old, new = PROFILE[kind + '_hook']
             self.assertEqual(self.at(out.sharc_stream, site), bytes.fromhex(new))
         self.assertEqual(self.at(out.sharc_stream, PROFILE['hook'][0]), self.at(self.stream, PROFILE['hook'][0]))
+        site, _old, new = PROFILE['filter_capture']
+        self.assertEqual(self.at(out.sharc_stream, site, 4), bytes.fromhex(new))
         self.assertEqual(out.layout['sharc']['mods'], [
             {'id': 'filter-6', 'owner': list(PROFILE['filter_range']), 'hook': PROFILE['filter_hook'][0]},
             {'id': 'voice-6', 'owner': list(PROFILE['voice_range']), 'hook': PROFILE['voice_hook'][0]}])
@@ -165,6 +167,18 @@ class PairLinkTests(unittest.TestCase):
                 self.assertEqual(self.owned_records(out.sharc_stream, other), self.owned_records(self.stream, other))
                 self.assertEqual(self.at(out.sharc_stream, PROFILE[kind + '_hook'][0]), bytes.fromhex(PROFILE[kind + '_hook'][2]))
                 self.assertEqual(self.at(out.sharc_stream, PROFILE[other + '_hook'][0]), self.at(self.stream, PROFILE[other + '_hook'][0]))
+                site, old, new = PROFILE['filter_capture']
+                self.assertEqual(self.at(out.sharc_stream, site, 4), bytes.fromhex(new if kind == 'filter' else old))
+
+    def test_the_capture_entry_is_in_the_adapter_and_continues_to_the_stock_arm(self):
+        _site, old, new = PROFILE['filter_capture']
+        stock_arm, entry = (int.from_bytes(bytes.fromhex(h), 'little') for h in (old, new))
+        offset = 2 * (entry - sharc.pc16(PROFILE, PROFILE['filter_range'][0]))
+        adapter = bytes.fromhex(json.loads((Path(__file__).resolve().parents[1]
+                                            / 'elekloader/sdk/include/digitone-mk2/filter-bridge.json').read_text())['hex'])
+        self.assertTrue(0 < offset < PROFILE['filter_adapter_bytes'] - PROFILE['code_guard_bytes'])
+        jump = bytes.fromhex('3e06') + (stock_arm >> 16).to_bytes(2, 'little') + (stock_arm & 0xffff).to_bytes(2, 'little')
+        self.assertIn(jump, adapter[offset:offset + 80])  # JUMP to the arm the stock table named
 
     def test_changed_filter_code_links_without_an_allowlist_update(self):
         doc = copy.deepcopy(self.mods['filter-6'].doc)

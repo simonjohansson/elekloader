@@ -50,8 +50,9 @@ supplies the FLTR page, defaults, knobs, CC and NRPN, but not the audio:
 the stock algorithm never runs for the custom ID. Use LOWPASS 4 (1). Its
 page shows ATK/DEC/SUS/REL, FREQ/RESO, a dotted empty G and ENV under the
 stock envelope graphic, and FUNC+A edits pre-delay. The response graph
-stays empty. The values are saved with the sound, but the kernel does not
-receive them yet. The same mod must carry a
+stays empty. The kernel receives the resulting cutoff and resonance; it
+does not implement pre-delay, the envelope or ENV itself. The same mod
+must carry a
 `dn2-filter-mono32-l2-v1` artifact with the matching `machine_id` and
 `entries: {"render_offset_bytes": ...}`. The linker refuses a missing or
 mismatched payload, conflicting filter IDs, or the same ID registered as
@@ -62,14 +63,20 @@ both a clone and a custom filter.
 void sharc_filter_render(const struct dn2_filter_input *in);
 ```
 
-The twelve-byte input contains `float *samples`, `uint32_t slot` and
-`uint32_t flags`.
+The twenty-byte input contains `float *samples`, `uint32_t slot`,
+`uint32_t flags`, `float cutoff` and `float resonance`.
 Process 32 mono floats at 48 kHz in place before the stock AMP stage and
 return nothing. Slot is 0..15, not a track number; keep independent state
 per slot. `DN2_FILTER_RESET` is set on the first callback after entering this filter
 and on a new trigger edge. Clear that slot's history before processing
 the block when this flag is set. Keep history between ordinary callbacks.
-The callback receives no pitch or filter controls.
+
+`cutoff` and `resonance` are the stock values for this slot in this
+block, once per 32 samples and not smoothed; smoothing belongs to the
+kernel. `cutoff` is normalized: FREQ/128, plus the stock filter envelope
+(pre-delay, ATK/DEC/SUS/REL scaled by ENV, which is bipolar) and key
+tracking, clamped to 0..1.
+`resonance` is RESO/128 (0..0.992). The callback receives no pitch.
 One custom synth and one custom filter can coexist; a master-output mod
 cannot be combined with either.
 
@@ -100,6 +107,16 @@ stack_bytes)` with the prelinked bytes. Its arguments follow
 allowed. Compilation belongs to the producer. Keep writes in the author
 data area and supplied sample buffer.
 
+The controls come from the stock filter preparation, which runs for every
+voice before the render loop and leaves the final cutoff in F8. The
+linker points entry 0 of its setup table (`0x8052dba4`, internal type 0,
+which only custom filters use) at the adapter's capture entry instead of
+PC16 `0x1c927e`. That entry keeps F8 and the resonance word for the voice
+(R3, the same slot the render hook sees) in two 16-entry arrays at
+`0x20097d40` and `0x20097d80`, preserves ASTATX, and continues at
+`0x1c927e`. It makes no identity check; the render gate below is the only
+one.
+
 The linker binds the render PC and ID at `0x20097e00`. Its hook replaces
 the six-byte table-pointer load at `0x28392b0e` and continues at PC16
 `0x1c958a` after restoring that load. A matching raw filter ID dispatches
@@ -107,9 +124,9 @@ the callback when the stock internal filter type has settled to zero.
 The first block after selection may still use the previous stock filter.
 Other IDs follow the stock path.
 
-`mods/machines-dn2/filter-bridge.s` produces 1,566 code bytes, padded to
+`mods/machines-dn2/filter-bridge.s` produces 1,680 code bytes, padded to
 2 KiB, SHA-256
-`dea368ada96b1b08665e6f3399111aef43c84281a2fe4f85f585acd288e9dd32`.
+`266742031d024d17c88afc0d84c06caf65dde710ed6866901a08105c81b20fe2`.
 The [adapter rebuild instructions](MACHINES-DN2-VOICE.md#context-and-memory)
 cover both machine adapters. Native sites are declared in
 `mods/machines-dn2/mod.json`; the DSP hook and limits live in the device
@@ -123,9 +140,11 @@ and [DSP stage research](https://github.com/angellinares/dn2_firmware_explore/bl
 
 Build the [paired C example](https://github.com/simonjohansson/digitone-2-mod-hack); its
 firmware includes SINE (synth ID 6), LOWPASS (filter ID 8) and DigiHealth.
-LOWPASS uses per-slot history and a fixed coefficient of 1/16 at 48 kHz
-(about 493 Hz cutoff). Compare its response with the input and check RESET
-on retriggers, slot reuse and returning from a stock filter.
+LOWPASS is a resonant 2-pole state-variable low-pass, in assembly so that
+it needs no stack, with per-slot state. Its cutoff follows FREQ like a
+MIDI note (69/128 is 440 Hz) and the stock envelope; RESO sets its damping.
+Compare its response with the input and check RESET on retriggers, slot
+reuse and returning from a stock filter.
 Removing the filter must retain the synth and saved filter ID; reinstalling it
 must restore selection. Check stock filter controls with MULTI-MODE.
 

@@ -104,8 +104,10 @@ class CaptureTests(unittest.TestCase):
         capture = int.from_bytes(bytes.fromhex(self.profile['filter_capture'][2]), 'little')
         lowpass_4_arm, = self.words(self.profile['filter_capture'][0] + 12, 1)
         self.patch_entry(3, capture, lowpass_4_arm)  # LOWPASS 4 is internal type 3
-        # FREQ, RESO, ENV, ATK, DEC, SUS and pre-delay on both tracks' channels.
-        controls = ((16, 40), (17, 50), (24, 127), (20, 20), (21, 64), (22, 0), (19, 10))
+        # FREQ, RESO, ENV, ATK, DEC, SUS and pre-delay on both tracks' channels, and LFO 1 on FREQ
+        # (destination slot 67, a triangle restarted on each note, at about 4 Hz).
+        controls = ((16, 40), (17, 50), (24, 127), (20, 20), (21, 64), (22, 0), (19, 10),
+                    (105, 67), (106, 0), (108, 1), (102, 127), (103, 4), (109, 100))
         burst = bytes(b for channel in (0, 1) for cc, value in controls for b in (0xb0 | channel, cc, value))
         self.emu.call('midi.in', bytes=burst.hex(), period=0)
         self.wait(200)

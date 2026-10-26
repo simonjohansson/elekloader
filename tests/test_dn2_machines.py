@@ -167,7 +167,7 @@ class ParameterDispatchTests(unittest.TestCase):
             canvas, data = 0x47f3a000, 0x47f3a100
             header = bytearray(0x18)
             header[4:8], header[8:12] = (128).to_bytes(4, 'big'), (64).to_bytes(4, 'big')
-            header[12:16], header[20:24] = (2).to_bytes(4, 'big'), data.to_bytes(4, 'big')
+            header[12:16], header[16:20] = (2).to_bytes(4, 'big'), data.to_bytes(4, 'big')
             pokes = [{'addr': hex(canvas), 'hex': header.hex()}, {'addr': hex(data), 'hex': '00' * 1024}]
             draw = manifest['_map']['dn2_filter_draw_curve']
             calls = [{'pc': hex(draw), 'args': [str(t), hex(canvas), '0x0c00', '0x0500'],
@@ -183,7 +183,7 @@ class ParameterDispatchTests(unittest.TestCase):
             for x in range(51):
                 v = 12 if x == 0 else 5 if x == 1 else None if x % 4 == 3 else min(x, 16)
                 if v is not None:
-                    expected.add((21 + x, 23 - v))
+                    expected.add((21 + x, 7 + v))  # canvas y counts from the bottom
             # The canvas persists across the calls: only the custom ID draws, the others add nothing.
             for row in rows:
                 self.assertTrue(row['ok'], row)

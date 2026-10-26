@@ -134,7 +134,7 @@ static void check_filters(void)
         if (x % 3 == 0)
             continue;
         unsigned v = x * 2 > 16 ? 16 : x * 2;
-        assert(dots[n][0] == (int32_t)(21 + x) && dots[n][1] == (int32_t)(23 - v));
+        assert(dots[n][0] == (int32_t)(21 + x) && dots[n][1] == (int32_t)(7 + v));
         ++n;
     }
     assert(dot_count == n);

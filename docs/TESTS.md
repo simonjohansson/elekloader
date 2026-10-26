@@ -18,12 +18,13 @@ With `ELEKLOADER_DN2_SYX`, `ELEKLOADER_CROSS` and `ELEKLOADER_CF_CALL` set
 to DigiKit's `cf_call` executable, the registry suite also executes the
 compiled filter reader: parameter lookup maps clones and custom filters to
 their stock clone, identity reads keep saved IDs, and registers and the
-stack are preserved. With DigiKit (`ELEKLOADER_DIGIKIT`, its
-`ELEKLOADER_DIGI_EMUD` and the ready inputs in `ELEKLOADER_DN2_EMU_READY`),
-`test_dn2_filter_capture.py` plays stock LOWPASS 4 and a custom filter side
-by side in the coupled emulator, with the filter envelope and an LFO moving
-the cutoff: the custom voice's captured cutoff and resonance must equal the
-stock voice's in every block.
+stack are preserved. It also boots a build with a paged SHARC synth and
+reads its pages and rows through the stock accessors. With DigiKit
+(`ELEKLOADER_DIGIKIT`, its `ELEKLOADER_DIGI_EMUD` and the ready inputs in
+`ELEKLOADER_DN2_EMU_READY`), `test_dn2_filter_capture.py` plays stock
+LOWPASS 4 and a custom filter side by side in the coupled emulator, with the
+filter envelope and an LFO moving the cutoff: the custom voice's captured
+cutoff and resonance must equal the stock voice's in every block.
 
 ```bash
 python tests/test_units.py        # includes SHARC; missing optional inputs are reported as skips

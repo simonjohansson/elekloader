@@ -113,8 +113,9 @@ class LinkTests(unittest.TestCase):
                 (ROOT/'mods/machines-dn2/mod.json').read_text())['sites']
                 if s.get('op') == 'jmp' and (s.get('target', '').startswith('dn2_filter_')
                     or s.get('target') == 'dn2_synth_parameter_type')}
-            self.assertEqual(len(detours), 9)
+            self.assertEqual(len(detours), 10)
             self.assertEqual(detours['0x40036478'], 'dn2_synth_parameter_type')
+            self.assertEqual(detours['0x4006eca0'], 'dn2_filter_curve')
             self.assertEqual(detours['0x4003649c'], 'dn2_filter_parameter_type')
             for addr, target in detours.items():
                 off = int(addr, 0) - dev.main_load

@@ -7,7 +7,8 @@
     .set dn2_stock_descriptors, STOCK_DESCRIPTORS
     .set dn2_unknown_name, UNKNOWN_NAME
     .set dn2_unknown_label, UNKNOWN_LABEL
-    .globl dn2_stock_filter_names, dn2_stock_filter_descriptors
+    .globl dn2_stock_filter_names, dn2_stock_filter_descriptors, dn2_pixel
+    .set dn2_pixel, PIXEL
     .set dn2_stock_filter_names, FILTER_NAMES
     .set dn2_stock_filter_descriptors, FILTER_DESCRIPTORS
 
@@ -253,7 +254,7 @@ dn2_filter_reader:
     mvs.b 0xdf(%a0),%d0
     move.l %d1,-(%sp)
     move.l 8(%sp),%d1
-    .irp caller,FRC0,FRC1,FRC2,FRC3,FRC4,FRC5,FRC6,FRC7,dn2_filter_real_return
+    .irp caller,FRC0,FRC1,FRC2,FRC3,FRC4,FRC5,FRC6,FRC7,FRC8,dn2_filter_real_return
     cmpi.l #\caller,%d1
     beq.w 1f
     .endr
@@ -266,3 +267,20 @@ dn2_filter_reader:
     lea 8(%sp),%sp
 1:  move.l (%sp)+,%d1
     jmp FILTER_READER_EPILOGUE
+
+| The FLTR page's curve dispatch: stock types keep their curves; others draw a custom filter's own.
+    .globl dn2_filter_curve
+dn2_filter_curve:
+    moveq #5,%d0
+    cmp.l %d4,%d0
+    bcs.s 1f
+    jmp CURVE_STOCK
+1:  SAVE
+    move.l %d7,-(%sp)
+    move.l %d6,-(%sp)
+    move.l %d3,-(%sp)
+    move.l %d4,-(%sp)
+    jsr dn2_filter_draw_curve
+    lea 16(%sp),%sp
+    RESTORE
+    jmp CURVE_SKIP

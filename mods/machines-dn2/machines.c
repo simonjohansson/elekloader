@@ -220,3 +220,24 @@ uintptr_t dn2_filter_label(uint32_t type)
     return (uintptr_t)(type < COUNT ? filters[type] ? filters[type]->label : "MISS"
                                    : dn2_unknown_label);
 }
+
+/* The stock pixel writer: bounds-checked, on the page's canvas. */
+extern void dn2_pixel(void *canvas, int32_t x, int32_t y, int32_t on);
+
+/* A custom filter's response graph: canvas x 21..71, y 7..23 (screen y 40..56). */
+void dn2_filter_draw_curve(uint32_t type, void *canvas, uint32_t freq, uint32_t reso)
+{
+    if (type >= COUNT)
+        return;
+    dn2_filters_ensure();
+    const struct mk2_filter *f = filters[type];
+    if (!f || !filter_voices[type] || !f->curve)
+        return;
+    uint8_t y[51];
+    for (unsigned x = 0; x < 51; ++x)
+        y[x] = 0xff;
+    f->curve(freq, reso, y);
+    for (unsigned x = 0; x < 51; ++x)
+        if (y[x] != 0xff)
+            dn2_pixel(canvas, 21 + x, 23 - (y[x] > 16 ? 16 : y[x]), 1);
+}

@@ -52,7 +52,11 @@
   "FRC4": "0x40071ece",
   "FRC5": "0x400d5be8",
   "FRC6": "0x400d68fc",
-  "FRC7": "0x400d7324"
+  "FRC7": "0x400d7324",
+  "FRC8": "0x4006ec9a",
+  "PIXEL": "0x40113ed6",
+  "CURVE_STOCK": "0x4006eca8",
+  "CURVE_SKIP": "0x4006ed3a"
  },
  "sites": [
   {
@@ -230,6 +234,12 @@
    "op": "bytes",
    "new": "143c0021",
    "kind": "code"
+  },
+  {
+   "addr": "0x4006eca0",
+   "stock": "7005b08465000094",
+   "op": "jmp",
+   "target": "dn2_filter_curve"
   }
  ],
  "collections": {

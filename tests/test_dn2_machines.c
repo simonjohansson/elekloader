@@ -38,9 +38,23 @@ const struct descriptor dn2_stock_filter_descriptors[6] = {
     {"MM", "MM", {45,46,47,48,36,37,38,49,10}}, {"LP4", "LP4", {39}},
     {"EQ", "EQ", {41}}, {"C-", "C-", {54}}, {"LPHP", "LPHP", {57}}, {"C+", "C+", {318}}
 };
-static const struct mk2_filter filter_low = {6, 0, "CLONE FILTER", "CLONE"};
+static uint32_t curve_args[2];
+static void test_curve(uint32_t freq, uint32_t reso, uint8_t y[51])
+{
+    curve_args[0] = freq; curve_args[1] = reso;
+    for (unsigned x = 0; x < 51; ++x)
+        y[x] = x % 3 == 0 ? 0xff : (uint8_t)(x * 2);  /* 0xff skipped, above 16 clamped */
+}
+static int32_t dots[51][2];
+static unsigned dot_count;
+void dn2_pixel(void *canvas, int32_t x, int32_t y, int32_t on)
+{
+    assert(canvas == (void *)0x1234 && on == 1 && dot_count < 51);
+    dots[dot_count][0] = x; dots[dot_count++][1] = y;
+}
+static const struct mk2_filter filter_low = {6, 0, "CLONE FILTER", "CLONE", test_curve};
 static const struct mk2_filter filter_high = {31, 5, "comb clone", "comb"};
-static const struct mk2_filter filter_unity = {7, 1, "UNITY", "UNITY"};
+static const struct mk2_filter filter_unity = {7, 1, "UNITY", "UNITY", test_curve};
 static const struct mk2_filter filter_duplicate_clone = {6, 2, "DUPLICATE", "DUP"};
 static const struct mk2_filter filter_bad = {8, 6, "BAD", "BAD"};
 static const struct mk2_filter filter_outside = {32, 0, "BAD", "BAD"};
@@ -107,6 +121,24 @@ static void check_filters(void)
     unsigned size = dn2_filter_list_bytes;
     dn2_filters_ensure();
     assert(size == dn2_filter_list_bytes);
+    /* Only a registered custom filter with a curve draws: not a clone, a missing ID or a stray type. */
+    for (unsigned type = 0; type < 40; ++type)
+        if (type != 7)
+            dn2_filter_draw_curve(type, (void *)0x1234, 1, 2);
+    assert(dot_count == 0);
+#ifndef EMPTY
+    dn2_filter_draw_curve(7, (void *)0x1234, 0x4000, 0x2180);
+    assert(curve_args[0] == 0x4000 && curve_args[1] == 0x2180);
+    unsigned n = 0;
+    for (unsigned x = 0; x < 51; ++x) {
+        if (x % 3 == 0)
+            continue;
+        unsigned v = x * 2 > 16 ? 16 : x * 2;
+        assert(dots[n][0] == (int32_t)(21 + x) && dots[n][1] == (int32_t)(23 - v));
+        ++n;
+    }
+    assert(dot_count == n);
+#endif
 }
 
 int main(void)

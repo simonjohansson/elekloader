@@ -135,6 +135,68 @@ class ParameterDispatchTests(unittest.TestCase):
                         self.assertEqual(row['d'][0], 1, row)
                         self.assertEqual(row['reads'], dispatched[0]['reads'])
 
+    def test_curve_plotter_draws_only_inside_the_graph(self):
+        from elekloader import patch, syx
+        from elekloader.sdk import build as sdk
+        from elekloader.sdk.sharc import filter_artifact
+
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            base = [sdk.build(str(ROOT / 'mods' / source), STOCK, str(work / source))[0]
+                    for source in ('core-dn2', 'machines-dn2')]
+            stage = work / 'curve'
+            stage.mkdir()
+            # In range, above 16 (drawn at the top) and 0xff (no dot), across all 51 columns.
+            (stage / 'machine.c').write_text('#include "mk2/machines.h"\n'
+                'static void curve(uint32_t freq, uint32_t reso, uint8_t y[51]) {\n'
+                '    for (unsigned x = 0; x < 51; ++x) y[x] = x % 4 == 3 ? 0xff : x < 17 ? x : 200;\n'
+                '    y[0] = freq >> 8; y[1] = reso >> 8; }\n'
+                'const struct mk2_filter custom = {8,1,"CURVE","CURVE",curve};\n')
+            (stage / 'kernel.json').write_text(json.dumps(filter_artifact(bytes(4), bytes(4), 0, 8, 20)))
+            (stage / 'mod.json').write_text(json.dumps({
+                'id': 'curve-test', 'version': '0.1', 'device': 'digitone-mk2', 'os': '1.12',
+                'sources': ['machine.c'], 'sharc': {'artifact': 'kernel.json'}, 'resources': {'core': '0.1'},
+                'requires': ['core', 'machines-dn2'],
+                'contribute': [{'to': 'mk2_voice_filters', 'data': '00000000',
+                                'relocs': [[0, 'abs32', 'sym:custom', 0]]}]}))
+            mod = sdk.build(str(stage), STOCK, str(stage / 'build'))[0]
+            outputs, manifest = patch.build(STOCK, base + [mod], 'TEST', log=lambda *args: None)
+            firmware = stage / 'test.syx'
+            firmware.write_bytes(outputs['syx'])
+            # A 128 x 64 canvas, stored by column, 2 words a column (the stock pixel writer's layout).
+            canvas, data = 0x47f3a000, 0x47f3a100
+            header = bytearray(0x18)
+            header[4:8], header[8:12] = (128).to_bytes(4, 'big'), (64).to_bytes(4, 'big')
+            header[12:16], header[20:24] = (2).to_bytes(4, 'big'), data.to_bytes(4, 'big')
+            pokes = [{'addr': hex(canvas), 'hex': header.hex()}, {'addr': hex(data), 'hex': '00' * 1024}]
+            draw = manifest['_map']['dn2_filter_draw_curve']
+            calls = [{'pc': hex(draw), 'args': [str(t), hex(canvas), '0x0c00', '0x0500'],
+                      'reads': [{'addr': hex(data), 'len': 1024}]} for t in (8, 1, 6, 9)]
+            request = stage / 'request.json'
+            request.write_text(json.dumps({'pokes': pokes, 'calls': calls}))
+            result = subprocess.run([CF_CALL, str(firmware), str(request), '--base-sha', syx.Syx.load(STOCK).sha256],
+                                    capture_output=True, text=True, timeout=300)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            rows = [json.loads(line) for line in result.stdout.splitlines() if line.startswith('{')]
+            self.assertEqual(len(rows), 4)
+            expected = set()
+            for x in range(51):
+                v = 12 if x == 0 else 5 if x == 1 else None if x % 4 == 3 else min(x, 16)
+                if v is not None:
+                    expected.add((21 + x, 23 - v))
+            # The canvas persists across the calls: only the custom ID draws, the others add nothing.
+            for row in rows:
+                self.assertTrue(row['ok'], row)
+                self.assertEqual(row['d'][2:], row['d_in'][2:])
+                self.assertEqual(row['a'][2:7], row['a_in'][2:7])
+                self.assertEqual(row['a'][7], row['sp0'] + 4)
+                bits = bytes.fromhex(row['reads'][0])
+                drawn = {(x, y) for x in range(128) for y in range(64)
+                         if int.from_bytes(bits[8 * x + 4 * (y >> 5):8 * x + 4 * (y >> 5) + 4], 'big')
+                         & (0x80000000 >> (y & 31))}
+                self.assertEqual(drawn, expected)
+                self.assertTrue(all(21 <= x <= 71 and 7 <= y <= 23 for x, y in drawn))
+
 
 if __name__ == '__main__':
     unittest.main()

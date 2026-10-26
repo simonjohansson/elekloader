@@ -26,5 +26,10 @@ struct mk2_synth {
 struct mk2_filter {
     uint32_t id, clone;
     const char *name, *label;
+    /* Optional, custom filters only: draws the FLTR page's response graph. freq and reso
+     * are the page's shown FREQ and RESO, locks included, as 16-bit words (64.00 is
+     * 0x4000). Fill y[0..50], one per column left to right, with 0 (bottom) to 16 (top),
+     * or 0xff for no dot; larger values are drawn at 16. Without it the graph stays empty. */
+    void (*curve)(uint32_t freq, uint32_t reso, uint8_t y[51]);
 };
 #endif

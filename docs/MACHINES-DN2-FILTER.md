@@ -50,7 +50,8 @@ supplies the FLTR page, defaults, knobs, CC and NRPN, but not the audio:
 the stock algorithm never runs for the custom ID. Use LOWPASS 4 (1). Its
 page shows ATK/DEC/SUS/REL, FREQ/RESO, a dotted empty G and ENV under the
 stock envelope graphic, and FUNC+A edits pre-delay. The response graph
-stays empty. The kernel receives the resulting cutoff and resonance; it
+stays empty unless the descriptor's optional fifth field, `curve`, draws
+it. The kernel receives the resulting cutoff and resonance; it
 does not implement pre-delay, the envelope or ENV itself. The same mod
 must carry a
 `dn2-filter-mono32-l2-v1` artifact with the matching `machine_id` and
@@ -62,6 +63,16 @@ both a clone and a custom filter.
 #include "digitone-mk2/filter.h"
 void sharc_filter_render(const struct dn2_filter_input *in);
 ```
+
+The `curve` callback runs on the ColdFire when the FLTR page draws:
+`void curve(uint32_t freq, uint32_t reso, uint8_t y[51])`. `freq` and `reso`
+are the shown FREQ and RESO, including a lock being edited, as 16-bit
+words (the whole value in the high byte: 64.00 is `0x4000`). Fill one entry
+per graph column, left to right, with 0 (bottom) to 16 (top), or `0xff`
+for no dot; the core draws values above 16 at the top and nothing outside
+the graph (screen x 21..71, y 40..56). It hooks the page's curve dispatch
+at `0x4006eca0`, which stock filter types pass through unchanged. Keep it
+short: it runs on every redraw of the page.
 
 The twenty-byte input contains `float *samples`, `uint32_t slot`,
 `uint32_t flags`, `float cutoff` and `float resonance`.

@@ -1,7 +1,7 @@
 # Digitone II filters
 
-Experimental, OS 1.12 only. `machines-dn2` 0.1 registers stock filter
-clones and custom SHARC filters in **FUNC+SYN → FLTR**. Filter selection
+Experimental, OS 1.12 only. `machines-dn2` 0.1 registers custom SHARC
+filters in **FUNC+SYN → FLTR**. Filter selection
 is independent of the synth: a custom filter can process SINE or a stock
 synth. Require core-dn2 0.1. Timing, full-polyphony and long-duration
 stability are unqualified.
@@ -10,29 +10,27 @@ stability are unqualified.
 
 ```c
 #include "mk2/machines.h"
-const struct mk2_filter my_filter = {6, 0, "CLONE FILTER", "CLONE"};
+const struct mk2_filter my_filter = {8, "LOWPASS", "LOWPASS"};
 ```
 
-Contribute its pointer to `mk2_filters`, with the normal SDK manifest:
+Contribute its pointer to `mk2_voice_filters`, with the normal SDK manifest:
 
 ```json
 "contribute": [
- {"to": "mk2_filters", "data": "00000000",
+ {"to": "mk2_voice_filters", "data": "00000000",
   "relocs": [[0, "abs32", "sym:my_filter", 0]]}
 ]
 ```
 
 Require `core` and `machines-dn2`, and set `resources.core` to `"0.1"`.
-The fields are permanent ID **6..31**, stock filter **0..5**, name (ASCII,
-at most 31 characters) and label (at most 7). Stock types are MULTI-MODE,
-LOWPASS 4, EQUALIZER, COMB-, LEGACY LP/HP and COMB+, respectively. The linker
+The fields are permanent ID **6..31**, name (ASCII, at most 31 characters),
+label (at most 7) and an optional `curve` (below). The linker
 refuses duplicate filter IDs and stock-ID conflicts. A synth and filter may
 use the same numeric ID: their namespaces and stored bytes are separate.
 Never reuse a distributed filter's ID for a different filter.
 
 The selector lists the six stock filters in their native order, followed
-by registered filters in ID order. For clones, pages, defaults, parameters
-and audio use the chosen stock filter. Saving and copying retain the ID.
+by registered filters in ID order. Saving and copying retain the ID.
 A missing registration keeps its saved ID, disappears from the selector
 and uses **MULTI-MODE**, with the existing parameter values. This can change
 the sound. Keep project backups when changing installed mods. Removing the
@@ -44,20 +42,17 @@ needs independently qualified firmware adapters and limits. Synths use
 
 ## Custom DSP
 
-Contribute the same four-field descriptor to `mk2_voice_filters` instead
-of `mk2_filters`. The stock-type field is still 0..5. That stock filter
-supplies the FLTR page, defaults, knobs, CC and NRPN, but not the audio:
-the stock algorithm never runs for the custom ID. Use LOWPASS 4 (1). Its
-page shows ATK/DEC/SUS/REL, FREQ/RESO, a dotted empty G and ENV under the
+LOWPASS 4, the host type, supplies the FLTR page, defaults, knobs, CC and
+NRPN, but not the audio: the stock algorithm never runs for the custom ID.
+Its page shows ATK/DEC/SUS/REL, FREQ/RESO, a dotted empty G and ENV under the
 stock envelope graphic, and FUNC+A edits pre-delay. The response graph
-stays empty unless the descriptor's optional fifth field, `curve`, draws
+stays empty unless the descriptor's optional last field, `curve`, draws
 it. The kernel receives the resulting cutoff and resonance; it
 does not implement pre-delay, the envelope or ENV itself. The same mod
 must carry a
 `dn2-filter-mono32-l2-v1` artifact with the matching `machine_id` and
 `entries: {"render_offset_bytes": ...}`. The linker refuses a missing or
-mismatched payload, conflicting filter IDs, or the same ID registered as
-both a clone and a custom filter.
+mismatched payload and conflicting filter IDs.
 
 ```c
 #include "digitone-mk2/filter.h"

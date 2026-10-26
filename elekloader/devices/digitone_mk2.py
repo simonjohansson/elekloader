@@ -87,7 +87,6 @@ DEVICE = Device(
                 'voice_abi': 'dn2-voice-mono32-l2-v1',
                 'voice_range': (0x20090000, 0x20094000),
                 'voice_table': 'mk2_voice_synths',
-                'voice_clone_table': 'mk2_synths',
                 'voice_adapter_sha256': '11cb0abb8a60cd9e97253ff7a8c063b90bd70f110a1cee95c52c98a98dbbcef1',
                 'voice_adapter_bytes': 2048,
                 'voice_state_bytes': 1024,
@@ -97,7 +96,6 @@ DEVICE = Device(
                 'filter_abi': 'dn2-filter-mono32-l2-v1',
                 'filter_range': (0x20094000, 0x20098000),
                 'filter_table': 'mk2_voice_filters',
-                'filter_clone_table': 'mk2_filters',
                 'filter_adapter_sha256': '266742031d024d17c88afc0d84c06caf65dde710ed6866901a08105c81b20fe2',
                 'filter_adapter_bytes': 2048,
                 'filter_state_bytes': 1024,
@@ -132,9 +130,7 @@ DEVICE = Device(
         'ddr': (0x47F00000, 0x47F40000),          # above the DMA buffers, below the boot stack
     },
     ddr=(0x47F00000, 0x47F40000),
-    slot_claims=(('mk2_synths', 0, 32, 'mk2-synth'),
-                 ('mk2_voice_synths', 0, 32, 'mk2-synth'),  # shared stable synth IDs
-                 ('mk2_filters', 0, 32, 'mk2-filter'),
+    slot_claims=(('mk2_voice_synths', 0, 32, 'mk2-synth'),  # stable synth IDs
                  ('mk2_voice_filters', 0, 32, 'mk2-filter'),
                  ('mk2_voice_pages', 0, 32, 'mk2-pages')),   # one pages entry per synth ID
     recovery=('hold FUNC while powering on for the STARTUP menu, press TRIG 4 (OS UPGRADE), '

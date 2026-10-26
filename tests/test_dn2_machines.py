@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-"""Exercise the clone registry and optional native MIDI dispatch."""
+"""Exercise the machine registry, its host types and native MIDI dispatch."""
 from pathlib import Path
 import json
 import os
@@ -63,8 +63,7 @@ class VoicePagesTests(unittest.TestCase):
             stage.mkdir()
             (stage / 'machine.c').write_text(
                 '#include "mk2/machines.h"\n'
-                'const struct mk2_synth voice = {8, 0, "PAGED", "PAGED"};\n'
-                'const struct mk2_synth clone = {5, 1, "CLONE", "CLONE"};\n'
+                'const struct mk2_synth voice = {8, "PAGED", "PAGED"};\n'
                 'static const struct mk2_param a = {"ALPH", 100}, b = {"BETA", 3};\n'
                 'static const struct mk2_page two[2] = {{{&a, 0, &b}}, {{0}}};\n'
                 'const struct mk2_voice_pages pages = {8, 2, two};\n')
@@ -74,8 +73,7 @@ class VoicePagesTests(unittest.TestCase):
                 'sources': ['machine.c'], 'sharc': {'artifact': 'kernel.json'},
                 'resources': {'core': '0.1'}, 'requires': ['core', 'machines-dn2'],
                 'contribute': [{'to': table, 'data': '00000000', 'relocs': [[0, 'abs32', 'sym:' + symbol, 0]]}
-                               for table, symbol in (('mk2_voice_synths', 'voice'), ('mk2_synths', 'clone'),
-                                                     ('mk2_voice_pages', 'pages'))]}))
+                               for table, symbol in (('mk2_voice_synths', 'voice'), ('mk2_voice_pages', 'pages'))]}))
             mod = sdk.build(str(stage), STOCK, str(stage / 'build'))[0]
             outputs, _manifest = patch.build(STOCK, base + [mod], 'TEST', log=lambda *args: None)
             firmware = stage / 'test.syx'
@@ -83,17 +81,17 @@ class VoicePagesTests(unittest.TestCase):
             page_count, slot_code, row_slot, row_cc, value_class, cc_code, nrpn_code = (
                 0x400c2636, 0x400dc18e, 0x400dbe28, 0x400dc406, 0x400c257c, 0x400dc978, 0x400dca5a)
             # Stock synths keep their counts (FM TONE 4, WAVETONE 3, FM DRUM 4, SWARMER 1, MIDI 1);
-            # a clone has its original's.
+            # a missing synth has MIDI's.
             checks = [(page_count, [8], 2), (page_count, [0], 4), (page_count, [1], 3),
                       (page_count, [2], 4), (page_count, [3], 1), (page_count, [4], 1),
-                      (page_count, [5], 3),
+                      (page_count, [5], 1),
                       (slot_code, [25, 8, 0], 321), (slot_code, [26, 8, 0], 0),
                       (slot_code, [27, 8, 0], 323), (slot_code, [33, 8, 0], 0),
                       (slot_code, [41, 8, 0], 0),
                       (row_slot, [321], 25), (row_slot, [323], 27), (row_slot, [0xd5], 36),
                       (row_cc, [321], 40), (row_cc, [0xd5], 49),
                       # CC/NRPN by position: FM TONE's CC 40/41/42 and NRPN 201/202/203 are slots
-                      # 25/26/27, ALPH, empty and BETA on the clone of FM TONE; stock FM TONE unchanged.
+                      # 25/26/27, ALPH, empty and BETA on the host FM TONE; stock FM TONE unchanged.
                       (cc_code, [0, 8, 0, 40], 321), (cc_code, [0, 8, 0, 41], 0),
                       (cc_code, [0, 8, 0, 42], 323), (cc_code, [0, 0, 0, 40], 200),
                       (nrpn_code, [0, 8, 0, 201], 321), (nrpn_code, [0, 8, 0, 202], 0),
@@ -123,7 +121,7 @@ class VoicePagesTests(unittest.TestCase):
 @unittest.skipUnless(CF_CALL and STOCK and os.environ.get('ELEKLOADER_CROSS'),
                      'needs DN2 stock, cross compiler and ELEKLOADER_CF_CALL')
 class ParameterDispatchTests(unittest.TestCase):
-    def test_parameter_lookup_maps_clones_and_custom_filters_but_identity_reads_keep_ids(self):
+    def test_parameter_lookup_maps_custom_filters_to_the_host_but_identity_reads_keep_ids(self):
         from elekloader import patch, syx
         from elekloader.devices.digitone_mk2 import DEVICE
         from elekloader.sdk import build as sdk
@@ -138,15 +136,14 @@ class ParameterDispatchTests(unittest.TestCase):
             work = Path(tmp)
             base = [sdk.build(str(ROOT / 'mods' / source), STOCK, str(work / source))[0]
                     for source in ('core-dn2', 'machines-dn2')]
-            for kind, first, getter_pc, type_offset, producer in (
-                    ('synth', 5, 0x40036462, 0xde, voice_artifact),
-                    ('filter', 6, 0x40036486, 0xdf, filter_artifact)):
+            for kind, first, getter_pc, type_offset, producer, dispatch in (
+                    ('synth', 5, 0x40036462, 0xde, voice_artifact, (0,)),
+                    ('filter', 6, 0x40036486, 0xdf, filter_artifact, (1, 8))):
                 with self.subTest(kind=kind):
                     stage = work / kind
                     stage.mkdir()
                     (stage / 'machine.c').write_text('#include "mk2/machines.h"\n'
-                        'const struct mk2_%s clone={%d,0,"CLONE","CLONE"};\n'
-                        'const struct mk2_%s custom={8,1,"CUSTOM","CUSTOM"};\n' % (kind, first, kind))
+                        'const struct mk2_%s custom={8,"CUSTOM","CUSTOM"};\n' % kind)
                     (stage / 'kernel.json').write_text(json.dumps(producer(bytes(4), bytes(4), 0, 8, 20)))
                     (stage / 'mod.json').write_text(json.dumps({
                         'id': kind + '-dispatch-test', 'version': '0.1', 'device': 'digitone-mk2', 'os': '1.12',
@@ -154,8 +151,7 @@ class ParameterDispatchTests(unittest.TestCase):
                         'resources': {'core': '0.1'}, 'requires': ['core', 'machines-dn2'],
                         'contribute': [{'to': table, 'data': '00000000',
                                         'relocs': [[0, 'abs32', 'sym:' + symbol, 0]]}
-                                       for table, symbol in [('mk2_' + kind + 's', 'clone'),
-                                                             ('mk2_voice_' + kind + 's', 'custom')]]}))
+                                       for table, symbol in [('mk2_voice_' + kind + 's', 'custom')]]}))
                     mod = sdk.build(str(stage), STOCK, str(stage / 'build'))[0]
                     outputs, manifest = patch.build(STOCK, base + [mod], 'TEST', log=lambda *args: None)
                     firmware = stage / 'test.syx'
@@ -179,17 +175,18 @@ class ParameterDispatchTests(unittest.TestCase):
                         for mode, pc in pcs.items():
                             calls.append({'pc': hex(pc), 'args': [hex(owner if mode == 'parameter' else address)]})
                             modes.append(mode)
-                            # A custom synth keeps its ID and a custom filter reads as its stock clone. A
-                            # missing synth keeps its own type for MIDI (no stock synth map has it) but the
-                            # stock reader sees MIDI's; a missing filter falls back to MULTI-MODE.
+                            # A custom synth keeps its ID and a custom filter reads as LOWPASS 4, its
+                            # host. A missing synth keeps its own type for MIDI (no stock synth map has
+                            # it) but the stock reader sees MIDI's; a missing filter falls back to
+                            # MULTI-MODE.
                             if mode == 'identity' or not first <= machine_id < 32:
                                 expected.append(machine_id)
                             elif kind == 'synth':
-                                expected.append(8 if machine_id == 8 else 0 if machine_id == first
-                                                else machine_id if mode == 'parameter' else 4)
+                                expected.append(machine_id if machine_id == 8 or mode == 'parameter' else 4)
                             else:
-                                expected.append({first: 0, 8: 1}.get(machine_id, 0))
-                    # Native MIDI handlers must reach the setter through the real owner getters.
+                                expected.append(1 if machine_id == 8 else 0)
+                    # Native MIDI handlers must reach the setter through the real owner getters; a
+                    # custom filter's FREQ CC and NRPN set the parameter LOWPASS 4's set.
                     owner_vtable, setter, allowed = 0x47f3a200, 0x47f3a320, 0x47f3a300
                     table = bytearray(0x7c)
                     for offset, address in ((0x34, setter), (0x38, allowed),
@@ -198,7 +195,7 @@ class ParameterDispatchTests(unittest.TestCase):
                     pokes += [{'addr': hex(owner_vtable), 'hex': table.hex()},
                               {'addr': hex(allowed), 'hex': '70014e75'},
                               {'addr': hex(setter), 'hex': '202f000823c047f3f0004e75'}]
-                    for i, machine_id in enumerate((0, first)):
+                    for i, machine_id in enumerate(dispatch):
                         sound_address, owner = 0x47f3e000 + i * 0x100, 0x47f3e200 + i * 0x20
                         sound = bytearray(0xe0)
                         sound[:4] = vtable.to_bytes(4, 'big')
@@ -249,7 +246,7 @@ class ParameterDispatchTests(unittest.TestCase):
                 'static void curve(uint32_t freq, uint32_t reso, uint8_t y[51]) {\n'
                 '    for (unsigned x = 0; x < 51; ++x) y[x] = x % 4 == 3 ? 0xff : x < 17 ? x : 200;\n'
                 '    y[0] = freq >> 8; y[1] = reso >> 8; }\n'
-                'const struct mk2_filter custom = {8,1,"CURVE","CURVE",curve};\n')
+                'const struct mk2_filter custom = {8,"CURVE","CURVE",curve};\n')
             (stage / 'kernel.json').write_text(json.dumps(filter_artifact(bytes(4), bytes(4), 0, 8, 20)))
             (stage / 'mod.json').write_text(json.dumps({
                 'id': 'curve-test', 'version': '0.1', 'device': 'digitone-mk2', 'os': '1.12',

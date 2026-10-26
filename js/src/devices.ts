@@ -33,7 +33,6 @@ export type SharcProfile = {
   voiceAbi?: string
   voiceRange?: Range
   voiceTable?: string
-  voiceCloneTable?: string
   voiceAdapterSha256?: string
   voiceAdapterBytes?: number
   voiceStateBytes?: number
@@ -43,7 +42,6 @@ export type SharcProfile = {
   filterAbi?: string
   filterRange?: Range
   filterTable?: string
-  filterCloneTable?: string
   filterAdapterSha256?: string
   filterAdapterBytes?: number
   filterStateBytes?: number
@@ -263,12 +261,12 @@ export const DIGITONE_MK2: Device = {
         abi: 'dn2-master-mono32-v1', pitchRange: [0x282dda00, 0x282dde00],
         l2Abi: 'dn2-master-mono32-l2-v1', l2AppRange: [0x20090000, 0x20098000],
         voiceAbi: 'dn2-voice-mono32-l2-v1', voiceRange: [0x20090000, 0x20094000],
-        voiceTable: 'mk2_voice_synths', voiceCloneTable: 'mk2_synths',
+        voiceTable: 'mk2_voice_synths',
         voiceAdapterSha256: '11cb0abb8a60cd9e97253ff7a8c063b90bd70f110a1cee95c52c98a98dbbcef1',
         voiceAdapterBytes: 2048, voiceStateBytes: 1024, voiceBindingOffset: 15872, voiceStackMax: 128,
         voiceHook: [0x20004a36, '8715ffffeeff', '3e06bc000080'],
         filterAbi: 'dn2-filter-mono32-l2-v1', filterRange: [0x20094000, 0x20098000],
-        filterTable: 'mk2_voice_filters', filterCloneTable: 'mk2_filters',
+        filterTable: 'mk2_voice_filters',
         filterAdapterSha256: '266742031d024d17c88afc0d84c06caf65dde710ed6866901a08105c81b20fe2',
         filterAdapterBytes: 2048, filterStateBytes: 1024, filterBindingOffset: 15872, filterStackMax: 20,
         filterHook: [0x28392b0e, '140f5280c0db', '3e06bc0000a0'],
@@ -287,8 +285,7 @@ export const DIGITONE_MK2: Device = {
   stage: 0x40400000, flashAt: 0x80000, flashLimit: 0x380000, trailer: 'hmac', hmacKeyFrom: [2, 'Multiplier'],
   areas: { ddr: [0x47f00000, 0x47f40000] },
   ddr: [0x47f00000, 0x47f40000],
-  slotClaims: [['mk2_synths', 0, 32, 'mk2-synth'], ['mk2_voice_synths', 0, 32, 'mk2-synth'],
-    ['mk2_filters', 0, 32, 'mk2-filter'], ['mk2_voice_filters', 0, 32, 'mk2-filter'],
+  slotClaims: [['mk2_voice_synths', 0, 32, 'mk2-synth'], ['mk2_voice_filters', 0, 32, 'mk2-filter'],
     ['mk2_voice_pages', 0, 32, 'mk2-pages']],   // one pages entry per synth ID
   recovery: 'hold FUNC while powering on for the STARTUP menu, press TRIG 4 (OS UPGRADE), '
     + 'then send the stock .syx over MIDI (not USB)',

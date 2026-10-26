@@ -355,13 +355,12 @@ export function check(mods: Mod2[], image: Uint8Array): string[] {
   for (const app of sharcMods) {
     const kind = app.sharc!.machineKind
     if (kind) {
-      const profile = app.rel.sharc!, table = profile[`${kind}Table`], cloneTable = profile[`${kind}CloneTable`]
+      const profile = app.rel.sharc!, table = profile[`${kind}Table`]
       const contributions = app.contribute.filter(c => c.to === table)
       const expected = app.dev.slotClaims.filter(([name]) => name === table)
         .map(([, , , prefix]) => `${prefix}:${app.sharc!.machineId}`)
       if (contributions.length !== 1 || contributions[0].data.length !== 4 ||
-        !expected.length || JSON.stringify(app.impliedNames(image, table)) !== JSON.stringify(expected) ||
-        expected.some(name => app.impliedNames(image, cloneTable).includes(name)))
+        !expected.length || JSON.stringify(app.impliedNames(image, table)) !== JSON.stringify(expected))
         bad.push(`${app.label()}: SHARC ${kind} machine_id must match its single native ${kind} registration`)
       continue
     }

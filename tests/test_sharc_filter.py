@@ -111,7 +111,7 @@ class PairLinkTests(unittest.TestCase):
                 p = root / name
                 p.mkdir()
                 (p / 'machine.c').write_text('#include "mk2/machines.h"\n'
-                    'const struct mk2_%s %s = {%d,0,"PAIR","PAIR"};\n' % (native, symbol, machine_id))
+                    'const struct mk2_%s %s = {%d,"PAIR","PAIR"};\n' % (native, symbol, machine_id))
                 (p / 'kernel.json').write_text(json.dumps(producer(bytes(4), bytes(4), 0, machine_id,
                                                                   128 if kind == 'voice' else 12)))
                 (p / 'mod.json').write_text(json.dumps({
@@ -222,7 +222,6 @@ class PairLinkTests(unittest.TestCase):
                 (lambda d: d['sharc'].update(machine_id=7), mismatch),
                 (lambda d: d.update(contribute=[]), mismatch),
                 (lambda d: d['contribute'][0].update(to=PROFILE[other + '_table']), mismatch),
-                (lambda d: d['contribute'].append(dict(d['contribute'][0], to=PROFILE[kind + '_clone_table'])), mismatch),
             ]
             for change, error in cases:
                 doc = copy.deepcopy(original.doc)
@@ -233,12 +232,11 @@ class PairLinkTests(unittest.TestCase):
                     if doc['contribute'] and doc['contribute'][0]['to'] == PROFILE[other + '_table']:
                         self.assertIn('%s: DN2 %s registration requires a matching SHARC %s payload'
                                       % (original.label(), other, other), errors)
-            clone = copy.deepcopy(original.doc)
-            clone['id'] = kind + '-clone'
-            del clone['sharc']
-            clone['contribute'][0]['to'] = PROFILE[kind + '_clone_table']
-            errors = link.check(self.base + [original, link.Mod2(clone, 'clone')], self.image)
-            namespace = 'mk2-synth' if kind == 'voice' else 'mk2-filter'
-            self.assertTrue(any('both claim %s:6' % namespace in s for s in errors), errors)
+            # The old registration tables are gone: the generic check refuses an entry there.
+            legacy = copy.deepcopy(original.doc)
+            table = 'mk2_synths' if kind == 'voice' else 'mk2_filters'
+            legacy['contribute'].append(dict(legacy['contribute'][0], to=table))
+            self.assertIn('%s adds to table %s, which no given mod declares' % (original.label(), table),
+                          link.check(self.base + [link.Mod2(legacy, 'legacy')], self.image))
         errors = link.check([self.base[0], self.mods['filter-6']], self.image)
         self.assertTrue(any('requires machines-dn2' in s for s in errors), errors)

@@ -16,8 +16,8 @@ The same command checks the DN2 machine registry. The
 checks its producer and kernels with `mise run test`.
 With `ELEKLOADER_DN2_SYX`, `ELEKLOADER_CROSS` and `ELEKLOADER_CF_CALL` set
 to DigiKit's `cf_call` executable, the registry suite also executes the
-compiled filter reader: parameter lookup maps clones and custom filters to
-their stock clone, identity reads keep saved IDs, and registers and the
+compiled readers: parameter lookup maps a custom filter to its host type,
+LOWPASS 4, identity reads keep saved IDs, and registers and the
 stack are preserved. It also boots a build with a paged SHARC synth and
 reads its pages and rows through the stock accessors. With DigiKit
 (`ELEKLOADER_DIGIKIT`, its `ELEKLOADER_DIGI_EMUD` and the ready inputs in

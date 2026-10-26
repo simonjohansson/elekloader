@@ -20,8 +20,9 @@ struct row {
 #define TEMPLATE 0xd5               /* A Env Decay: a plain 0..127 knob */
 #define SLOT 25
 #define PAGE_END 10                 /* Track Level ends a stock page */
+#define SYNTH_HOST 0                /* FM TONE: the stock type the OS sees for a custom synth */
+#define FILTER_HOST 1               /* LOWPASS 4: the same for a custom filter */
 
-extern const struct mk2_synth *const mk2_synths[];
 extern const struct mk2_synth *const mk2_voice_synths[];
 extern const struct mk2_voice_pages *const mk2_voice_pages[];
 extern const struct names dn2_stock_names[5];
@@ -31,7 +32,6 @@ extern const char dn2_unknown_name[], dn2_unknown_label[];
 
 uint32_t dn2_list[COUNT], dn2_list_bytes;
 static const struct mk2_synth *registered[COUNT];
-static uint8_t voices[COUNT];
 static struct descriptor descriptors[COUNT];
 static struct string_rep strings[COUNT][2];
 static uint32_t ready;
@@ -66,7 +66,7 @@ static unsigned label_length(const char *s)
 
 static int valid_pages(const struct mk2_voice_pages *p)
 {
-    if (p->id >= COUNT || !registered[p->id] || !voices[p->id] || page_count[p->id]
+    if (p->id >= COUNT || !registered[p->id] || page_count[p->id]
             || !p->page || !p->count || used_pages + p->count > ADDED / 8)
         return 0;
     for (unsigned i = 0; i < p->count; ++i)
@@ -78,11 +78,11 @@ static int valid_pages(const struct mk2_voice_pages *p)
     return 1;
 }
 
-/* The MIDI CC the clone's stock row for `slot` has, or -1: a knob takes its position's CC. */
-static int16_t clone_cc(int32_t clone, int32_t slot)
+/* The MIDI CC the host's stock row for `slot` has, or -1: a knob takes its position's CC. */
+static int16_t host_cc(int32_t slot)
 {
     for (unsigned code = 1; code < ROWS; ++code)
-        if (dn2_t1[code].owner == clone && dn2_t1[code].slot == slot)
+        if (dn2_t1[code].owner == SYNTH_HOST && dn2_t1[code].slot == slot)
             return dn2_t1[code].cc;
     return -1;
 }
@@ -117,12 +117,12 @@ static void build_pages(void)
                 r->mask = t->mask;
                 r->format = t->format;
                 r->end = t->end;
-                r->owner = registered[p->id]->clone;
+                r->owner = SYNTH_HOST;
                 r->slot = SLOT + 8 * i + k;
                 r->min = 0;
                 r->max = 127 << 8;
                 r->def = m->def << 8;
-                r->cc = clone_cc(r->owner, r->slot);
+                r->cc = host_cc(r->slot);
                 r->name = r->label = representation(&labels[code - ROWS], m->label, 5);
                 r->owner_name = strings[p->id][0].text;
             }
@@ -136,18 +136,11 @@ void dn2_ensure(void)
     if (ready)
         return;
     const struct mk2_synth *const *e;
-    for (unsigned voice = 0; voice < 2; ++voice)
-    for (e = voice ? mk2_voice_synths : mk2_synths; *e; ++e) {
+    for (e = mk2_voice_synths; *e; ++e) {
         const struct mk2_synth *s = *e;
-        if (s->id < FIRST || s->id >= COUNT || s->clone > 3 || !s->name || !s->label
-                || registered[s->id])
+        if (s->id < FIRST || s->id >= COUNT || !s->name || !s->label || registered[s->id])
             continue;
         registered[s->id] = s;
-        voices[s->id] = voice;
-        descriptors[s->id] = dn2_stock_descriptors[s->clone];
-        if (voice)
-            for (unsigned i = 0; i < 9; ++i)
-                descriptors[s->id].params[i] = 0;
         descriptors[s->id].name = representation(&strings[s->id][0], s->name, 31);
         descriptors[s->id].label = representation(&strings[s->id][1], s->label, 7);
     }
@@ -163,24 +156,24 @@ void dn2_ensure(void)
     ready = 1;
 }
 
-uint32_t dn2_clone_type(uint32_t type)
+uint32_t dn2_host_type(uint32_t type)
 {
     if (type < FIRST || type >= COUNT)
         return type;
     dn2_ensure();
     /* A missing mod keeps its saved identity, but sends MIDI's silent type to the DSP. */
-    return registered[type] ? registered[type]->clone : 4;
+    return registered[type] ? SYNTH_HOST : 4;
 }
 
 uint32_t dn2_is_voice(uint32_t type)
 {
     dn2_ensure();
-    return type < COUNT && voices[type];
+    return type < COUNT && registered[type];
 }
 
 uint32_t dn2_dsp_type(uint32_t type)
 {
-    return dn2_is_voice(type) ? type : dn2_clone_type(type);
+    return dn2_is_voice(type) ? type : dn2_host_type(type);
 }
 
 uint32_t dn2_voice_page_count(uint32_t type)
@@ -188,16 +181,6 @@ uint32_t dn2_voice_page_count(uint32_t type)
     if (!dn2_is_voice(type))
         return 0;
     return page_count[type] ? page_count[type] : 1;
-}
-
-/* The synth type MIDI parameter lookups see: a clone's stock type; a voice or a missing ID its
- * own, which no stock synth map has, so their synth CCs reach only a paged voice's knobs and never
- * a MIDI track's parameters stored in the same slots. */
-uint32_t dn2_midi_type(uint32_t type)
-{
-    dn2_ensure();
-    return type >= FIRST && type < COUNT && registered[type] && !voices[type]
-           ? registered[type]->clone : type;
 }
 
 uintptr_t dn2_voice_page(uint32_t type, uint32_t page)
@@ -219,8 +202,10 @@ uint32_t dn2_voice_code(uint32_t type, uint32_t slot)
 }
 
 /* MIDI CC and NRPN lookups (track, synth, filter, number) -> parameter code. The stock maps
- * know no voice type, so a paged voice asks its clone's: a clone synth row there stands for its
- * slot, which is the voice's knob in that position (0 when the slot is empty). */
+ * know no voice type, so a paged voice asks its host's: a host synth row there stands for its
+ * slot, which is the voice's knob in that position (0 when the slot is empty). A voice or a
+ * missing ID is otherwise looked up as itself, which no stock synth map has, so its synth CCs
+ * never reach a MIDI track's parameters stored in the same slots. */
 typedef uint32_t lookup(uint32_t track, uint32_t synth, uint32_t filter, uint32_t key);
 extern lookup dn2_stock_cc, dn2_stock_nrpn;
 
@@ -228,9 +213,8 @@ static uint32_t voice_lookup(lookup *stock, uint32_t track, uint32_t synth, uint
                              uint32_t key)
 {
     if (dn2_is_voice(synth) && page_count[synth]) {
-        int32_t clone = registered[synth]->clone;
-        uint32_t code = stock(track, clone, filter, key);
-        if (code < ROWS && dn2_t1[code].owner == clone && dn2_t1[code].slot >= SLOT
+        uint32_t code = stock(track, SYNTH_HOST, filter, key);
+        if (code < ROWS && dn2_t1[code].owner == SYNTH_HOST && dn2_t1[code].slot >= SLOT
                 && dn2_t1[code].slot < SLOT + ADDED)
             return dn2_voice_code(synth, dn2_t1[code].slot);
     }
@@ -284,29 +268,24 @@ uintptr_t dn2_hint(uint32_t type)
 {
     if (type >= COUNT)
         return (uintptr_t)dn2_unknown_name;
-    return (uintptr_t)dn2_stock_names[dn2_clone_type(type)].hint;
+    return (uintptr_t)dn2_stock_names[dn2_host_type(type)].hint;
 }
 
 uint32_t dn2_permit(uint32_t type, uint32_t track)
 {
     if (type >= COUNT || track >= 16)
         return 0;
-    if (type >= FIRST) {
-        dn2_ensure();
-        /* The OS also checks this when loading a sound: rejecting it loses the saved ID.
-         * Missing IDs stay out of the selector; MIDI permissions let their silent fallback load. */
-        type = registered[type] ? registered[type]->clone : 4;
-    }
+    /* The OS also checks this when loading a sound: rejecting it loses the saved ID.
+     * Missing IDs stay out of the selector; MIDI permissions let their silent fallback load. */
+    type = dn2_host_type(type);
     return ((dn2_stock_permit[type] >> 16) >> track) & 1;
 }
 
-extern const struct mk2_filter *const mk2_filters[];
 extern const struct mk2_filter *const mk2_voice_filters[];
 extern const struct names dn2_stock_filter_names[6];
 extern const struct descriptor dn2_stock_filter_descriptors[6];
 uint32_t dn2_filter_list[COUNT], dn2_filter_list_bytes;
 static const struct mk2_filter *filters[COUNT];
-static uint8_t filter_voices[COUNT];
 static struct descriptor filter_descriptors[COUNT];
 static struct string_rep filter_strings[COUNT][2];
 static uint32_t filters_ready;
@@ -316,16 +295,12 @@ void dn2_filters_ensure(void)
     if (filters_ready)
         return;
     const struct mk2_filter *const *e;
-    for (unsigned voice = 0; voice < 2; ++voice)
-    for (e = voice ? mk2_voice_filters : mk2_filters; *e; ++e) {
+    for (e = mk2_voice_filters; *e; ++e) {
         const struct mk2_filter *f = *e;
-        if (f->id < 6 || f->id >= COUNT || f->clone >= 6 || !f->name || !f->label
-                || filters[f->id])
+        if (f->id < 6 || f->id >= COUNT || !f->name || !f->label || filters[f->id])
             continue;
         filters[f->id] = f;
-        filter_voices[f->id] = voice;
-        /* shortcut: clone as host type, replaced by #83's host type in cleanup */
-        filter_descriptors[f->id] = dn2_stock_filter_descriptors[f->clone];
+        filter_descriptors[f->id] = dn2_stock_filter_descriptors[FILTER_HOST];
         filter_descriptors[f->id].name = representation(&filter_strings[f->id][0], f->name, 31);
         filter_descriptors[f->id].label = representation(&filter_strings[f->id][1], f->label, 7);
     }
@@ -340,18 +315,18 @@ void dn2_filters_ensure(void)
     filters_ready = 1;
 }
 
-uint32_t dn2_filter_clone(uint32_t type)
+uint32_t dn2_filter_host_type(uint32_t type)
 {
     if (type < 6 || type >= COUNT)
         return type;
     dn2_filters_ensure();
-    return filters[type] ? filters[type]->clone : 0;
+    return filters[type] ? FILTER_HOST : 0;
 }
 
 uint32_t dn2_filter_dsp_type(uint32_t type)
 {
     dn2_filters_ensure();
-    return type < COUNT && filter_voices[type] ? type : dn2_filter_clone(type);
+    return type < COUNT && filters[type] ? type : dn2_filter_host_type(type);
 }
 
 uintptr_t dn2_filter_descriptor(uint32_t type)
@@ -391,7 +366,7 @@ void dn2_filter_draw_curve(uint32_t type, void *canvas, uint32_t freq, uint32_t 
         return;
     dn2_filters_ensure();
     const struct mk2_filter *f = filters[type];
-    if (!f || !filter_voices[type] || !f->curve)
+    if (!f || !f->curve)
         return;
     uint8_t y[51];
     for (unsigned x = 0; x < 51; ++x)

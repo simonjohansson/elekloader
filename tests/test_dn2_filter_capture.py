@@ -44,7 +44,7 @@ class CaptureTests(unittest.TestCase):
         stage = work / 'custom'
         stage.mkdir()
         (stage / 'machine.c').write_text('#include "mk2/machines.h"\n'
-                                         'const struct mk2_filter custom = {8,1,"CUSTOM","CUSTOM"};\n')
+                                         'const struct mk2_filter custom = {8,"CUSTOM","CUSTOM"};\n')
         (stage / 'kernel.json').write_text(json.dumps(filter_artifact(bytes.fromhex(RETURN), b'', 0, 8, 0)))
         (stage / 'mod.json').write_text(json.dumps({
             'id': 'capture-test', 'version': '0.1', 'device': 'digitone-mk2', 'os': '1.12',

@@ -56,7 +56,7 @@ dn2_group:
 2:  jmp GROUP_SYNTH
 
 | Map only the stock function's own argument slot. Keep the live page/slot registers.
-    .macro MAP off,fn=dn2_clone_type
+    .macro MAP off,fn=dn2_host_type
     SAVE
     move.l (16+\off,%sp),-(%sp)
     jsr \fn
@@ -126,7 +126,7 @@ dn2_parameter:
 1:  RESTORE
 2:
     MAP 12
-    MAP 16,dn2_filter_clone   | shortcut: clone as host type, replaced by #83's host type in cleanup
+    MAP 16,dn2_filter_host_type
     move.l 12(%sp),%d0
     movea.l 16(%sp),%a1
     jmp PARAM_CONTINUE
@@ -154,7 +154,7 @@ dn2_t2:
     cmpi.l #T1_ROWS,%d0
     jmp T2_CONTINUE
 
-| Audio mirror identity stays real; only the transmitted DSP type is the stock clone.
+| Audio mirror identity stays real; only the transmitted DSP type is mapped (dn2_dsp_type).
     .globl dn2_frame_type
 dn2_frame_type:
     lea -12(%sp),%sp
@@ -193,7 +193,7 @@ dn2_reader:
     beq.s 2f
     move.l (%sp),%d0
     bra.s 3f
-2:  jsr dn2_clone_type
+2:  jsr dn2_host_type
 3:
     addq.l #4,%sp
     movem.l (%sp),%a0-%a1
@@ -206,7 +206,7 @@ dn2_owner:
     SAVE
     mvs.b 0xde(%a0),%d0
     move.l %d0,-(%sp)
-    jsr dn2_clone_type
+    jsr dn2_host_type
     addq.l #4,%sp
     move.l %d0,%d3
     RESTORE
@@ -254,30 +254,19 @@ dn2_filter_real_return:
     addq.l #4,%sp
     rts
 
-| MIDI parameter owners read the sound directly, outside the identity readers.
-    .globl dn2_synth_parameter_type
-dn2_synth_parameter_type:
-    SAVE
-    mvs.b 0xde(%a0),%d0
-    move.l %d0,-(%sp)
-    jsr dn2_midi_type
-    addq.l #4,%sp
-    move.l %d0,(%sp)
-    RESTORE
-    rts
-
+| The MIDI filter parameter owner reads the sound directly, outside the identity readers.
     .globl dn2_filter_parameter_type
 dn2_filter_parameter_type:
     SAVE
     mvs.b 0xdf(%a0),%d0
     move.l %d0,-(%sp)
-    jsr dn2_filter_clone      | shortcut: clone as host type, replaced by #83's host type in cleanup
+    jsr dn2_filter_host_type
     addq.l #4,%sp
     move.l %d0,(%sp)
     RESTORE
     rts
 
-| Pages, defaults and parameters use the stock clone; missing IDs use MULTI-MODE's.
+| Pages, defaults and parameters use the host type; missing IDs use MULTI-MODE's.
     .globl dn2_filter_reader
 dn2_filter_reader:
     mvs.b 0xdf(%a0),%d0
@@ -290,7 +279,7 @@ dn2_filter_reader:
     lea -8(%sp),%sp
     movem.l %a0-%a1,(%sp)
     move.l %d0,-(%sp)
-    jsr dn2_filter_clone      | shortcut: clone as host type, replaced by #83's host type in cleanup
+    jsr dn2_filter_host_type
     addq.l #4,%sp
     movem.l (%sp),%a0-%a1
     lea 8(%sp),%sp

@@ -239,8 +239,7 @@ test('DN2 combines one synth and one filter with matching independent identities
   const image = new Uint8Array(rel.mainLen)
   const core = new Mod2({ elemod: 2, id: 'core', version: '0.1', target,
     sections: { '.boot': { align: 4, parts: [['hex', '00000000']] } },
-    collections: { mk2_voice_synths: { entry: 4 }, mk2_voice_filters: { entry: 4 },
-      mk2_synths: { entry: 4 }, mk2_filters: { entry: 4 } } }, 'core')
+    collections: { mk2_voice_synths: { entry: 4 }, mk2_voice_filters: { entry: 4 } } }, 'core')
   const doc = (kind: 'voice' | 'filter', id = 6, name: string = kind): Record<string, any> => ({
     elemod: 2, id: name, version: '0.1', target,
     sections: { '.run': { align: 4, parts: [['hex', id.toString(16).padStart(8, '0') + '00'.repeat(12)]] } },
@@ -263,10 +262,11 @@ test('DN2 combines one synth and one filter with matching independent identities
     const mismatch = doc(kind); mismatch.sharc.machine_id = 7
     assert(check([core, new Mod2(mismatch, kind)], image).includes(
       `${kind} 0.1: SHARC ${kind} machine_id must match its single native ${kind} registration`))
-    const both = doc(kind)
-    both.contribute.push({ ...both.contribute[0], to: profile[`${kind}CloneTable`] })
-    assert(check([core, new Mod2(both, kind)], image).includes(
-      `${kind} 0.1: SHARC ${kind} machine_id must match its single native ${kind} registration`))
+    // The old registration tables are gone: the generic check refuses an entry there.
+    const legacy = doc(kind), table = kind === 'voice' ? 'mk2_synths' : 'mk2_filters'
+    legacy.contribute.push({ ...legacy.contribute[0], to: table })
+    assert(check([core, new Mod2(legacy, kind)], image).includes(
+      `${kind} 0.1 adds to table ${table}, which no given mod declares`))
     const master = new Mod2({ elemod: 2, id: 'master', version: '0.1', target,
       sections: {}, sharc: inertArtifact }, 'master')
     assert(check([core, a, master], image).includes(collision))

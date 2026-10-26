@@ -351,8 +351,7 @@ def check(mods, image):
             expected = ['%s:%d' % (prefix, app.sharc['machine_id'])
                         for name, _at, _count, prefix in app.dev.slot_claims if name == table]
             if len(contributions) != 1 or len(contributions[0]['data']) != 4 \
-                    or not expected or app.implied_names(image, table) != expected \
-                    or any(name in app.implied_names(image, profile[kind + '_clone_table']) for name in expected):
+                    or not expected or app.implied_names(image, table) != expected:
                 bad.append('%s: SHARC %s machine_id must match its single native %s registration'
                            % (app.label(), kind, kind))
             continue

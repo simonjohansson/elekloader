@@ -164,10 +164,8 @@ void dn2_filters_ensure(void)
             continue;
         filters[f->id] = f;
         filter_voices[f->id] = voice;
+        /* shortcut: clone as host type, replaced by #83's host type in cleanup */
         filter_descriptors[f->id] = dn2_stock_filter_descriptors[f->clone];
-        if (voice)
-            for (unsigned i = 0; i < 9; ++i)
-                filter_descriptors[f->id].params[i] = 0;
         filter_descriptors[f->id].name = representation(&filter_strings[f->id][0], f->name, 31);
         filter_descriptors[f->id].label = representation(&filter_strings[f->id][1], f->label, 7);
     }

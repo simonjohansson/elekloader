@@ -119,7 +119,7 @@ dn2_parameter:
 1:  RESTORE
 2:
     MAP 12
-    MAP 16,dn2_filter_dsp_type
+    MAP 16,dn2_filter_clone   | shortcut: clone as host type, replaced by #83's host type in cleanup
     move.l 12(%sp),%d0
     movea.l 16(%sp),%a1
     jmp PARAM_CONTINUE
@@ -241,13 +241,13 @@ dn2_filter_parameter_type:
     SAVE
     mvs.b 0xdf(%a0),%d0
     move.l %d0,-(%sp)
-    jsr dn2_filter_dsp_type
+    jsr dn2_filter_clone      | shortcut: clone as host type, replaced by #83's host type in cleanup
     addq.l #4,%sp
     move.l %d0,(%sp)
     RESTORE
     rts
 
-| Custom filters keep their empty page; clones and missing IDs use stock defaults.
+| Pages, defaults and parameters use the stock clone; missing IDs use MULTI-MODE's.
     .globl dn2_filter_reader
 dn2_filter_reader:
     mvs.b 0xdf(%a0),%d0
@@ -260,7 +260,7 @@ dn2_filter_reader:
     lea -8(%sp),%sp
     movem.l %a0-%a1,(%sp)
     move.l %d0,-(%sp)
-    jsr dn2_filter_dsp_type
+    jsr dn2_filter_clone      | shortcut: clone as host type, replaced by #83's host type in cleanup
     addq.l #4,%sp
     movem.l (%sp),%a0-%a1
     lea 8(%sp),%sp

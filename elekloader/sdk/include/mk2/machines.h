@@ -17,8 +17,8 @@ struct mk2_synth {
 
 /* machines-dn2 0.1: contribute a pointer to mk2_filters for a stock filter
  * clone. mk2_voice_filters registers a SHARC filter with the same descriptor
- * and matching artifact (digitone-mk2/filter.h). Its FLTR page has no controls;
- * common defaults remain, but filter-specific parameter slots are unmapped.
+ * and matching artifact (digitone-mk2/filter.h). Its clone supplies the FLTR
+ * page, defaults and parameters; its kernel replaces only the audio.
  * DN2 IDs 6..31 are permanent and independent of synth IDs.
  * clone: 0=MULTI-MODE, 1=LOWPASS 4, 2=EQUALIZER, 3=COMB-, 4=LEGACY LP/HP,
  * 5=COMB+. Names/labels have the limits above. A missing mod keeps its ID

@@ -90,8 +90,7 @@ static void check_filters(void)
     assert(dn2_is_voice(7) && dn2_dsp_type(7) == 7);  /* Same ID, separate categories. */
     const struct descriptor *voice = (const struct descriptor *)dn2_filter_descriptor(7);
     assert(!strcmp(voice->name, "UNITY") && !strcmp(voice->label, "UNITY"));
-    for (unsigned i = 0; i < 9; ++i)
-        assert(voice->params[i] == 0);
+    assert(!memcmp(voice->params, dn2_stock_filter_descriptors[1].params, sizeof(voice->params)));
     assert(!strcmp((const char *)dn2_filter_name(6), "CLONE FILTER"));
     const struct descriptor *clone = (const struct descriptor *)dn2_filter_descriptor(6);
     assert(!memcmp(clone->params, dn2_stock_filter_descriptors[0].params, sizeof(clone->params)));

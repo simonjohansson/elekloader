@@ -45,10 +45,13 @@ needs independently qualified firmware adapters and limits. Synths use
 ## Custom DSP
 
 Contribute the same four-field descriptor to `mk2_voice_filters` instead
-of `mk2_filters`. The stock-type field must still be 0..5, but custom
-filters use only the common stock defaults; filter-specific parameter
-slots 66..68 have no mapping. Its FLTR page has no controls, but the common
-stock envelope graphic remains. The same mod must carry a
+of `mk2_filters`. The stock-type field is still 0..5. That stock filter
+supplies the FLTR page, defaults, knobs, CC and NRPN, but not the audio:
+the stock algorithm never runs for the custom ID. Use LOWPASS 4 (1). Its
+page shows ATK/DEC/SUS/REL, FREQ/RESO, a dotted empty G and ENV under the
+stock envelope graphic, and FUNC+A edits pre-delay. The response graph
+stays empty. The values are saved with the sound, but the kernel does not
+receive them yet. The same mod must carry a
 `dn2-filter-mono32-l2-v1` artifact with the matching `machine_id` and
 `entries: {"render_offset_bytes": ...}`. The linker refuses a missing or
 mismatched payload, conflicting filter IDs, or the same ID registered as

@@ -31,7 +31,7 @@ class RegistryTests(unittest.TestCase):
 @unittest.skipUnless(CF_CALL and STOCK and os.environ.get('ELEKLOADER_CROSS'),
                      'needs DN2 stock, cross compiler and ELEKLOADER_CF_CALL')
 class ParameterDispatchTests(unittest.TestCase):
-    def test_parameter_lookup_maps_clones_but_identity_reads_keep_ids(self):
+    def test_parameter_lookup_maps_clones_and_custom_filters_but_identity_reads_keep_ids(self):
         from elekloader import patch, syx
         from elekloader.devices.digitone_mk2 import DEVICE
         from elekloader.sdk import build as sdk
@@ -54,7 +54,7 @@ class ParameterDispatchTests(unittest.TestCase):
                     stage.mkdir()
                     (stage / 'machine.c').write_text('#include "mk2/machines.h"\n'
                         'const struct mk2_%s clone={%d,0,"CLONE","CLONE"};\n'
-                        'const struct mk2_%s custom={8,0,"CUSTOM","CUSTOM"};\n' % (kind, first, kind))
+                        'const struct mk2_%s custom={8,1,"CUSTOM","CUSTOM"};\n' % (kind, first, kind))
                     (stage / 'kernel.json').write_text(json.dumps(producer(bytes(4), bytes(4), 0, 8, 20)))
                     (stage / 'mod.json').write_text(json.dumps({
                         'id': kind + '-dispatch-test', 'version': '0.1', 'device': 'digitone-mk2', 'os': '1.12',
@@ -71,8 +71,11 @@ class ParameterDispatchTests(unittest.TestCase):
                     vtable, getter = 0x47f3a000, 0x47f3a100
                     pokes = [{'addr': hex(vtable + 0x28), 'hex': getter.to_bytes(4, 'big').hex()},
                              {'addr': hex(getter), 'hex': '202f00044e75'}]
-                    calls, expected = [], []
-                    reader = 'dn2_real_reader' if kind == 'synth' else 'dn2_filter_real_reader'
+                    calls, expected, modes = [], [], []
+                    identity = manifest['_map']['dn2_real_reader' if kind == 'synth' else 'dn2_filter_real_reader']
+                    # Page and default callers reach the stock reader directly; it maps like the getter.
+                    pcs = {'identity': identity, 'parameter': getter_pc,
+                           'reader': 0x4004b7f2 if kind == 'synth' else 0x4004b860}
                     for i, machine_id in enumerate((0, 1, 2, 3, 4, 5, 6, 8, 9, 31, 32)):
                         address = 0x47f3b000 + i * 0x100
                         sound = bytearray(0xe0)
@@ -81,12 +84,13 @@ class ParameterDispatchTests(unittest.TestCase):
                         pokes.append({'addr': hex(address), 'hex': sound.hex()})
                         owner = 0x47f3d000 + i * 0x20
                         pokes.append({'addr': hex(owner + 0x10), 'hex': address.to_bytes(4, 'big').hex()})
-                        for parameter in (False, True):
-                            calls.append({'pc': hex(getter_pc if parameter else manifest['_map'][reader]),
-                                          'args': [hex(owner if parameter else address)]})
-                            mapped = (0 if machine_id == first else (4 if kind == 'synth' else 0))
-                            expected.append(mapped if parameter and first <= machine_id < 32 and machine_id != 8
-                                            else machine_id)
+                        for mode, pc in pcs.items():
+                            calls.append({'pc': hex(pc), 'args': [hex(owner if mode == 'parameter' else address)]})
+                            modes.append(mode)
+                            # A custom synth keeps its ID; a custom filter reads as its stock clone.
+                            mapped = {first: 0, 8: 1}.get(machine_id, 4 if kind == 'synth' else 0)
+                            expected.append(mapped if mode != 'identity' and first <= machine_id < 32
+                                            and not (kind == 'synth' and machine_id == 8) else machine_id)
                     # Native MIDI handlers must reach the setter through the real owner getters.
                     owner_vtable, setter, allowed = 0x47f3a200, 0x47f3a320, 0x47f3a300
                     table = bytearray(0x7c)
@@ -117,12 +121,12 @@ class ParameterDispatchTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr)
                     rows = [json.loads(line) for line in result.stdout.splitlines() if line.startswith('{')]
                     self.assertEqual(len(rows), len(calls))
-                    for i, (row, value) in enumerate(zip(rows, expected)):
+                    for row, value, mode in zip(rows, expected, modes):
                         self.assertTrue(row['ok'], row)
-                        self.assertEqual(row['d'][0], value)
+                        self.assertEqual(row['d'][0], value, (mode, row))
                         self.assertEqual(row['d'][1:], row['d_in'][1:])
                         self.assertEqual(row['a'][2:7], row['a_in'][2:7])
-                        self.assertEqual(row['a'][1], vtable if i % 2 else row['a_in'][1])
+                        self.assertEqual(row['a'][1], vtable if mode == 'parameter' else row['a_in'][1])
                         self.assertEqual(row['a'][7], row['sp0'] + 4)
                     dispatched = rows[len(expected):]
                     self.assertNotEqual(dispatched[0]['reads'], ['00000000'])

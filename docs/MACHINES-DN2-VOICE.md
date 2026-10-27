@@ -116,14 +116,16 @@ The synth owns the first 16 KiB of the L2 reservation:
 | Author data | `0x20092000..0x20093c00` | 7 KiB |
 | Zeroed adapter state | `0x20093c00..0x20094000` | 1 KiB |
 
-Ranges exclude their end. A producer's build script reads
-`elekloader.sdk.sharc.machine_layout('voice')` for the compiler-independent
-`code_pc16`, `code_bytes`, `data_address` and `data_bytes` bounds. Link the
-kernel and data at those addresses, then call
-`voice_artifact(code, data, render_offset_bytes, machine_id, stack_bytes)`.
-The entry offset counts from the start of the supplied kernel; data may
-be empty. The SDK adds the pinned adapter, NOP padding and zero ranges;
-the producer owns compilation. The linker writes the render PC and ID at
+Ranges exclude their end. A mod's build never names them: it compiles the
+kernel, links it with the script `elekloader.sdk.sharc.machine_linker_script('voice')`
+writes (code from `seg_swco`, data from `seg_dmda`, entry
+`sharc_voice_render`), and passes the linked executable to
+`machine_from_executable('voice', executable, machine_id)`. That checks the
+placement, guard and entry and returns the artifact; `stack_bytes` defaults to
+the limit below. Compilation belongs to the mod. A producer that links some other
+way can call `voice_artifact(code, data, render_offset_bytes, machine_id,
+stack_bytes)` with the bounds `machine_layout('voice')` gives. The SDK adds the
+pinned adapter, NOP padding and zero ranges. The linker writes the render PC and ID at
 `0x20093e00`. Keep writes in the author data area and supplied voice buffer.
 
 The exact OS 1.12 hook is PC16 `0xb8251b`, loader `0x20004a36`, called by

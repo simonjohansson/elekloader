@@ -1,7 +1,11 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-"""Package prelinked DN2 machine kernels; compilation belongs to the mod."""
+"""Package DN2 machine kernels; compilation belongs to the mod.
+
+A mod's build compiles its kernel, links it with `machine_linker_script(kind)` and hands the
+linked executable to `machine_from_executable`: the build never names an address."""
 import json
 from pathlib import Path
+import struct
 
 from ..devices.digitone_mk2 import DEVICE
 from ..sharc import module_payload, pc16
@@ -54,3 +58,83 @@ def _machine_artifact(kind, code, data, render_offset_bytes, machine_id, stack_b
            'stack_bytes': stack_bytes}
     module_payload(doc, profile)
     return doc
+
+
+# The executable's two loadable sections; the linker script names them.
+CODE_SECTION, DATA_SECTION = 'machine_code', 'machine_data'
+
+
+def machine_linker_script(kind):
+    """The linker script (the ADI LDF form Selache's seld reads) that places a machine's code
+    and data where its kind's area puts them. Code comes from seg_swco, data from seg_dmda;
+    the entry is `sharc_<kind>_render.` (the C function `sharc_<kind>_render`)."""
+    layout = machine_layout(kind)
+    code, data = layout['code_pc16'] * 2, layout['data_address']
+    return ("ARCHITECTURE(ADSP-21569)\n"
+            "$OBJECTS = $COMMAND_LINE_OBJECTS;\n"
+            "MEMORY {\n"
+            " code { TYPE(BW RAM) START(0x%x) END(0x%x) WIDTH(8) }\n"
+            " data { TYPE(BW RAM) START(0x%x) END(0x%x) WIDTH(8) }\n"
+            "}\n"
+            "PROCESSOR p0 { OUTPUT($COMMAND_LINE_OUTPUT_FILE) SECTIONS {\n"
+            " %s SW { INPUT_SECTION_ALIGN(2) INPUT_SECTIONS($OBJECTS(seg_swco)) } > code\n"
+            " %s BW { INPUT_SECTION_ALIGN(4) INPUT_SECTIONS($OBJECTS(seg_dmda)) } > data\n"
+            "} }\n" % (code, code + layout['code_bytes'] - 1, data, data + layout['data_bytes'] - 1,
+                        CODE_SECTION, DATA_SECTION))
+
+
+def machine_from_executable(kind, executable, machine_id, stack_bytes=None):
+    """The machine artifact for a linked SHARC executable (little-endian ELF32) built with
+    machine_linker_script(kind): its code, data and render entry, checked against the area.
+    stack_bytes defaults to the most the kind's callback may declare. Raises ValueError."""
+    def need(ok, message):
+        if not ok:
+            raise ValueError('DN2 %s executable: %s' % (kind, message))
+    layout = machine_layout(kind)
+    raw = bytes(executable)
+    need(len(raw) >= 52 and raw[:7] == b'\x7fELF\x01\x01\x01'
+         and struct.unpack_from('<HH', raw, 16) == (2, 0x85), 'expected a linked little-endian SHARC ELF32 executable')
+    entry, shoff = struct.unpack_from('<II', raw, 24)[0], struct.unpack_from('<I', raw, 32)[0]
+    shentsize, shnum, shstrndx = struct.unpack_from('<HHH', raw, 46)
+    need(shentsize == 40 and shoff + 40 * shnum <= len(raw) and shstrndx < shnum, 'malformed section table')
+    headers = [struct.unpack_from('<10I', raw, shoff + 40 * i) for i in range(shnum)]
+
+    def text(table, at):
+        start = headers[table][4] + at
+        end = raw.index(b'\0', start)
+        return raw[start:end].decode('latin-1')
+    sections = {}
+    for name, kind_, flags, address, offset, size, *_ in headers:
+        label = text(shstrndx, name)
+        need(kind_ not in (4, 9), 'unresolved relocations in %s' % label)          # SHT_RELA, SHT_REL
+        if flags & 2:                                                               # SHF_ALLOC
+            need(kind_ == 1 and label in (CODE_SECTION, DATA_SECTION),
+                 'only %s and %s may be loaded, not %s' % (CODE_SECTION, DATA_SECTION, label))
+            need(label not in sections and offset + size <= len(raw), 'duplicate or truncated %s' % label)
+            sections[label] = (flags, address, raw[offset:offset + size])
+    need(CODE_SECTION in sections, 'no %s section' % CODE_SECTION)
+    code_flags, code_pc, code = sections[CODE_SECTION]
+    data_flags, data_address, data = sections.get(DATA_SECTION, (3, layout['data_address'], b''))
+    need(code_flags & 4 and not data_flags & 4, 'code and data sections swapped')
+    need(code_pc == layout['code_pc16'], 'code linked at PC16 0x%x, not 0x%x' % (code_pc, layout['code_pc16']))
+    need(data_address == layout['data_address'], 'data linked at 0x%x, not 0x%x' % (data_address, layout['data_address']))
+    symbols = [h for h in headers if h[1] == 2]                                     # SHT_SYMTAB
+    need(len(symbols) == 1, 'no symbol table')
+    _n, _t, _f, _a, offset, size, strings, *_ = symbols[0]
+    render, undefined = [], []
+    for at in range(offset + 16, offset + size, 16):
+        name, value, _size, _info, _other, index = struct.unpack_from('<IIIBBH', raw, at)
+        label = text(strings, name)
+        if label and index == 0:
+            undefined.append(label)
+        if label == 'sharc_%s_render.' % kind:
+            render.append(value)
+    need(not undefined, 'unresolved symbols: ' + ', '.join(undefined))
+    need(len(render) == 1, 'needs exactly one sharc_%s_render' % kind)
+    need(entry == render[0], 'its entry is not sharc_%s_render' % kind)
+    need(len(code) % 2 == 0, 'code is not whole 16-bit parcels')
+    # The executable stores each 16-bit parcel little-endian; the loader takes them the other way.
+    code = b''.join(code[i:i + 2][::-1] for i in range(0, len(code), 2))
+    profile = DEVICE.releases['1.12'].sharc
+    return _machine_artifact(kind, code, data, (render[0] - code_pc) * 2, machine_id,
+                             profile[kind + '_stack_max'] if stack_bytes is None else stack_bytes)

@@ -127,12 +127,12 @@ The filter owns the second 16 KiB of the L2 reservation:
 | Author data | `0x20096000..0x20097c00` | 7 KiB |
 | Zeroed adapter state | `0x20097c00..0x20098000` | 1 KiB |
 
-Ranges exclude their end. The producer reads
-`elekloader.sdk.sharc.machine_layout('filter')` for its link bounds and
-calls `filter_artifact(code, data, render_offset_bytes, machine_id,
-stack_bytes)` with the prelinked bytes. Its arguments follow
-[`voice_artifact`](MACHINES-DN2-VOICE.md#context-and-memory); empty data is
-allowed. Compilation belongs to the producer. Keep writes in the author
+Ranges exclude their end. A mod builds a filter as it builds a
+[synth](MACHINES-DN2-VOICE.md#context-and-memory): link with
+`machine_linker_script('filter')` (entry `sharc_filter_render`) and pass the
+executable to `machine_from_executable('filter', executable, machine_id)`, or call
+`filter_artifact` with `machine_layout('filter')`'s bounds. Compilation belongs
+to the mod. Keep writes in the author
 data area and supplied sample buffer.
 
 The controls come from the stock filter preparation, which runs for every

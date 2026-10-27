@@ -629,6 +629,12 @@ export function link(mods: Mod2[], image: Uint8Array, lock: store.Lock | null = 
         fills.push([lo, base + at - lo, 0], [base + at + 8, 0x18, 0],
           [base + at + 0x28, payload.owner[1] - base - at - 0x28, 0])
         loads.push([base + at, binding], [base + at + 0x20, state])
+        // The callback's own stack, in L1: zeroed, with the guard word the adapter checks at its base.
+        const [stackLo, stackHi] = rel.sharc![`${kind}Stack`]!
+        const guard = new Uint8Array(4)
+        new DataView(guard.buffer).setUint32(0, rel.sharc!.stackGuard!, true)
+        fills.push([stackLo + 4, stackHi - stackLo - 4, 0])
+        loads.push([stackLo, guard])
         const capture = kind === 'filter' ? rel.sharc!.filterCapture : undefined
         patches = [rel.sharc![`${kind}Hook`]!, ...(capture ? [capture] : [])].map(([site, old, replacement]) =>
           [site, hexBytes(old, 'SHARC stock hook'), hexBytes(replacement, 'SHARC bridge hook')])

@@ -107,6 +107,7 @@ the 16 voices: `offset_bytes` is 8-byte aligned, `voice_bytes` a whole
 number of words, and the 16 voices lie inside one of the mod's `zero`
 ranges. The linker writes each callback's address and ID into its adapter
 state, the voice state's address and one voice's size 32 bytes after them,
+zero-fills that kind's 4 KiB stack in L1 with a guard word at its base,
 and patches that kind's stock hook. It leaves the master hook and L1 bridge untouched.
 The callback references above define the memory bounds and stack limits.
 

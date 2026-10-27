@@ -5,7 +5,8 @@
 
 /* dn2-filter-mono32-l2-v1: replace the selected filter before stock AMP.
  * Process 32 mono floats at 48 kHz in place. Slot is 0..15, not a track.
- * The callback has at most 20 stack bytes; its caller adds eight bytes.
+ * The callback runs on its own 4 KiB stack and may use 2,048 bytes of it;
+ * interrupts use the rest. An overrun mutes the filter.
  * DN2_FILTER_STATE(type) gives each slot a zeroed `type` at input->state,
  * kept between calls; reset it yourself on RESET. */
 #define DN2_FILTER_RESET 1u

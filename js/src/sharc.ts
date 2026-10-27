@@ -270,7 +270,8 @@ export function modulePayload(doc: any, profile: SharcProfile | undefined, core 
   const stack = doc.stack_bytes
   if (kind && (!uint32(stack) || stack > profile[`${kind}StackMax`]!))
     throw new ModError(`SHARC ${kind} stack exceeds the profile limit`)
-  if (!uint32(stack) || stack > profile.stackMax!) throw new ModError('SHARC stack contribution exceeds the profile limit')
+  if (!kind && (!uint32(stack) || stack > profile.stackMax!))   // machines run on their own stack
+    throw new ModError('SHARC stack contribution exceeds the profile limit')
   if (entries === null && stack) throw new ModError('inert SHARC payload must declare zero stack')
   return { segments, zero, entries, stackBytes: stack, owner,
     ...(kind ? { machineId: doc.machine_id, machineKind: kind,

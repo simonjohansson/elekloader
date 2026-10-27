@@ -61,8 +61,8 @@ class MachineBuildTests(unittest.TestCase):
         code = bytes(range(16))
         artifact = machine_from_executable('voice', executable(code=code, entry_parcel=2), 6)
         swapped = b''.join(code[i:i + 2][::-1] for i in range(0, 16, 2))
-        self.assertEqual(artifact, voice_artifact(swapped, b'\x11\x22\x33\x44', 4, 6, 128))
-        self.assertEqual(machine_from_executable('filter', executable('filter'), 8)['stack_bytes'], 20)
+        self.assertEqual(artifact, voice_artifact(swapped, b'\x11\x22\x33\x44', 4, 6, 2048))
+        self.assertEqual(machine_from_executable('filter', executable('filter'), 8)['stack_bytes'], 2048)
         self.assertEqual(machine_from_executable('voice', executable(), 6, stack_bytes=64)['stack_bytes'], 64)
         self.assertNotIn('data', [s['kind'] for s in
                                   machine_from_executable('voice', executable(data=b''), 6)['segments'][1:]])

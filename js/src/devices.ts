@@ -37,6 +37,7 @@ export type SharcProfile = {
   voiceAdapterBytes?: number
   voiceStateBytes?: number
   voiceBindingOffset?: number
+  voiceStack?: Range                            // the callback's own stack, in L1
   voiceStackMax?: number
   voiceHook?: [number, string, string]
   filterAbi?: string
@@ -47,6 +48,8 @@ export type SharcProfile = {
   filterAdapterBytes?: number
   filterStateBytes?: number
   filterBindingOffset?: number
+  filterStack?: Range
+  stackGuard?: number                           // at each machine stack's base; the adapters check it
   filterStackMax?: number
   filterHook?: [number, string, string]
   filterCapture?: [number, string, string]      // the filter setup table's internal type 0 entry, sent to the adapter
@@ -264,18 +267,20 @@ export const DIGITONE_MK2: Device = {
         l2Abi: 'dn2-master-mono32-l2-v1', l2AppRange: [0x20090000, 0x20098000],
         voiceAbi: 'dn2-voice-mono32-l2-v1', voiceRange: [0x20090000, 0x200a0000],
         voiceTable: 'mk2_voice_synths',
-        voiceAdapterSha256: '6ddd16fb11044a80939ee61e7336bb6f04af6604bc83debdf983c1aa5a6a2c18',
-        voiceAdapterBytes: 2048, voiceStateBytes: 1024, voiceBindingOffset: 65024, voiceStackMax: 128,
+        voiceAdapterSha256: '5bbf8b98c5ff13d4121a17e2d7a8ca550f05821b4564a67c0ce84737319da3f0',
+        voiceAdapterBytes: 2048, voiceStateBytes: 1024, voiceBindingOffset: 65024, voiceStackMax: 2048,
+        voiceStack: [0x282de000, 0x282df000],
         voiceHook: [0x20004a36, '8715ffffeeff', '3e06bc000080'],
         filterAbi: 'dn2-filter-mono32-l2-v1', filterRange: [0x200a0000, 0x200b0000],
         filterTable: 'mk2_voice_filters', filterGAt: 16,
-        filterAdapterSha256: 'b0cfcd3d97fe7fe364869f04cff7703f8b67aa29899c60917d80e0246ee180fc',
-        filterAdapterBytes: 2048, filterStateBytes: 1024, filterBindingOffset: 65024, filterStackMax: 20,
+        filterAdapterSha256: '10576ba32964c88b620a72c73cd46aadb8bb66095eef98cfce29280f648b42c4',
+        filterAdapterBytes: 2048, filterStateBytes: 1024, filterBindingOffset: 65024, filterStackMax: 2048,
+        filterStack: [0x282df000, 0x282e0000], stackGuard: 0x57ac6a2d,
         filterHook: [0x28392b0e, '140f5280c0db', '3e06bd000000'],
-        filterCapture: [0x8052dba4, '7e921c00', '3903bd00'],
+        filterCapture: [0x8052dba4, '7e921c00', '8703bd00'],
         coreRange: [0x282dd600, 0x282dda00], stackMax: 544, codeGuardBytes: 64,
         keyedPitchTable: [920, '314d5900969c5e00d23c6400b1326a004c837000073477009b4a7e0015cd8500e1c18d00c92f9600031e9f002e94a800'],
-        ownedRanges: [[0x282dd600, 0x282dde00], [0x20090000, 0x200b0000]],
+        ownedRanges: [[0x282dd600, 0x282e0000], [0x20090000, 0x200b0000]],
         patchRanges: [[0x2838489a, 0x283848a0], [0x20004a36, 0x20004a3c], [0x28392b0e, 0x28392b14],
           [0x8052dba4, 0x8052dba8]],
         activeKeyedCore: { segments: [[12, 'code', 'af2f375dc58a8ccd4b8abd89b1fb526441baa6fb5da9266c2b664e69d90fc829']],

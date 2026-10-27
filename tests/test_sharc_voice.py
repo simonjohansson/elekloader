@@ -57,7 +57,7 @@ class EnvelopeTests(unittest.TestCase):
             (lambda d: d.update(machine_id=True), 'machine_id'),
             (lambda d: d.update(machine_id=4), 'machine_id'),
             (lambda d: d.update(machine_id=32), 'machine_id'),
-            (lambda d: d.update(stack_bytes=129), 'voice stack'),
+            (lambda d: d.update(stack_bytes=2049), 'voice stack'),
             (lambda d: d.update(entries=None), 'render entry'),
             (lambda d: d['entries'].update(render_offset_bytes=0), 'adapter reservation'),
             (lambda d: d['entries'].update(render_offset_bytes=2052), 'read-ahead guard'),
@@ -70,6 +70,9 @@ class EnvelopeTests(unittest.TestCase):
             change(bad)
             with self.subTest(error=error), self.assertRaisesRegex(elemod.ModError, error):
                 sharc.module_payload(bad, PROFILE)
+        # A machine has its own stack, so it may declare more than the master-output limit.
+        self.assertGreater(PROFILE['voice_stack_max'], PROFILE['stack_max'])
+        sharc.module_payload(dict(copy.deepcopy(doc), stack_bytes=PROFILE['voice_stack_max']), PROFILE)
         # Author code may change without a per-kernel allowlist update.
         doc['segments'][1]['hex'] = '0000' + doc['segments'][1]['hex'][4:]
         sharc.module_payload(doc, PROFILE)

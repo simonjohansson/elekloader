@@ -7,6 +7,8 @@
  * One call per matching voice slot per 32-sample block at 48 kHz.
  * A trigger's first block is silent; START marks the next, settled block.
  * Keep independent state per slot. The stock envelope owns release.
+ * The callback runs on its own 4 KiB stack and may use 2,048 bytes of it;
+ * interrupts use the rest. An overrun mutes the synth.
  * DN2_VOICE_STATE(type) gives each slot a zeroed `type` at input->state,
  * kept between calls; reset it yourself on START. */
 #define DN2_VOICE_START 1u

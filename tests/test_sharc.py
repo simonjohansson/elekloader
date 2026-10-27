@@ -172,6 +172,10 @@ class SharcTests(unittest.TestCase):
         bad['zero'][0]['size_bytes'] += 4
         self.refusal(lambda: sharc.module_payload(bad, PROFILE),
                      'SHARC zero range is unaligned or exceeds its owner')
+        # The master-output mod runs on the stock Audio Task's stack; only machines get their own.
+        bad = copy.deepcopy(artifact)
+        bad['stack_bytes'] = PROFILE['stack_max'] + 4
+        self.refusal(lambda: sharc.module_payload(bad, PROFILE), 'SHARC stack contribution exceeds the profile limit')
         bad = copy.deepcopy(artifact)
         bad['abi'] = PROFILE['abi']
         self.refusal(lambda: sharc.module_payload(bad, PROFILE),

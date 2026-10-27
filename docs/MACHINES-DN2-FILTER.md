@@ -115,11 +115,13 @@ cannot be combined with either.
 
 The adapter uses the register preservation and C context described for
 the [synth adapter](MACHINES-DN2-VOICE.md#context-and-memory), and also
-preserves LCNTR around the callback. The filter
-callback may declare at most **20 stack bytes**, plus its adapter's
-eight-byte call frame. Preserve the other registers and hardware stacks;
-return I6/I7 unchanged. These limits do not measure actual stack use or
-prove an audio deadline.
+preserves LCNTR around the callback. The filter callback has its own 4 KiB
+stack in L1, `0x2df000..0x2e0000` (loader `0x282df000`), set up and guarded
+as the synth's, and may declare at most **2,048 stack bytes**, plus its
+adapter's eight-byte call frame; interrupts use the rest. An overrun mutes
+the filter: its slots get silence. Preserve the other registers and hardware stacks; return I6/I7
+unchanged. These limits do not measure actual stack use or prove an audio
+deadline.
 
 ## Memory and dispatch
 

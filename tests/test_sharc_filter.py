@@ -61,7 +61,7 @@ class EnvelopeTests(unittest.TestCase):
             (lambda d: d.update(machine_id=True), 'machine_id'),
             (lambda d: d.update(machine_id=5), 'machine_id'),
             (lambda d: d.update(machine_id=32), 'machine_id'),
-            (lambda d: d.update(stack_bytes=21), 'filter stack'),
+            (lambda d: d.update(stack_bytes=2049), 'filter stack'),
             (lambda d: d.update(entries=None), 'render entry'),
             (lambda d: d['entries'].update(render_offset_bytes=0), 'adapter reservation'),
             (lambda d: d['entries'].update(render_offset_bytes=2052), 'read-ahead guard'),
@@ -184,6 +184,18 @@ class PairLinkTests(unittest.TestCase):
             {'id': 'filter-6', 'owner': list(PROFILE['filter_range']), 'hook': PROFILE['filter_hook'][0]},
             {'id': 'voice-6', 'owner': list(PROFILE['voice_range']), 'hook': PROFILE['voice_hook'][0]}])
         self.assertNotIn('app', out.layout['sharc'])
+
+    def test_each_machine_gets_its_own_guarded_stack_in_l1(self):
+        for kind, other in (('voice', 'filter'), ('filter', 'voice')):
+            lo, hi = PROFILE[kind + '_stack']
+            with self.subTest(kind=kind):
+                records = sharc.parse(self.linked(self.mods[kind + '-6']).sharc_stream, PROFILE)
+                self.assertEqual(self.at(self.linked(self.mods[kind + '-6']).sharc_stream, lo, 4),
+                                 struct.pack('<I', PROFILE['stack_guard']))
+                self.assertTrue(any(r.flags == sharc.FILL and r.target == lo + 4 and r.count == hi - lo - 4
+                                    for r in records))
+                self.assertFalse(any(r.flags in (sharc.LOAD, sharc.FILL) and r.target < PROFILE[other + '_stack'][1]
+                                     and PROFILE[other + '_stack'][0] < r.target + r.count for r in records))
 
     def test_the_binding_names_the_voice_state(self):
         for kind in ('voice', 'filter'):

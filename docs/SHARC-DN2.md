@@ -43,6 +43,8 @@ Every range is half-open, in loader bytes:
 | the mod | `[0x20090000,0x20098000)` (L2) |
 | a selectable synth | `[0x20090000,0x200a0000)` (L2) |
 | a selectable filter | `[0x200a0000,0x200b0000)` (L2) |
+| a synth's stack | `[0x282de000,0x282df000)` (L1) |
+| a filter's stack | `[0x282df000,0x282e0000)` (L1) |
 | the stock instruction the bridge replaces | `[0x2838489a,0x283848a0)` |
 
 The examples split the mod's 32 KiB into 16 KiB of code and 16 KiB of data.

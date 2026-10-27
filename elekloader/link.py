@@ -612,6 +612,10 @@ def link(mods, image, lock=None, *, sharc_stream=None):
                 fills += [(lo, base + at - lo, 0), (base + at + 8, 0x18, 0),
                           (base + at + 0x28, payload['owner'][1] - base - at - 0x28, 0)]
                 loads += [(base + at, binding), (base + at + 0x20, state)]
+                # The callback's own stack, in L1: zeroed, with the guard word the adapter checks at its base.
+                stack = rel.sharc[kind + '_stack']
+                fills.append((stack[0] + 4, stack[1] - stack[0] - 4, 0))
+                loads.append((stack[0], struct.pack('<I', rel.sharc['stack_guard'])))
                 for hook in (kind + '_hook', kind + '_capture'):
                     if hook in rel.sharc:
                         site, old, new = rel.sharc[hook]

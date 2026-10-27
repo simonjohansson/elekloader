@@ -50,6 +50,10 @@ test('active DN2 keyed callbacks accept bounded mods and require the pinned brid
     else changed.stack_bytes -= 4
     assert(problems(changed, original).some(p => p.includes('unqualified active SHARC core bytes or entry')), mutation)
   }
+  // The master-output mod runs on the stock Audio Task's stack; only machines get their own.
+  const over = structuredClone(original)
+  over.stack_bytes = profile.stackMax! + 4
+  refusal(() => sharc.modulePayload(over, profile), 'SHARC stack contribution exceeds the profile limit')
   const large = structuredClone(original)
   large.stack_bytes = profile.stackMax
   assert(problems(bridge, large).includes('active SHARC stack exceeds the profile limit'))

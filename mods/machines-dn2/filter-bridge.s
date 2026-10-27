@@ -220,12 +220,49 @@ BIT SET MODE1 0x10000;
 NOP;
 R4=0x200afd00;
 I12=DM(0x200afe00);
+// A broken guard word at the stack's base means an overrun: this machine's slots get silence.
+R1=0x57ac6a2d;
+R0=DM(0x2df000);
+COMP(R0,R1);
+IF NE JUMP silence;
+// Run the callback on its own linear stack in L1 (the context switch saves through the PM bus,
+// which reaches only L1). Writing B7 also loads I7, so the stack registers change with
+// interrupts off: one taken between the writes would push where I7 then pointed.
+DM(0x200afe30)=I7;
+DM(0x200afe34)=B7;
+DM(0x200afe38)=L7;
+BIT CLR MODE1 0x1000;
+L7=0;
+B7=0x2df000;
+I7=0x2dfffc;
+BIT SET MODE1 0x1000;
 R2=I6;
 I6=I7;
 JUMP(M13,I12)(DB);
 DM(I7,M7)=R2;
 DM(I7,M7)=returned-1;
 returned:
+BIT CLR MODE1 0x1000;
+R0=DM(0x2df000);
+B7=DM(0x200afe34);
+I7=DM(0x200afe30);
+L7=DM(0x200afe38);
+BIT SET MODE1 0x1000;
+R1=0x57ac6a2d;
+COMP(R0,R1);
+IF EQ JUMP restore;
+JUMP silence;
+silence:
+I4=DM(0x200afd00);
+R0=0;
+R1=0;
+M6=1;
+clear:
+DM(I4,M6)=R0;
+R1=R1+1;
+R2=32;
+COMP(R1,R2);
+IF LT JUMP clear;
 JUMP restore;
 stock_slot:
 R1=DM(0x200afe08);

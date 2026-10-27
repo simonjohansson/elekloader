@@ -117,9 +117,25 @@ FIFO, other DAG registers, MODE2, interrupt masks, stack bases/lengths and
 the contents/depth of the hardware PC, loop and status stacks. Do not mask
 interrupts. Use the short-word C call/return convention (input in R4),
 return I6/I7 unchanged and retain the pinned constants needed by that
-convention. The callback may declare at most **128 stack bytes**; its
-adapter adds an eight-byte call frame. A declaration is not a measurement
-or an instruction sandbox.
+convention.
+
+The callback runs on its own 4 KiB stack in L1, `0x2de000..0x2df000`
+(loader `0x282de000`), not on the stock Audio Task's. It is in L1 like
+stock's stacks: a FreeRTOS context switch saves the task's registers onto
+the running stack, partly through the PM bus. The adapter points I7 at its
+top, with B7 at its base and L7 = 0 (linear), and puts stock's I7, B7 and
+L7 back afterwards. Writing B7 also loads I7, so it writes B7 first, with
+interrupts off for those few instructions. The callback may declare at
+most **2,048 stack bytes**, plus the adapter's eight-byte call frame. The
+rest is for interrupts: one taken during the call (its dispatcher, its C
+handler, a context switch's 516-byte save) pushes onto the same stack.
+
+The linker zero-fills the stack and writes a guard word at its base. The
+adapter checks the guard before and after every call. Once an overrun has
+broken it, the machine is called no more until the DSP reloads and its
+slots play silence; a tool reads the guard to see that. The overrun
+itself has already written below the stack by then. A declaration is not
+a measurement or an instruction sandbox.
 
 The synth owns 64 KiB of L2:
 

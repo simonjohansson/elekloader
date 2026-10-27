@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 """The DN2 machine areas are unused at run time, in DigiKit's coupled emulator.
 
-Static analysis says stock never references L2 [0x2008823c, 0x200f9fff]. This boots core and
-machines-dn2 with no machine, so the stock voice pipeline runs, fills both 64 KiB machine areas
-with an address-derived pattern, plays every track hard (chords on all 16 channels, filter and
-parameter sweeps, several seconds), and checks that no word of the pattern changed.
+Static analysis says stock never references L2 [0x2008823c, 0x200f9fff] or L1 above core's
+bridge. This boots core and machines-dn2 with no machine, so the stock voice pipeline runs, fills
+both 64 KiB machine areas and both machines' 4 KiB L1 stacks with an address-derived pattern,
+plays every track hard (chords on all 16 channels, filter and parameter sweeps, several
+seconds), and checks that no word of the pattern changed.
 """
 import os
 from pathlib import Path
@@ -32,8 +33,10 @@ class MachineMemoryTests(unittest.TestCase):
         from elekloader.devices.digitone_mk2 import DEVICE
         from elekloader.sdk import build as sdk
         profile = DEVICE.releases['1.12'].sharc
-        lo, hi = profile['voice_range'][0], profile['filter_range'][1]
+        areas = [(profile['voice_range'][0], profile['filter_range'][1]),
+                 (profile['voice_stack'][0], profile['filter_stack'][1])]
         self.assertEqual(profile['voice_range'][1], profile['filter_range'][0])
+        self.assertEqual(profile['voice_stack'][1], profile['filter_stack'][0])
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp)
             mods = [sdk.build(str(ROOT / 'mods' / src), STOCK, str(work / src))[0] for src in ('core-dn2', 'machines-dn2')]
@@ -52,12 +55,12 @@ class MachineMemoryTests(unittest.TestCase):
                         left -= step
                 emu.call('firmware.load', syx=str(firmware), start='cold', force=True, auto_no=True)
                 wait(300)
-                expected = pattern(lo, hi)
                 fill = work / 'fill.patch'
-                fill.write_text(''.join('BYTES %x %s\n' % (lo + at, expected[at:at + 2048].hex())
-                                        for at in range(0, hi - lo, 2048)))
+                fill.write_text(''.join('BYTES %x %s\n' % (at, pattern(at, min(at + 2048, hi)).hex())
+                                        for lo, hi in areas for at in range(lo, hi, 2048)))
                 emu.call('dsp.patch', file=str(fill))
-                self.assertEqual(bytes.fromhex(emu.call('dsp.peek', addr=lo, len=64)['hex']), expected[:64])
+                for lo, _hi in areas:
+                    self.assertEqual(bytes.fromhex(emu.call('dsp.peek', addr=lo, len=64)['hex']), pattern(lo, lo + 64))
                 emu.call('pcm.tap', action='start')
                 # Every channel: a chord, then FREQ, RESO and the first synth knobs swept while it sounds.
                 for rounds in range(4):
@@ -72,10 +75,12 @@ class MachineMemoryTests(unittest.TestCase):
                     wait(200)
                 heard = emu.call('pcm.tap', action='report')
                 self.assertGreater(heard['peak'], 0.05, 'the load should be audible')
-                got = b''.join(bytes.fromhex(emu.call('dsp.peek', addr=at, len=0x10000)['hex'])
-                              for at in range(lo, hi, 0x10000))   # a peek reads at most 64 KiB
-                changed = [lo + at for at in range(0, hi - lo, 4) if got[at:at + 4] != expected[at:at + 4]]
-                self.assertEqual(changed[:8], [], '%d words changed' % len(changed))
+                for lo, hi in areas:
+                    got = b''.join(bytes.fromhex(emu.call('dsp.peek', addr=at, len=min(0x10000, hi - at))['hex'])
+                                   for at in range(lo, hi, 0x10000))   # a peek reads at most 64 KiB
+                    expected = pattern(lo, hi)
+                    changed = [lo + at for at in range(0, hi - lo, 4) if got[at:at + 4] != expected[at:at + 4]]
+                    self.assertEqual(changed[:8], [], '%d words changed in %#x..%#x' % (len(changed), lo, hi))
                 status = emu.status()
                 self.assertIsNone(status['cf'].get('error'))
                 self.assertIsNone(status['audio']['halted'])

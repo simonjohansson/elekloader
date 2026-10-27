@@ -307,7 +307,7 @@ def module_payload(doc, profile, core=False):
     stack = doc['stack_bytes']
     if machine_kind and (not _uint32(stack) or stack > profile[machine_kind + '_stack_max']):
         raise ModError('SHARC %s stack exceeds the profile limit' % machine_kind)
-    if not _uint32(stack) or stack > profile['stack_max']:
+    if not machine_kind and (not _uint32(stack) or stack > profile['stack_max']):   # machines run on their own stack
         raise ModError('SHARC stack contribution exceeds the profile limit')
     if entries is None and stack:
         raise ModError('inert SHARC payload must declare zero stack')

@@ -50,6 +50,9 @@ export type SharcProfile = {
   filterBindingOffset?: number
   filterStack?: Range
   stackGuard?: number                           // at each machine stack's base; the adapters check it
+  peekRange?: Range                             // core-dn2's DSP peek (mods/core-dn2/peek.s), with any SHARC mod
+  peekCode?: string
+  peekHook?: [number, string, string]
   filterStackMax?: number
   filterHook?: [number, string, string]
   filterCapture?: [number, string, string]      // the filter setup table's internal type 0 entry, sent to the adapter
@@ -276,13 +279,15 @@ export const DIGITONE_MK2: Device = {
         filterAdapterSha256: '10576ba32964c88b620a72c73cd46aadb8bb66095eef98cfce29280f648b42c4',
         filterAdapterBytes: 2048, filterStateBytes: 1024, filterBindingOffset: 65024, filterStackMax: 2048,
         filterStack: [0x282df000, 0x282e0000], stackGuard: 0x57ac6a2d,
+        peekRange: [0x282e0000, 0x282e0800], peekHook: [0x28393cbe, '01112600388a', '3e0617000000'],
+        peekCode: '01112600388a089c7d058b0f800aabc0bf703f09089480060b0f0000ffff8401db0b0e0f0000eed5bec320061700ec0008940107089482078401de2aafce0b0f5a5a5a5aabce08948305abc320061700ec008b0ff0ffa001db0a0b102e000006abc3000617003c000a112e0000068b0f00000b112e000406bfc68d0fff038001bdb024061700da008b0f03008401eb0b20061700da003e020000bf02bec00d0f240000008001edb002061700da000d0f270000008001bdb0040617009f000d0f2c0000008001edb002061700da000d0f2e0000c08001bdb0040617009f000d0f300000008001edb002061700da000d0f310000c08001bdb0040617009f000d0f380000008001edb002061700da000d0f390000c08001bdb0040617009f000d0f002000008001edb002061700da000d0f0f2000a08001bdb024061700da000d102e0004068b0fffffa001db0b3e020000bb02bec0bf70bf89089680053e0233000d0010061700b8008e0ff0ffa001be0b0e0f0000ffffbecc8e0f0f008401ae0e3e020000ee0cedcd3e020000ee10ebcd08990207ddc53e020000bf01dbc302061700d4008d0f00000d112e0004063e061c00629e8e0f0f008401ae0e3e020000ee0c8d0fff0fedcd3e020000ee10089902073e061c00629e8e0f0000089902073e061c00629e0100',
         filterHook: [0x28392b0e, '140f5280c0db', '3e06bd000000'],
         filterCapture: [0x8052dba4, '7e921c00', '8703bd00'],
         coreRange: [0x282dd600, 0x282dda00], stackMax: 544, codeGuardBytes: 64,
         keyedPitchTable: [920, '314d5900969c5e00d23c6400b1326a004c837000073477009b4a7e0015cd8500e1c18d00c92f9600031e9f002e94a800'],
-        ownedRanges: [[0x282dd600, 0x282e0000], [0x20090000, 0x200b0000]],
+        ownedRanges: [[0x282dd600, 0x282e0800], [0x20090000, 0x200b0000]],
         patchRanges: [[0x2838489a, 0x283848a0], [0x20004a36, 0x20004a3c], [0x28392b0e, 0x28392b14],
-          [0x8052dba4, 0x8052dba8]],
+          [0x8052dba4, 0x8052dba8], [0x28393cbe, 0x28393cc4]],
         activeKeyedCore: { segments: [[12, 'code', 'af2f375dc58a8ccd4b8abd89b1fb526441baa6fb5da9266c2b664e69d90fc829']],
           zero: [[1008, 16]], entries: { hook_offset_bytes: 12 }, stackBytes: 116 },
         hook: [0x2838489a, '8715ffff78ff', '3e06160006eb'],

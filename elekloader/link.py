@@ -637,6 +637,13 @@ def link(mods, image, lock=None, *, sharc_stream=None):
                 fills = [(core_base + off, count, 0) for off, count in bridge['zero']] + fills
                 site, old, new = rel.sharc['hook']
                 patches.append((site, bytes.fromhex(old), bytes.fromhex(new)))
+        # core-dn2's DSP peek rides along whenever section 7 changes (mods/core-dn2/peek.s).
+        lo, hi = rel.sharc['peek_range']
+        code = bytes.fromhex(rel.sharc['peek_code'])
+        loads.append((lo, code))
+        fills.append((lo + len(code), hi - lo - len(code), 0))
+        site, old, new = rel.sharc['peek_hook']
+        patches.append((site, bytes.fromhex(old), bytes.fromhex(new)))
         dsp_stream = sharc.insert(sharc_stream, rel.sharc,
                                   loads=loads, fills=fills, patches=patches)
         dsp_stored = syx.pack_main(dsp_stream)

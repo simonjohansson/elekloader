@@ -16,4 +16,17 @@ void core_additem(void *menu, const void *row);
 /* Read-only queue observation: [1] is pending count, [4] capacity minus one. */
 extern volatile uint32_t fw_ui_queue[];
 unsigned char fw_sysex_send(const void *data, unsigned length, const void *abort, unsigned port);
+
+/* DSP peek: up to CORE_DSP_PEEK_MAX words from a word-aligned L1 or L2 address, one halfword
+ * per audio block (about 3 KB/s). Only a build with a SHARC mod has the DSP side; without one a
+ * peek stays busy. Start from any task; the answer arrives in the audio interrupt. */
+enum { CORE_DSP_PEEK_MAX = 1024 };
+enum { CORE_DSP_PEEK_OK, CORE_DSP_PEEK_INVALID, CORE_DSP_PEEK_BUSY, CORE_DSP_PEEK_REFUSED };
+int core_dsp_peek(unsigned address, unsigned count);          /* starts a read; ends the last */
+int core_dsp_peek_status(unsigned *halfwords_received, unsigned *halfwords_total);
+const volatile unsigned short *core_dsp_peek_data(void);     /* halfword i of the read, low first */
+void core_dsp_peek_stop(void);
+/* The block handler's span as stock measures it (EMUCLK cycles, the DSP reply's word 0): the
+ * latest, and the peak since the last call. It is not the DSP's load. */
+void core_dsp_span(unsigned *latest, unsigned *peak);
 #endif

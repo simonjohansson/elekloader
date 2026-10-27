@@ -165,6 +165,20 @@ abort, port)` is the stock sender; port 2 selects USB. Keep UI actions out
 of the MIDI task; queue bounded work for `ev_tick`. The DigiHealth DN2
 port is an example of using all of this without owning stock sites.
 
+### The DSP peek (core-dn2, Digitone II)
+
+A build with a SHARC mod lets the ColdFire read the DSP's memory. From any
+task, `core_dsp_peek(address, count)` starts a read of 1..`CORE_DSP_PEEK_MAX`
+(1024) words from a word-aligned L1 or L2 address and ends the last one;
+`core_dsp_peek_status(&received, &total)` says how many halfwords have
+arrived (`CORE_DSP_PEEK_BUSY` until all have, `CORE_DSP_PEEK_REFUSED` for an
+address outside L1 and L2 RAM), and `core_dsp_peek_data()` gives them, low
+halfword of each word first. One halfword arrives per audio block, about
+3 KB/s. Without a SHARC mod the DSP side is absent and a read stays busy.
+`core_dsp_span(&latest, &peak)` gives the block handler's span as stock
+measures it (EMUCLK cycles); it is not the DSP's load. DigiHealth's
+`dsppeek` uses these. The protocol is in [SHARC-DN2.md](SHARC-DN2.md#the-dsp-peek).
+
 The Analog Rytm MKII's core (mods/core-ar2) has `ev_tick`, `ev_draw`,
 `ev_key`, `ev_enc`, `ev_settings`, `ev_render_in` and `ev_render_out`, and
 from 0.2 mod storage and the event `ev_project` ("Mod storage (core-ar2 0.2,

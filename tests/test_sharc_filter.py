@@ -185,6 +185,18 @@ class PairLinkTests(unittest.TestCase):
             {'id': 'voice-6', 'owner': list(PROFILE['voice_range']), 'hook': PROFILE['voice_hook'][0]}])
         self.assertNotIn('app', out.layout['sharc'])
 
+    def test_a_sharc_build_carries_core_dn2s_dsp_peek(self):
+        out = self.linked(self.mods['voice-6'])
+        lo, hi = PROFILE['peek_range']
+        code = bytes.fromhex(PROFILE['peek_code'])
+        self.assertEqual(self.at(out.sharc_stream, lo, len(code)), code)
+        site, old, new = PROFILE['peek_hook']
+        self.assertEqual(self.at(self.stream, site), bytes.fromhex(old))
+        self.assertEqual(self.at(out.sharc_stream, site), bytes.fromhex(new))
+        records = sharc.parse(out.sharc_stream, PROFILE)
+        self.assertTrue(any(r.flags == sharc.FILL and r.target == lo + len(code) and r.count == hi - lo - len(code)
+                            for r in records))
+
     def test_each_machine_gets_its_own_guarded_stack_in_l1(self):
         for kind, other in (('voice', 'filter'), ('filter', 'voice')):
             lo, hi = PROFILE[kind + '_stack']

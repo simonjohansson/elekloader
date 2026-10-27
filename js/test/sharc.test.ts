@@ -190,6 +190,12 @@ test('SHARC owner-stock exact no-op', { skip: !process.env.ELEKLOADER_DN2_SYX },
   const changed = [...decoded.keys()].filter(i => decoded[i] !== patched[i])
   assert.equal(changed.length, 6)
   assert.equal(Buffer.from(patched.subarray(changed[0], changed[0] + 6)).toString('hex'), '3e06160006eb')
+  // core-dn2's DSP peek, as the linker inserts it with any SHARC mod: owned, and its hook matches stock.
+  const [peekLo, peekHi] = profile.peekRange!, peek = bytes(profile.peekCode!), [site, old, replacement] = profile.peekHook!
+  const withPeek = sharc.insert(decoded, profile, [[peekLo, peek]], [[peekLo + peek.length, peekHi - peekLo - peek.length, 0]],
+    [[site, bytes(old), bytes(replacement)]])
+  const peekRecords = sharc.parse(withPeek, profile)
+  assert(peekRecords.some(r => r.flags === sharc.LOAD && r.target === peekLo && Buffer.from(r.raw.subarray(16, 16 + peek.length)).equals(peek)))
   const outputs = formats.write(parsed, parsed.stored.get(device.mainSection)!, device)
   assert.deepEqual(Buffer.from(outputs.syx), raw)
   formats.verify(outputs, parsed, formats.mainImage(parsed, device), device)

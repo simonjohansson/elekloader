@@ -101,7 +101,7 @@ per slot, zeroed when the DSP loads and kept between calls and across
 notes: the adapter never clears them, so reset what needs it on START.
 Without the macro `state` is null. `machine_from_executable` reads the
 size from the executable and reserves the 16 after the data, in the
-7 KiB data area; it refuses with the sizes when they do not fit.
+31 KiB data area; it refuses with the sizes when they do not fit.
 
 ## Context and memory
 
@@ -121,14 +121,14 @@ convention. The callback may declare at most **128 stack bytes**; its
 adapter adds an eight-byte call frame. A declaration is not a measurement
 or an instruction sandbox.
 
-The synth owns the first 16 KiB of the L2 reservation:
+The synth owns 64 KiB of L2:
 
 | Part | Loader byte range | Size |
 |---|---|---|
 | Pinned adapter, including guard | `0x20090000..0x20090800` | 2 KiB |
-| Author code, including 64-byte guard | `0x20090800..0x20092000` | 6 KiB |
-| Author data | `0x20092000..0x20093c00` | 7 KiB |
-| Zeroed adapter state | `0x20093c00..0x20094000` | 1 KiB |
+| Author code, including 64-byte guard | `0x20090800..0x20098000` | 30 KiB |
+| Author data | `0x20098000..0x2009fc00` | 31 KiB |
+| Zeroed adapter state | `0x2009fc00..0x200a0000` | 1 KiB |
 
 Ranges exclude their end. A mod's build never names them: it compiles the
 kernel, links it with the script `elekloader.sdk.sharc.machine_linker_script('voice')`
@@ -139,8 +139,9 @@ placement, guard and entry and returns the artifact; `stack_bytes` defaults to
 the limit below. Compilation belongs to the mod. A producer that links some other
 way can call `voice_artifact(code, data, render_offset_bytes, machine_id,
 stack_bytes)` with the bounds `machine_layout('voice')` gives. The SDK adds the
-pinned adapter, NOP padding and zero ranges. The linker writes the render PC and ID at
-`0x20093e00`, and the voice state's address and one voice's size at `0x20093e20`. Keep writes in the author data area and supplied voice buffer.
+pinned adapter, the code's NOP guard and the zero ranges (zeroed words are NOPs, so unused code
+space costs no update bytes). The linker writes the render PC and ID at
+`0x2009fe00`, and the voice state's address and one voice's size at `0x2009fe20`. Keep writes in the author data area and supplied voice buffer.
 
 The exact OS 1.12 hook is PC16 `0xb8251b`, loader `0x20004a36`, called by
 the voice pipeline at `0x1c9459`. Its guarded six-byte stack adjustment is

@@ -25,13 +25,13 @@ def machine_layout(kind):
 
 
 def voice_artifact(code, data, render_offset_bytes, machine_id, stack_bytes, voice_bytes=0):
-    """Kernel PC16 0xbc8400, data 0x20092000; entry offset excludes the adapter. voice_bytes:
+    """Kernel PC16 0xbc8400, data 0x20098000; entry offset excludes the adapter. voice_bytes:
     one voice's state; the artifact reserves 16, zeroed, after the data."""
     return _machine_artifact('voice', code, data, render_offset_bytes, machine_id, stack_bytes, voice_bytes)
 
 
 def filter_artifact(code, data, render_offset_bytes, machine_id, stack_bytes, voice_bytes=0):
-    """Kernel PC16 0xbca400, data 0x20096000; entry offset excludes the adapter. voice_bytes:
+    """Kernel PC16 0xbd0400, data 0x200a8000; entry offset excludes the adapter. voice_bytes:
     as voice_artifact's."""
     return _machine_artifact('filter', code, data, render_offset_bytes, machine_id, stack_bytes, voice_bytes)
 
@@ -43,11 +43,11 @@ def _machine_artifact(kind, code, data, render_offset_bytes, machine_id, stack_b
     data_offset = prefix + layout['code_bytes']
     state = data_offset + layout['data_bytes']
     if not isinstance(code, bytes) or not code or len(code) % 2 or len(code) > layout['code_bytes'] - 64:
-        raise ValueError('DN2 %s code must fit 6 KiB with its 64-byte guard' % kind)
+        raise ValueError('DN2 %s code must fit %d KiB with its 64-byte guard' % (kind, layout['code_bytes'] // 1024))
     if type(render_offset_bytes) is not int or render_offset_bytes % 2 or not 0 <= render_offset_bytes < len(code):
         raise ValueError('DN2 %s entry must be even and inside the supplied code' % kind)
     if not isinstance(data, bytes) or len(data) % 4 or len(data) > layout['data_bytes']:
-        raise ValueError('DN2 %s data must fit 7 KiB and be four-byte aligned' % kind)
+        raise ValueError('DN2 %s data must fit %d KiB and be four-byte aligned' % (kind, layout['data_bytes'] // 1024))
     voice_at = data_offset + -(-len(data) // 8) * 8          # 16 voices' state, after the data
     if type(voice_bytes) is not int or voice_bytes < 0 or voice_bytes % 4:
         raise ValueError('DN2 %s voice state must be a whole number of 32-bit words' % kind)
@@ -55,12 +55,13 @@ def _machine_artifact(kind, code, data, render_offset_bytes, machine_id, stack_b
         raise ValueError('DN2 %s data (%d bytes) and 16 voices of %d bytes need %d bytes; the area has %d'
                          % (kind, len(data), voice_bytes, voice_at - data_offset + 16 * voice_bytes, layout['data_bytes']))
     adapter = json.loads((Path(__file__).parent / ('include/digitone-mk2/' + kind + '-bridge.json')).read_text())
-    code += b'\x01\x00' * ((layout['code_bytes'] - len(code)) // 2)
-    end = data_offset + len(data)
+    code += b'\x01\x00' * (32 + len(code) // 2 % 2)        # the read-ahead guard, to whole words
+    gap, end = prefix + len(code), data_offset + len(data)   # zeroed words decode as NOP
     doc = {'abi': profile[kind + '_abi'], 'machine_id': machine_id,
            'segments': [adapter, {'offset_bytes': prefix, 'kind': 'code', 'hex': code.hex()},
                         *([{'offset_bytes': data_offset, 'kind': 'data', 'hex': data.hex()}] if data else [])],
-           'zero': ([{'offset_bytes': end, 'size_bytes': state - end}] if end < state else [])
+           'zero': ([{'offset_bytes': gap, 'size_bytes': data_offset - gap}] if gap < data_offset else [])
+                   + ([{'offset_bytes': end, 'size_bytes': state - end}] if end < state else [])
                    + [{'offset_bytes': state, 'size_bytes': profile[kind + '_state_bytes']}],
            'entries': {'render_offset_bytes': prefix + render_offset_bytes},
            'stack_bytes': stack_bytes}

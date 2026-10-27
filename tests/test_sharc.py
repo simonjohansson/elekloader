@@ -129,7 +129,7 @@ class SharcTests(unittest.TestCase):
         spans = [sharc.byte_span(PROFILE, r.target, r.count, check_protected=False)
                  for r in records if r.flags in (sharc.LOAD, sharc.FILL)]
         self.assertEqual(sum(a < d and c < b for i, (a, b) in enumerate(spans) for c, d in spans[i+1:]), 15)
-        self.refusal(lambda: sharc.insert(decoded, PROFILE, fills=[(0x20098000, 4, 0)]),
+        self.refusal(lambda: sharc.insert(decoded, PROFILE, fills=[(0x200b0000, 4, 0)]),
                      'SHARC new load or fill is outside the profile-owned ranges')
         patched = sharc.insert(decoded, PROFILE, patches=[
             (0x2838489a, bytes.fromhex('8715ffff78ff'), bytes.fromhex('3e06160006eb'))])

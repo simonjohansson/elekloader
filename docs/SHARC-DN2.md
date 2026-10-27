@@ -7,8 +7,8 @@ maintainers. Mod authors start with the
 [sine example](../examples/sharc-sine/README.md); the
 [callback contract](SHARC-DN2-ABI.md) says what a mod's code must do, and
 [FORMAT](FORMAT.md#digitone-ii-sharc-mod) what the file holds.
-Selectable synths and filters (machines-dn2) use the same 32 KiB, split in
-two, with the [voice](MACHINES-DN2-VOICE.md) and [filter](MACHINES-DN2-FILTER.md)
+Selectable synths and filters (machines-dn2) own 64 KiB each from the same
+start, with the [voice](MACHINES-DN2-VOICE.md) and [filter](MACHINES-DN2-FILTER.md)
 contracts; a build has either those or one master-output mod.
 
 ## The stock file and the writer
@@ -41,6 +41,8 @@ Every range is half-open, in loader bytes:
 | core's bridge and its state | `[0x282dd600,0x282dda00)` |
 | the bridge's pitch table and padding | `[0x282dda00,0x282dde00)` |
 | the mod | `[0x20090000,0x20098000)` (L2) |
+| a selectable synth | `[0x20090000,0x200a0000)` (L2) |
+| a selectable filter | `[0x200a0000,0x200b0000)` (L2) |
 | the stock instruction the bridge replaces | `[0x2838489a,0x283848a0)` |
 
 The examples split the mod's 32 KiB into 16 KiB of code and 16 KiB of data.

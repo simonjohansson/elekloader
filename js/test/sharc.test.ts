@@ -181,7 +181,7 @@ test('SHARC owner-stock exact no-op', { skip: !process.env.ELEKLOADER_DN2_SYX },
   const spans = records.filter(r => r.flags === sharc.LOAD || r.flags === sharc.FILL)
     .map(r => sharc.byteSpan(profile, r.target, r.count, 'loader-byte', false))
   assert.equal(spans.reduce((n, [a, b], i) => n + spans.slice(i+1).filter(([c, d]) => a < d && c < b).length, 0), 15)
-  refusal(() => sharc.insert(decoded, profile, [], [[0x20098000, 4, 0]]), 'SHARC new load or fill is outside the profile-owned ranges')
+  refusal(() => sharc.insert(decoded, profile, [], [[0x200b0000, 4, 0]]), 'SHARC new load or fill is outside the profile-owned ranges')
   const patched = sharc.insert(decoded, profile, [], [], [[0x2838489a, bytes('8715ffff78ff'), bytes('3e06160006eb')]])
   const changed = [...decoded.keys()].filter(i => decoded[i] !== patched[i])
   assert.equal(changed.length, 6)
@@ -196,8 +196,9 @@ function machineArtifact(kind: 'voice' | 'filter', id = 6) {
   return { abi: profile[`${kind}Abi`], machine_id: id, stack_bytes: profile[`${kind}StackMax`]!,
     entries: { render_offset_bytes: 2048 } as { render_offset_bytes: number } | null,
     segments: [prefix, { offset_bytes: 2048, kind: 'code', hex: '0100'.repeat(3072) },
-      { offset_bytes: 8192, kind: 'data', hex: '00000000' }],
-    zero: [{ offset_bytes: 8196, size_bytes: 7164 }, { offset_bytes: 15360, size_bytes: 1024 }] }
+      { offset_bytes: 32768, kind: 'data', hex: '00000000' }],
+    zero: [{ offset_bytes: 8192, size_bytes: 24576 }, { offset_bytes: 32772, size_bytes: 31740 },
+      { offset_bytes: 64512, size_bytes: 1024 }] }
 }
 
 for (const kind of ['voice', 'filter'] as const) test(`DN2 ${kind} artifacts pin only the adapter and bound the author kernel`, () => {
@@ -218,9 +219,9 @@ for (const kind of ['voice', 'filter'] as const) test(`DN2 ${kind} artifacts pin
     [(d: any) => { d.entries.render_offset_bytes = 8192 }, 'SHARC entry is not in owned code'],
     [(d: any) => { d.segments[0].hex = '0000' + d.segments[0].hex.slice(4) }, `SHARC ${kind} adapter does not match the qualified prefix`],
     [(d: any) => { d.segments[1].hex = d.segments[1].hex.slice(0, -4) + '0000' }, 'SHARC mod code needs its profiled NOP read-ahead guard'],
-    [(d: any) => { d.zero[1].size_bytes += 4 }, 'SHARC zero range is unaligned or exceeds its owner'],
+    [(d: any) => { d.zero[2].size_bytes += 4 }, 'SHARC zero range is unaligned or exceeds its owner'],
     [(d: any) => { d.segments[2].offset_bytes -= 4 }, 'SHARC payload has a gap or overlap in its owner'],
-    [(d: any) => { d.zero = [{ offset_bytes: 8196, size_bytes: 8188 }] }, `SHARC ${kind} mod overlaps the adapter reservation`],
+    [(d: any) => { d.zero = [d.zero[0], { offset_bytes: 32772, size_bytes: 32764 }] }, `SHARC ${kind} mod overlaps the adapter reservation`],
   ] as const) {
     const bad = structuredClone(artifact)
     change(bad)
@@ -231,16 +232,16 @@ for (const kind of ['voice', 'filter'] as const) test(`DN2 ${kind} artifacts pin
   const shape = `SHARC ${kind} voice_state needs exactly offset_bytes, voice_bytes`
   const inside = `SHARC ${kind} voice_state must be 16 zeroed voices inside the mod`
   for (const [voice, error] of [
-    [null, shape], [{ offset_bytes: 8200, voice_bytes: 12, extra: 1 }, shape], [[8200, 12], shape],
-    [{ offset_bytes: 8204, voice_bytes: 12 }, inside], [{ offset_bytes: 8200, voice_bytes: 0 }, inside],
-    [{ offset_bytes: 8200, voice_bytes: 6 }, inside], [{ offset_bytes: 8200, voice_bytes: 448 }, inside],
-    [{ offset_bytes: 15360, voice_bytes: 4 }, inside], [{ offset_bytes: 8192, voice_bytes: 4 }, inside],
+    [null, shape], [{ offset_bytes: 32776, voice_bytes: 12, extra: 1 }, shape], [[32776, 12], shape],
+    [{ offset_bytes: 32780, voice_bytes: 12 }, inside], [{ offset_bytes: 32776, voice_bytes: 0 }, inside],
+    [{ offset_bytes: 32776, voice_bytes: 6 }, inside], [{ offset_bytes: 32776, voice_bytes: 1984 }, inside],
+    [{ offset_bytes: 64512, voice_bytes: 4 }, inside], [{ offset_bytes: 32768, voice_bytes: 4 }, inside],
   ] as const) refusal(() => sharc.modulePayload({ ...artifact, voice_state: voice }, profile), error)
-  assert.deepEqual(sharc.modulePayload({ ...artifact, voice_state: { offset_bytes: 8200, voice_bytes: 12 } }, profile).voiceState,
-    [8200, 12])
+  assert.deepEqual(sharc.modulePayload({ ...artifact, voice_state: { offset_bytes: 32776, voice_bytes: 12 } }, profile).voiceState,
+    [32776, 12])
   // A stateless filter may have no data segment; its complete owner is still initialized.
   artifact.segments.pop()
-  artifact.zero[0] = { offset_bytes: 8192, size_bytes: 7168 }
+  artifact.zero = [{ offset_bytes: 8192, size_bytes: 56320 }, { offset_bytes: 64512, size_bytes: 1024 }]
   sharc.modulePayload(artifact, profile)
 })
 

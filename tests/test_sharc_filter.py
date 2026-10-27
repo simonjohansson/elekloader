@@ -25,22 +25,23 @@ def artifact():
 class EnvelopeTests(unittest.TestCase):
     def test_filter_layout_and_producer_bounds(self):
         payload = sharc.module_payload(artifact(), PROFILE)
-        self.assertEqual(payload['owner'], (0x20094000, 0x20098000))
+        self.assertEqual(payload['owner'], (0x200a0000, 0x200b0000))
         self.assertEqual(payload['machine_kind'], 'filter')
         self.assertEqual(payload['machine_id'], 6)
         self.assertEqual(payload['entries'], {'render_offset_bytes': 2048})
         self.assertEqual(machine_layout('filter'), {
-            'code_pc16': 0xbca400, 'code_bytes': 6144,
-            'data_address': 0x20096000, 'data_bytes': 7168})
+            'code_pc16': 0xbd0400, 'code_bytes': 30720,
+            'data_address': 0x200a8000, 'data_bytes': 31744})
         self.assertEqual(machine_layout('voice'), {
-            'code_pc16': 0xbc8400, 'code_bytes': 6144,
-            'data_address': 0x20092000, 'data_bytes': 7168})
-        for code, data in ((bytes(6), bytes(4)), (bytes(6080), bytes(7168)), (bytes(4), b'')):
+            'code_pc16': 0xbc8400, 'code_bytes': 30720,
+            'data_address': 0x20098000, 'data_bytes': 31744})
+        for code, data in ((bytes(6), bytes(4)), (bytes(30656), bytes(31744)), (bytes(4), b'')):
             doc = filter_artifact(code, data, 0, 31, 12)
-            self.assertEqual(len(bytes.fromhex(doc['segments'][1]['hex'])), 6144)
-            self.assertEqual(doc['zero'][-1], {'offset_bytes': 15360, 'size_bytes': 1024})
-        for code, data in ((b'', bytes(4)), (bytes(3), bytes(4)), (bytes(6082), bytes(4)),
-                           (bytes(4), bytes(7172)), (bytes(4), bytes(3))):
+            # The code ends at its NOP guard, rounded to whole words; zeros fill the rest.
+            self.assertEqual(len(bytes.fromhex(doc['segments'][1]['hex'])), len(code) + 64 + len(code) % 4)
+            self.assertEqual(doc['zero'][-1], {'offset_bytes': 64512, 'size_bytes': 1024})
+        for code, data in ((b'', bytes(4)), (bytes(3), bytes(4)), (bytes(30658), bytes(4)),
+                           (bytes(4), bytes(31748)), (bytes(4), bytes(3))):
             with self.subTest(code=len(code), data=len(data)), self.assertRaises(ValueError):
                 filter_artifact(code, data, 0, 6, 12)
 
@@ -63,13 +64,13 @@ class EnvelopeTests(unittest.TestCase):
             (lambda d: d.update(stack_bytes=21), 'filter stack'),
             (lambda d: d.update(entries=None), 'render entry'),
             (lambda d: d['entries'].update(render_offset_bytes=0), 'adapter reservation'),
-            (lambda d: d['entries'].update(render_offset_bytes=8128), 'read-ahead guard'),
-            (lambda d: d['entries'].update(render_offset_bytes=8192), 'not in owned code'),
+            (lambda d: d['entries'].update(render_offset_bytes=2052), 'read-ahead guard'),
+            (lambda d: d['entries'].update(render_offset_bytes=2116), 'not in owned code'),
             (lambda d: d['segments'][0].update(hex='0000' + d['segments'][0]['hex'][4:]), 'qualified prefix'),
             (lambda d: d['segments'][1].update(hex=d['segments'][1]['hex'][:-4] + '0000'), 'read-ahead guard'),
-            (lambda d: d['segments'][2].update(offset_bytes=16384), 'exceeds its owner'),
-            (lambda d: d['zero'][0].update(offset_bytes=8192), 'gap or overlap'),
-            (lambda d: d['zero'][-1].update(offset_bytes=15364, size_bytes=1020), 'gap or overlap'),
+            (lambda d: d['segments'][2].update(offset_bytes=65536), 'exceeds its owner'),
+            (lambda d: d['zero'][0].update(offset_bytes=32768), 'gap or overlap'),
+            (lambda d: d['zero'][-1].update(offset_bytes=64516, size_bytes=1020), 'gap or overlap'),
         ]
         for change, error in cases:
             doc = artifact()
@@ -80,8 +81,8 @@ class EnvelopeTests(unittest.TestCase):
     def test_adapter_state_cannot_be_replaced_with_author_data(self):
         # Preserve complete owner coverage, but write inside the adapter's state.
         doc = artifact()
-        doc['segments'].append({'offset_bytes': 15360, 'kind': 'data', 'hex': '00000000'})
-        doc['zero'][-1] = {'offset_bytes': 15364, 'size_bytes': 1020}
+        doc['segments'].append({'offset_bytes': 64512, 'kind': 'data', 'hex': '00000000'})
+        doc['zero'][-1] = {'offset_bytes': 64516, 'size_bytes': 1020}
         with self.assertRaisesRegex(elemod.ModError, 'adapter reservation'):
             sharc.module_payload(doc, PROFILE)
 
@@ -172,7 +173,7 @@ class PairLinkTests(unittest.TestCase):
         self.assertEqual(out.sharc_stored, reverse.sharc_stored)
         self.assertEqual(out.layout, reverse.layout)
         records = sharc.parse(out.sharc_stream, PROFILE)
-        for kind, binding, pc in (('voice', 0x20093e00, 0xbc8400), ('filter', 0x20097e00, 0xbca400)):
+        for kind, binding, pc in (('voice', 0x2009fe00, 0xbc8400), ('filter', 0x200afe00, 0xbd0400)):
             self.assertEqual(next(r.raw[16:] for r in records if r.target == binding), struct.pack('<II', pc, 6))
             site, _old, new = PROFILE[kind + '_hook']
             self.assertEqual(self.at(out.sharc_stream, site), bytes.fromhex(new))
@@ -189,7 +190,7 @@ class PairLinkTests(unittest.TestCase):
             lo, binding = PROFILE[kind + '_range'][0], PROFILE[kind + '_range'][0] + PROFILE[kind + '_binding_offset']
             with self.subTest(kind=kind):
                 stateful = self.linked(self.mods[kind + '-7']).sharc_stream
-                self.assertEqual(self.at(stateful, binding + 0x20, 8), struct.pack('<II', lo + 8200, 8))
+                self.assertEqual(self.at(stateful, binding + 0x20, 8), struct.pack('<II', lo + 32776, 8))
                 self.assertEqual(self.at(self.linked(self.mods[kind + '-6']).sharc_stream, binding + 0x20, 8), bytes(8))
 
     def test_each_role_is_unchanged_when_the_other_is_absent(self):
@@ -219,7 +220,7 @@ class PairLinkTests(unittest.TestCase):
         doc['sharc']['segments'][1]['hex'] = '01000100' + doc['sharc']['segments'][1]['hex'][8:]
         changed = link.Mod2(doc, 'changed-filter')
         out = self.linked(self.mods['voice-6'], changed)
-        record = next(r for r in sharc.parse(out.sharc_stream, PROFILE) if r.target == 0x20094800)
+        record = next(r for r in sharc.parse(out.sharc_stream, PROFILE) if r.target == 0x200a0800)
         self.assertEqual(record.raw[16:20], bytes.fromhex('01000100'))
 
     def test_refuses_second_role_and_master_mix(self):

@@ -51,7 +51,7 @@ class EnvelopeTests(unittest.TestCase):
         payload = sharc.module_payload(doc, PROFILE)
         self.assertEqual(payload['machine_id'], 5)
         self.assertEqual(payload['machine_kind'], 'voice')
-        self.assertEqual(payload['owner'], (0x20090000, 0x20094000))
+        self.assertEqual(payload['owner'], (0x20090000, 0x200a0000))
         self.assertEqual(payload['entries'], {'render_offset_bytes': 2048})
         cases = [
             (lambda d: d.update(machine_id=True), 'machine_id'),
@@ -60,10 +60,10 @@ class EnvelopeTests(unittest.TestCase):
             (lambda d: d.update(stack_bytes=129), 'voice stack'),
             (lambda d: d.update(entries=None), 'render entry'),
             (lambda d: d['entries'].update(render_offset_bytes=0), 'adapter reservation'),
-            (lambda d: d['entries'].update(render_offset_bytes=8128), 'read-ahead guard'),
+            (lambda d: d['entries'].update(render_offset_bytes=2052), 'read-ahead guard'),
             (lambda d: d['segments'][0].update(hex='0000'+d['segments'][0]['hex'][4:]), 'qualified prefix'),
             (lambda d: d['segments'][1].update(hex=d['segments'][1]['hex'][:-4]+'0000'), 'read-ahead guard'),
-            (lambda d: d['zero'][-1].update(offset_bytes=15364, size_bytes=1020), 'gap or overlap'),
+            (lambda d: d['zero'][-1].update(offset_bytes=64516, size_bytes=1020), 'gap or overlap'),
         ]
         for change, error in cases:
             bad = copy.deepcopy(doc)
@@ -76,32 +76,32 @@ class EnvelopeTests(unittest.TestCase):
 
     def test_voice_state(self):
         doc = voice_artifact(b'\x01\x00' * 2, bytes(4), 0, 5, 128, voice_bytes=12)
-        self.assertEqual(doc['voice_state'], {'offset_bytes': 8200, 'voice_bytes': 12})
-        self.assertEqual(sharc.module_payload(doc, PROFILE)['voice_state'], (8200, 12))
+        self.assertEqual(doc['voice_state'], {'offset_bytes': 32776, 'voice_bytes': 12})
+        self.assertEqual(sharc.module_payload(doc, PROFILE)['voice_state'], (32776, 12))
         self.assertIsNone(sharc.module_payload(artifact(), PROFILE)['voice_state'])
         shape, inside = 'needs exactly offset_bytes, voice_bytes', '16 zeroed voices inside the mod'
         for change, error in [
-            (lambda v: None, shape), (lambda v: dict(v, extra=1), shape), (lambda v: [8200, 12], shape),
-            (lambda v: dict(v, offset_bytes=8204), inside), (lambda v: dict(v, voice_bytes=0), inside),
-            (lambda v: dict(v, voice_bytes=6), inside), (lambda v: dict(v, voice_bytes=448), inside),
-            (lambda v: dict(v, offset_bytes=15360, voice_bytes=4), inside),   # the adapter's state
-            (lambda v: dict(v, offset_bytes=8192), inside)]:                 # the data
+            (lambda v: None, shape), (lambda v: dict(v, extra=1), shape), (lambda v: [32776, 12], shape),
+            (lambda v: dict(v, offset_bytes=32780), inside), (lambda v: dict(v, voice_bytes=0), inside),
+            (lambda v: dict(v, voice_bytes=6), inside), (lambda v: dict(v, voice_bytes=1984), inside),
+            (lambda v: dict(v, offset_bytes=64512, voice_bytes=4), inside),   # the adapter's state
+            (lambda v: dict(v, offset_bytes=32768), inside)]:                 # the data
             bad = copy.deepcopy(doc)
             bad['voice_state'] = change(bad['voice_state'])
             with self.subTest(voice_state=bad['voice_state']), self.assertRaisesRegex(elemod.ModError, error):
                 sharc.module_payload(bad, PROFILE)
         # The data and 16 voices of state share the 7 KiB data area.
-        voice_artifact(bytes(4), bytes(7168 - 16 * 64), 0, 5, 128, voice_bytes=64)
-        for data, each in ((bytes(7168 - 16 * 64 + 4), 64), (bytes(4), 6), (bytes(4), -4)):
+        voice_artifact(bytes(4), bytes(31744 - 16 * 64), 0, 5, 128, voice_bytes=64)
+        for data, each in ((bytes(31744 - 16 * 64 + 4), 64), (bytes(4), 6), (bytes(4), -4)):
             with self.assertRaises(ValueError):
                 voice_artifact(bytes(4), data, 0, 5, 128, voice_bytes=each)
 
     def test_producer_bounds(self):
         # SHARC instructions are short-word aligned; padding makes the load four-byte aligned.
         doc = voice_artifact(bytes(6), bytes(4), 0, 5, 128)
-        self.assertEqual(len(bytes.fromhex(doc['segments'][1]['hex'])), 6144)
-        voice_artifact(bytes(6080), bytes(7168), 0, 31, 128)
-        for code, data in ((bytes(6082), bytes(4)), (bytes(4), bytes(7172)), (bytes(3), bytes(4))):
+        self.assertEqual(len(bytes.fromhex(doc['segments'][1]['hex'])), 72)
+        voice_artifact(bytes(30656), bytes(31744), 0, 31, 128)
+        for code, data in ((bytes(30658), bytes(4)), (bytes(4), bytes(31748)), (bytes(3), bytes(4))):
             with self.assertRaises(ValueError):
                 voice_artifact(code, data, 0, 5, 128)
 
@@ -139,7 +139,7 @@ class LinkTests(unittest.TestCase):
                 expected = bytes.fromhex('4ef9') + struct.pack('>I', out.map['machines-dn2:' + target])
                 self.assertEqual(out.image[off:off+6], expected, target)
             records = sharc.parse(out.sharc_stream, rel.sharc)
-            binding = next(r for r in records if r.target == 0x20093e00)
+            binding = next(r for r in records if r.target == 0x2009fe00)
             self.assertEqual(binding.raw[16:], struct.pack('<II', 0xbc8400, 5))
             # The stock master hook is untouched; only the voice helper changes.
             def at(stream, addr):

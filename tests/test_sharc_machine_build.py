@@ -73,7 +73,7 @@ class MachineBuildTests(unittest.TestCase):
                    ('sharc_filter_state_bytes.', layout['data_address'] + 4, 2)]
         raw = executable('filter', data=b'\x11\x22\x33\x44' + struct.pack('<I', 10), symbols=symbols)
         self.assertEqual(machine_from_executable('filter', raw, 8)['voice_state'],
-                         {'offset_bytes': 8200, 'voice_bytes': 12})       # rounded up to whole words
+                         {'offset_bytes': 32776, 'voice_bytes': 12})       # rounded up to whole words
         with self.assertRaisesRegex(ValueError, 'sharc_filter_state_bytes is not in machine_data'):
             machine_from_executable('filter', executable('filter', symbols=symbols), 8)
         with self.assertRaisesRegex(ValueError, 'more than one sharc_filter_state_bytes'):
@@ -90,7 +90,7 @@ class MachineBuildTests(unittest.TestCase):
              'unresolved symbols: memcpy'),
             (executable(extra=[('.rela.seg_swco', 4, 0, bytes(12))]), 'unresolved relocations'),
             (executable(extra=[('.bss', 8, 3, b'')]), 'only machine_code and machine_data may be loaded'),
-            (executable(code=b'\x00\x01' * 3100), 'code must fit'),
+            (executable(code=b'\x00\x01' * 15400), 'code must fit'),
         ]
         for raw, message in cases:
             with self.subTest(message=message):

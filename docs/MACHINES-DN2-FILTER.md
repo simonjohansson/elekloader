@@ -123,14 +123,14 @@ prove an audio deadline.
 
 ## Memory and dispatch
 
-The filter owns the second 16 KiB of the L2 reservation:
+The filter owns the 64 KiB of L2 after the synth's:
 
 | Part | Loader byte range | Size |
 |---|---|---|
-| Pinned adapter, including guard | `0x20094000..0x20094800` | 2 KiB |
-| Author code, including 64-byte guard | `0x20094800..0x20096000` | 6 KiB |
-| Author data | `0x20096000..0x20097c00` | 7 KiB |
-| Zeroed adapter state | `0x20097c00..0x20098000` | 1 KiB |
+| Pinned adapter, including guard | `0x200a0000..0x200a0800` | 2 KiB |
+| Author code, including 64-byte guard | `0x200a0800..0x200a8000` | 30 KiB |
+| Author data | `0x200a8000..0x200afc00` | 31 KiB |
+| Zeroed adapter state | `0x200afc00..0x200b0000` | 1 KiB |
 
 Ranges exclude their end. A mod builds a filter as it builds a
 [synth](MACHINES-DN2-VOICE.md#context-and-memory): link with
@@ -146,12 +146,12 @@ linker points entry 0 of its setup table (`0x8052dba4`, internal type 0,
 which only custom filters use) at the adapter's capture entry instead of
 PC16 `0x1c927e`. That entry keeps F8, the resonance word and slot 66's
 word, two words below it, for the voice (R3, the same slot the render hook
-sees) in three 16-entry arrays at `0x20097d40`, `0x20097d80` and
-`0x20097dc0`, preserves ASTATX, and continues at
+sees) in three 16-entry arrays at `0x200afd40`, `0x200afd80` and
+`0x200afdc0`, preserves ASTATX, and continues at
 `0x1c927e`. It makes no identity check; the render gate below is the only
 one.
 
-The linker binds the render PC and ID at `0x20097e00`. Its hook replaces
+The linker binds the render PC and ID at `0x200afe00`. Its hook replaces
 the six-byte table-pointer load at `0x28392b0e` and continues at PC16
 `0x1c958a` after restoring that load. A matching raw filter ID dispatches
 the callback when the stock internal filter type has settled to zero.

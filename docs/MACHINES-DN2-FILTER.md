@@ -169,9 +169,11 @@ and [DSP stage research](https://github.com/angellinares/dn2_firmware_explore/bl
 
 Build the [paired C example](https://github.com/simonjohansson/digitone-2-mod-hack); its
 firmware includes SINE (synth ID 6), LOWPASS (filter ID 8) and DigiHealth.
-LOWPASS is a resonant 2-pole state-variable low-pass, in assembly so that
+LOWPASS is a resonant 2-pole state-variable filter, in assembly so that
 it needs no stack, with per-slot state. Its cutoff follows FREQ like a
-MIDI note (69/128 is 440 Hz) and the stock envelope; RESO sets its damping.
+MIDI note (69/128 is 440 Hz) and the stock envelope; RESO sets its damping,
+and its G, MODE, picks the low-pass (0..63) or the high-pass (64..127),
+which its curve draws too.
 Compare its response with the input and check RESET on retriggers, slot
 reuse and returning from a stock filter.
 Removing the filter must retain the synth and saved filter ID; reinstalling it

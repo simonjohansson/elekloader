@@ -604,10 +604,14 @@ def link(mods, image, lock=None, *, sharc_stream=None):
                 at = rel.sharc[kind + '_binding_offset']
                 binding = struct.pack('<II', sharc.pc16(rel.sharc, base + payload['entries']['render_offset_bytes']),
                                       payload['machine_id'])
+                # At +0x20 the adapter finds the per-voice state: its address and one voice's size.
+                voice = payload['voice_state']
+                state = struct.pack('<II', base + voice[0], voice[1]) if voice else bytes(8)
                 lo = payload['owner'][1] - rel.sharc[kind + '_state_bytes']
                 fills = [f for f in fills if f[0] != lo]
-                fills += [(lo, base + at - lo, 0), (base + at + 8, payload['owner'][1] - base - at - 8, 0)]
-                loads.append((base + at, binding))
+                fills += [(lo, base + at - lo, 0), (base + at + 8, 0x18, 0),
+                          (base + at + 0x28, payload['owner'][1] - base - at - 0x28, 0)]
+                loads += [(base + at, binding), (base + at + 0x20, state)]
                 for hook in (kind + '_hook', kind + '_capture'):
                     if hook in rel.sharc:
                         site, old, new = rel.sharc[hook]

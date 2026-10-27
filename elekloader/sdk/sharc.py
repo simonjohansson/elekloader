@@ -24,17 +24,19 @@ def machine_layout(kind):
             'data_bytes': middle - profile[kind + '_state_bytes']}
 
 
-def voice_artifact(code, data, render_offset_bytes, machine_id, stack_bytes):
-    """Kernel PC16 0xbc8400, data 0x20092000; entry offset excludes the adapter."""
-    return _machine_artifact('voice', code, data, render_offset_bytes, machine_id, stack_bytes)
+def voice_artifact(code, data, render_offset_bytes, machine_id, stack_bytes, voice_bytes=0):
+    """Kernel PC16 0xbc8400, data 0x20092000; entry offset excludes the adapter. voice_bytes:
+    one voice's state; the artifact reserves 16, zeroed, after the data."""
+    return _machine_artifact('voice', code, data, render_offset_bytes, machine_id, stack_bytes, voice_bytes)
 
 
-def filter_artifact(code, data, render_offset_bytes, machine_id, stack_bytes):
-    """Kernel PC16 0xbca400, data 0x20096000; entry offset excludes the adapter."""
-    return _machine_artifact('filter', code, data, render_offset_bytes, machine_id, stack_bytes)
+def filter_artifact(code, data, render_offset_bytes, machine_id, stack_bytes, voice_bytes=0):
+    """Kernel PC16 0xbca400, data 0x20096000; entry offset excludes the adapter. voice_bytes:
+    as voice_artifact's."""
+    return _machine_artifact('filter', code, data, render_offset_bytes, machine_id, stack_bytes, voice_bytes)
 
 
-def _machine_artifact(kind, code, data, render_offset_bytes, machine_id, stack_bytes):
+def _machine_artifact(kind, code, data, render_offset_bytes, machine_id, stack_bytes, voice_bytes=0):
     profile = DEVICE.releases['1.12'].sharc
     layout = machine_layout(kind)
     prefix = profile[kind + '_adapter_bytes']
@@ -46,6 +48,12 @@ def _machine_artifact(kind, code, data, render_offset_bytes, machine_id, stack_b
         raise ValueError('DN2 %s entry must be even and inside the supplied code' % kind)
     if not isinstance(data, bytes) or len(data) % 4 or len(data) > layout['data_bytes']:
         raise ValueError('DN2 %s data must fit 7 KiB and be four-byte aligned' % kind)
+    voice_at = data_offset + -(-len(data) // 8) * 8          # 16 voices' state, after the data
+    if type(voice_bytes) is not int or voice_bytes < 0 or voice_bytes % 4:
+        raise ValueError('DN2 %s voice state must be a whole number of 32-bit words' % kind)
+    if voice_bytes and voice_at + 16 * voice_bytes > state:
+        raise ValueError('DN2 %s data (%d bytes) and 16 voices of %d bytes need %d bytes; the area has %d'
+                         % (kind, len(data), voice_bytes, voice_at - data_offset + 16 * voice_bytes, layout['data_bytes']))
     adapter = json.loads((Path(__file__).parent / ('include/digitone-mk2/' + kind + '-bridge.json')).read_text())
     code += b'\x01\x00' * ((layout['code_bytes'] - len(code)) // 2)
     end = data_offset + len(data)
@@ -56,6 +64,8 @@ def _machine_artifact(kind, code, data, render_offset_bytes, machine_id, stack_b
                    + [{'offset_bytes': state, 'size_bytes': profile[kind + '_state_bytes']}],
            'entries': {'render_offset_bytes': prefix + render_offset_bytes},
            'stack_bytes': stack_bytes}
+    if voice_bytes:
+        doc['voice_state'] = {'offset_bytes': voice_at, 'voice_bytes': voice_bytes}
     module_payload(doc, profile)
     return doc
 
@@ -121,7 +131,7 @@ def machine_from_executable(kind, executable, machine_id, stack_bytes=None):
     symbols = [h for h in headers if h[1] == 2]                                     # SHT_SYMTAB
     need(len(symbols) == 1, 'no symbol table')
     _n, _t, _f, _a, offset, size, strings, *_ = symbols[0]
-    render, undefined = [], []
+    render, undefined, state = [], [], []
     for at in range(offset + 16, offset + size, 16):
         name, value, _size, _info, _other, index = struct.unpack_from('<IIIBBH', raw, at)
         label = text(strings, name)
@@ -129,12 +139,21 @@ def machine_from_executable(kind, executable, machine_id, stack_bytes=None):
             undefined.append(label)
         if label == 'sharc_%s_render.' % kind:
             render.append(value)
+        if label == 'sharc_%s_state_bytes.' % kind:                # DN2_VOICE_STATE / DN2_FILTER_STATE
+            state.append(value)
     need(not undefined, 'unresolved symbols: ' + ', '.join(undefined))
     need(len(render) == 1, 'needs exactly one sharc_%s_render' % kind)
     need(entry == render[0], 'its entry is not sharc_%s_render' % kind)
     need(len(code) % 2 == 0, 'code is not whole 16-bit parcels')
+    need(len(state) <= 1, 'more than one sharc_%s_state_bytes' % kind)
+    voice_bytes = 0
+    if state:
+        at = state[0] - data_address
+        need(0 <= at and at + 4 <= len(data), 'sharc_%s_state_bytes is not in %s' % (kind, DATA_SECTION))
+        voice_bytes = struct.unpack_from('<I', data, at)[0]
+        voice_bytes += -voice_bytes % 4                                         # whole words
     # The executable stores each 16-bit parcel little-endian; the loader takes them the other way.
     code = b''.join(code[i:i + 2][::-1] for i in range(0, len(code), 2))
     profile = DEVICE.releases['1.12'].sharc
     return _machine_artifact(kind, code, data, (render[0] - code_pc) * 2, machine_id,
-                             profile[kind + '_stack_max'] if stack_bytes is None else stack_bytes)
+                             profile[kind + '_stack_max'] if stack_bytes is None else stack_bytes, voice_bytes)

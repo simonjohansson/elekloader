@@ -618,10 +618,17 @@ export function link(mods: Mod2[], image: Uint8Array, lock: store.Lock | null = 
         const binding = new Uint8Array(8), words = new DataView(binding.buffer)
         words.setUint32(0, sharcRecords.pc16(rel.sharc!, base + payload.entries!.render_offset_bytes), true)
         words.setUint32(4, payload.machineId!, true)
+        // At +0x20 the adapter finds the per-voice state: its address and one voice's size.
+        const state = new Uint8Array(8), stateWords = new DataView(state.buffer)
+        if (payload.voiceState) {
+          stateWords.setUint32(0, base + payload.voiceState[0], true)
+          stateWords.setUint32(4, payload.voiceState[1], true)
+        }
         const lo = payload.owner[1] - rel.sharc![`${kind}StateBytes`]!
         fills = fills.filter(([address]) => address !== lo)
-        fills.push([lo, base + at - lo, 0], [base + at + 8, payload.owner[1] - base - at - 8, 0])
-        loads.push([base + at, binding])
+        fills.push([lo, base + at - lo, 0], [base + at + 8, 0x18, 0],
+          [base + at + 0x28, payload.owner[1] - base - at - 0x28, 0])
+        loads.push([base + at, binding], [base + at + 0x20, state])
         const capture = kind === 'filter' ? rel.sharc!.filterCapture : undefined
         patches = [rel.sharc![`${kind}Hook`]!, ...(capture ? [capture] : [])].map(([site, old, replacement]) =>
           [site, hexBytes(old, 'SHARC stock hook'), hexBytes(replacement, 'SHARC bridge hook')])

@@ -113,7 +113,8 @@ class PairLinkTests(unittest.TestCase):
                 (p / 'machine.c').write_text('#include "mk2/machines.h"\n'
                     'const struct mk2_%s %s = {%d,"PAIR","PAIR"};\n' % (native, symbol, machine_id))
                 (p / 'kernel.json').write_text(json.dumps(producer(bytes(4), bytes(4), 0, machine_id,
-                                                                  128 if kind == 'voice' else 12)))
+                                                                  128 if kind == 'voice' else 12,
+                                                                  voice_bytes=8 if machine_id == 7 else 0)))
                 (p / 'mod.json').write_text(json.dumps({
                     'id': name, 'version': '0.1', 'device': 'digitone-mk2', 'os': '1.12',
                     'sources': ['machine.c'], 'sharc': {'artifact': 'kernel.json'},
@@ -182,6 +183,14 @@ class PairLinkTests(unittest.TestCase):
             {'id': 'filter-6', 'owner': list(PROFILE['filter_range']), 'hook': PROFILE['filter_hook'][0]},
             {'id': 'voice-6', 'owner': list(PROFILE['voice_range']), 'hook': PROFILE['voice_hook'][0]}])
         self.assertNotIn('app', out.layout['sharc'])
+
+    def test_the_binding_names_the_voice_state(self):
+        for kind in ('voice', 'filter'):
+            lo, binding = PROFILE[kind + '_range'][0], PROFILE[kind + '_range'][0] + PROFILE[kind + '_binding_offset']
+            with self.subTest(kind=kind):
+                stateful = self.linked(self.mods[kind + '-7']).sharc_stream
+                self.assertEqual(self.at(stateful, binding + 0x20, 8), struct.pack('<II', lo + 8200, 8))
+                self.assertEqual(self.at(self.linked(self.mods[kind + '-6']).sharc_stream, binding + 0x20, 8), bytes(8))
 
     def test_each_role_is_unchanged_when_the_other_is_absent(self):
         pair = self.linked(self.mods['voice-6'], self.mods['filter-6'])

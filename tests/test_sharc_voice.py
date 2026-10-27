@@ -74,6 +74,28 @@ class EnvelopeTests(unittest.TestCase):
         doc['segments'][1]['hex'] = '0000' + doc['segments'][1]['hex'][4:]
         sharc.module_payload(doc, PROFILE)
 
+    def test_voice_state(self):
+        doc = voice_artifact(b'\x01\x00' * 2, bytes(4), 0, 5, 128, voice_bytes=12)
+        self.assertEqual(doc['voice_state'], {'offset_bytes': 8200, 'voice_bytes': 12})
+        self.assertEqual(sharc.module_payload(doc, PROFILE)['voice_state'], (8200, 12))
+        self.assertIsNone(sharc.module_payload(artifact(), PROFILE)['voice_state'])
+        shape, inside = 'needs exactly offset_bytes, voice_bytes', '16 zeroed voices inside the mod'
+        for change, error in [
+            (lambda v: None, shape), (lambda v: dict(v, extra=1), shape), (lambda v: [8200, 12], shape),
+            (lambda v: dict(v, offset_bytes=8204), inside), (lambda v: dict(v, voice_bytes=0), inside),
+            (lambda v: dict(v, voice_bytes=6), inside), (lambda v: dict(v, voice_bytes=448), inside),
+            (lambda v: dict(v, offset_bytes=15360, voice_bytes=4), inside),   # the adapter's state
+            (lambda v: dict(v, offset_bytes=8192), inside)]:                 # the data
+            bad = copy.deepcopy(doc)
+            bad['voice_state'] = change(bad['voice_state'])
+            with self.subTest(voice_state=bad['voice_state']), self.assertRaisesRegex(elemod.ModError, error):
+                sharc.module_payload(bad, PROFILE)
+        # The data and 16 voices of state share the 7 KiB data area.
+        voice_artifact(bytes(4), bytes(7168 - 16 * 64), 0, 5, 128, voice_bytes=64)
+        for data, each in ((bytes(7168 - 16 * 64 + 4), 64), (bytes(4), 6), (bytes(4), -4)):
+            with self.assertRaises(ValueError):
+                voice_artifact(bytes(4), data, 0, 5, 128, voice_bytes=each)
+
     def test_producer_bounds(self):
         # SHARC instructions are short-word aligned; padding makes the load four-byte aligned.
         doc = voice_artifact(bytes(6), bytes(4), 0, 5, 128)

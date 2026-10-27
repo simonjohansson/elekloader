@@ -215,7 +215,8 @@ def module_payload(doc, profile, core=False):
     keys = {'abi', 'segments', 'zero', 'entries', 'stack_bytes'}
     if machine_kind:
         keys.add('machine_id')
-    if not isinstance(doc, dict) or set(doc) != keys:
+    given = set(doc) - {'voice_state'} if isinstance(doc, dict) and machine_kind else set(doc) if isinstance(doc, dict) else None
+    if given != keys:
         if machine_kind:
             raise ModError('SHARC %s payload needs exactly abi, segments, zero, entries, stack_bytes, machine_id' % machine_kind)
         raise ModError('SHARC payload needs exactly abi, segments, zero, entries, stack_bytes')
@@ -295,6 +296,14 @@ def module_payload(doc, profile, core=False):
                 or any(off < prefix or off + count > state for off, count in zeros if off != state) \
                 or entries['render_offset_bytes'] < prefix:
             raise ModError('SHARC %s mod overlaps the adapter reservation' % machine_kind)
+        voice = doc.get('voice_state')
+        if 'voice_state' in doc:
+            if not isinstance(voice, dict) or set(voice) != {'offset_bytes', 'voice_bytes'}:
+                raise ModError('SHARC %s voice_state needs exactly offset_bytes, voice_bytes' % machine_kind)
+            off, each = voice['offset_bytes'], voice['voice_bytes']
+            if not _uint32(off) or not _uint32(each) or not each or off % 8 or each % 4 \
+                    or not any(z <= off and off + 16 * each <= z + n for z, n in zeros if z != state):
+                raise ModError('SHARC %s voice_state must be 16 zeroed voices inside the mod' % machine_kind)
     stack = doc['stack_bytes']
     if machine_kind and (not _uint32(stack) or stack > profile[machine_kind + '_stack_max']):
         raise ModError('SHARC %s stack exceeds the profile limit' % machine_kind)
@@ -307,4 +316,6 @@ def module_payload(doc, profile, core=False):
     if machine_kind:
         result['machine_id'] = doc['machine_id']
         result['machine_kind'] = machine_kind
+        voice = doc.get('voice_state')
+        result['voice_state'] = (voice['offset_bytes'], voice['voice_bytes']) if voice else None
     return result

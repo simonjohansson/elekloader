@@ -67,6 +67,18 @@ class MachineBuildTests(unittest.TestCase):
         self.assertNotIn('data', [s['kind'] for s in
                                   machine_from_executable('voice', executable(data=b''), 6)['segments'][1:]])
 
+    def test_the_state_size_symbol_reserves_16_voices(self):
+        layout = machine_layout('filter')
+        symbols = [('sharc_filter_render.', layout['code_pc16'], 1),
+                   ('sharc_filter_state_bytes.', layout['data_address'] + 4, 2)]
+        raw = executable('filter', data=b'\x11\x22\x33\x44' + struct.pack('<I', 10), symbols=symbols)
+        self.assertEqual(machine_from_executable('filter', raw, 8)['voice_state'],
+                         {'offset_bytes': 8200, 'voice_bytes': 12})       # rounded up to whole words
+        with self.assertRaisesRegex(ValueError, 'sharc_filter_state_bytes is not in machine_data'):
+            machine_from_executable('filter', executable('filter', symbols=symbols), 8)
+        with self.assertRaisesRegex(ValueError, 'more than one sharc_filter_state_bytes'):
+            machine_from_executable('filter', executable('filter', data=bytes(8), symbols=symbols + symbols[1:]), 8)
+
     def test_refusals(self):
         layout = machine_layout('voice')
         cases = [

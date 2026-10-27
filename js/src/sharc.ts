@@ -172,6 +172,7 @@ export function insert(stream: Uint8Array, profile: SharcProfile,
 export type SharcPayload = {
   machineId?: number
   machineKind?: 'voice' | 'filter'
+  voiceState?: [number, number] | null    // per-voice state: offset in the owner, one voice's bytes
   segments: [number, 'code' | 'data', Uint8Array][]
   zero: [number, number][]
   entries: { [name: string]: number } | null
@@ -185,7 +186,8 @@ export function modulePayload(doc: any, profile: SharcProfile | undefined, core 
   const kind = !core ? (['voice', 'filter'] as const).find(k =>
     profile[`${k}Abi`] !== undefined && doc?.abi === profile[`${k}Abi`]) : undefined
   const keys = ['abi', 'entries', ...(kind ? ['machine_id'] : []), 'segments', 'stack_bytes', 'zero']
-  if (!doc || typeof doc !== 'object' || Array.isArray(doc) || Object.keys(doc).sort().join(',') !== keys.join(','))
+  if (!doc || typeof doc !== 'object' || Array.isArray(doc) ||
+    Object.keys(doc).filter(k => !(kind && k === 'voice_state')).sort().join(',') !== keys.join(','))
     throw new ModError(kind ? `SHARC ${kind} payload needs exactly abi, segments, zero, entries, stack_bytes, machine_id`
       : 'SHARC payload needs exactly abi, segments, zero, entries, stack_bytes')
   const abi = core ? profile.abi : kind ? profile[`${kind}Abi`] : profile.l2Abi
@@ -255,6 +257,15 @@ export function modulePayload(doc: any, profile: SharcProfile | undefined, core 
       zero.some(([off, count]) => off !== state && (off < prefix || off + count > state)) ||
       entries.render_offset_bytes < prefix)
       throw new ModError(`SHARC ${kind} mod overlaps the adapter reservation`)
+    const voice = doc.voice_state
+    if ('voice_state' in doc) {
+      if (!voice || typeof voice !== 'object' || Array.isArray(voice) || Object.keys(voice).sort().join(',') !== 'offset_bytes,voice_bytes')
+        throw new ModError(`SHARC ${kind} voice_state needs exactly offset_bytes, voice_bytes`)
+      const off = voice.offset_bytes, each = voice.voice_bytes
+      if (!uint32(off) || !uint32(each) || !each || off % 8 || each % 4 ||
+        !zero.some(([z, n]) => z !== state && z <= off && off + 16 * each <= z + n))
+        throw new ModError(`SHARC ${kind} voice_state must be 16 zeroed voices inside the mod`)
+    }
   }
   const stack = doc.stack_bytes
   if (kind && (!uint32(stack) || stack > profile[`${kind}StackMax`]!))
@@ -262,5 +273,6 @@ export function modulePayload(doc: any, profile: SharcProfile | undefined, core 
   if (!uint32(stack) || stack > profile.stackMax!) throw new ModError('SHARC stack contribution exceeds the profile limit')
   if (entries === null && stack) throw new ModError('inert SHARC payload must declare zero stack')
   return { segments, zero, entries, stackBytes: stack, owner,
-    ...(kind ? { machineId: doc.machine_id, machineKind: kind } : {}) }
+    ...(kind ? { machineId: doc.machine_id, machineKind: kind,
+      voiceState: doc.voice_state ? [doc.voice_state.offset_bytes, doc.voice_state.voice_bytes] as [number, number] : null } : {}) }
 }

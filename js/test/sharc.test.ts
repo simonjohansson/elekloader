@@ -227,7 +227,17 @@ for (const kind of ['voice', 'filter'] as const) test(`DN2 ${kind} artifacts pin
     refusal(() => sharc.modulePayload(bad, profile), error)
   }
   artifact.segments[1].hex = '0000' + artifact.segments[1].hex.slice(4)
-  sharc.modulePayload(artifact, profile)
+  assert.equal(sharc.modulePayload(artifact, profile).voiceState, null)
+  const shape = `SHARC ${kind} voice_state needs exactly offset_bytes, voice_bytes`
+  const inside = `SHARC ${kind} voice_state must be 16 zeroed voices inside the mod`
+  for (const [voice, error] of [
+    [null, shape], [{ offset_bytes: 8200, voice_bytes: 12, extra: 1 }, shape], [[8200, 12], shape],
+    [{ offset_bytes: 8204, voice_bytes: 12 }, inside], [{ offset_bytes: 8200, voice_bytes: 0 }, inside],
+    [{ offset_bytes: 8200, voice_bytes: 6 }, inside], [{ offset_bytes: 8200, voice_bytes: 448 }, inside],
+    [{ offset_bytes: 15360, voice_bytes: 4 }, inside], [{ offset_bytes: 8192, voice_bytes: 4 }, inside],
+  ] as const) refusal(() => sharc.modulePayload({ ...artifact, voice_state: voice }, profile), error)
+  assert.deepEqual(sharc.modulePayload({ ...artifact, voice_state: { offset_bytes: 8200, voice_bytes: 12 } }, profile).voiceState,
+    [8200, 12])
   // A stateless filter may have no data segment; its complete owner is still initialized.
   artifact.segments.pop()
   artifact.zero[0] = { offset_bytes: 8192, size_bytes: 7168 }

@@ -101,9 +101,13 @@ Each kind has its own ID namespace. A build accepts at most one of
 each kind, with separate 16 KiB owners, and cannot mix them with a
 master-output mod. Each machine artifact starts with the profiled 2 KiB
 adapter and ends with exactly 1 KiB of zeroed adapter state. Author bytes
-and the render entry must stay outside those reservations. The linker
-writes each callback's address and ID into its adapter state and patches
-that kind's stock hook. It leaves the master hook and L1 bridge untouched.
+and the render entry must stay outside those reservations. An optional
+`voice_state: {"offset_bytes", "voice_bytes"}` reserves state for each of
+the 16 voices: `offset_bytes` is 8-byte aligned, `voice_bytes` a whole
+number of words, and the 16 voices lie inside one of the mod's `zero`
+ranges. The linker writes each callback's address and ID into its adapter
+state, the voice state's address and one voice's size 32 bytes after them,
+and patches that kind's stock hook. It leaves the master hook and L1 bridge untouched.
 The callback references above define the memory bounds and stack limits.
 
 **The master-output object** has exactly these fields:

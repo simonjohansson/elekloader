@@ -78,8 +78,8 @@ regions. Neither can be combined with a master-output SHARC mod.
 void sharc_voice_render(const struct dn2_voice_input *in);
 ```
 
-The 20-byte input is an output pointer, slot, unsigned 8.8 pitch, flags
-and `param`, this voice's 40 knob values (page p, knob k at `param[8p + k]`).
+The 24-byte input is an output pointer, slot, unsigned 8.8 pitch, flags,
+`param` and `state`. `param` is this voice's 40 knob values (page p, knob k at `param[8p + k]`).
 They are unsigned 8.8 (0..32512 = 0..127.0), the words the stock engines
 get: the voice's own values from its note-on, then live edits, parameter
 locks, LFOs and MIDI modulation, smoothed by the OS. An empty knob holds
@@ -88,6 +88,20 @@ Write all 32 mono floats at 48 kHz and return nothing. Slot is 0..15,
 **not the track number**: keep independent state per slot. A trigger edge's
 block is silent; the next block has settled pitch and `DN2_VOICE_START`.
 Reset phase on START. The stock envelope supplies release.
+
+For per-voice state, declare its type once, at file scope:
+
+```c
+struct voice { uint32_t phase; };
+DN2_VOICE_STATE(struct voice);
+```
+
+`in->state` then points at this slot's `struct voice`. There are 16, one
+per slot, zeroed when the DSP loads and kept between calls and across
+notes: the adapter never clears them, so reset what needs it on START.
+Without the macro `state` is null. `machine_from_executable` reads the
+size from the executable and reserves the 16 after the data, in the
+7 KiB data area; it refuses with the sizes when they do not fit.
 
 ## Context and memory
 
@@ -126,7 +140,7 @@ the limit below. Compilation belongs to the mod. A producer that links some othe
 way can call `voice_artifact(code, data, render_offset_bytes, machine_id,
 stack_bytes)` with the bounds `machine_layout('voice')` gives. The SDK adds the
 pinned adapter, NOP padding and zero ranges. The linker writes the render PC and ID at
-`0x20093e00`. Keep writes in the author data area and supplied voice buffer.
+`0x20093e00`, and the voice state's address and one voice's size at `0x20093e20`. Keep writes in the author data area and supplied voice buffer.
 
 The exact OS 1.12 hook is PC16 `0xb8251b`, loader `0x20004a36`, called by
 the voice pipeline at `0x1c9459`. Its guarded six-byte stack adjustment is
@@ -135,7 +149,7 @@ Rebuild both machine adapters from `mods/machines-dn2/*-bridge.s` with
 `rebuild_voice.py`; the Selache pin is
 `2b26d3b75c53063575bc5c820fa0d38879335187`. The voice adapter's 1,840 code
 bytes are padded to 2 KiB, SHA-256
-`11cb0abb8a60cd9e97253ff7a8c063b90bd70f110a1cee95c52c98a98dbbcef1`.
+`47c17e0be5576ae67069c4d9b528f475b0037e441fe0a30c1b14ece200a27947`.
 
 The adapter uses register counts for right shifts. This Selache pin omits
 the required sign-extension bits in negative immediate shifts, which can

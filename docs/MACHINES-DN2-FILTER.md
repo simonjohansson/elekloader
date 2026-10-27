@@ -90,13 +90,18 @@ LOWPASS 4, which the stock filters never show. A build has one custom
 filter, so one row serves it. The cell shows its label and value; the
 picture above it stays empty.
 
-The 24-byte input contains `float *samples`, `uint32_t slot`,
-`uint32_t flags`, `float cutoff`, `float resonance` and `float g`.
+The 28-byte input contains `float *samples`, `uint32_t slot`,
+`uint32_t flags`, `float cutoff`, `float resonance`, `float g` and
+`void *state`.
 Process 32 mono floats at 48 kHz in place before the stock AMP stage and
 return nothing. Slot is 0..15, not a track number; keep independent state
 per slot. `DN2_FILTER_RESET` is set on the first callback after entering this filter
 and on a new trigger edge. Clear that slot's history before processing
 the block when this flag is set. Keep history between ordinary callbacks.
+`DN2_FILTER_STATE(type)` gives each slot its own zeroed `type` at
+`in->state`, as `DN2_VOICE_STATE` does for a
+[synth](MACHINES-DN2-VOICE.md); the adapter never clears it, so clear it
+on RESET.
 
 `cutoff` and `resonance` are the stock values for this slot in this
 block, once per 32 samples and not smoothed; smoothing belongs to the
@@ -155,7 +160,7 @@ Other IDs follow the stock path.
 
 `mods/machines-dn2/filter-bridge.s` produces 1,698 code bytes, padded to
 2 KiB, SHA-256
-`25ecf301d2dfc322b5311afa58cd00f89316f0afe7df66a45e62c0aca590538c`.
+`25874709a7e520514efcc567edf458b4f5019a73ab1129c287fb337156a68dc5`.
 The [adapter rebuild instructions](MACHINES-DN2-VOICE.md#context-and-memory)
 cover both machine adapters. Native sites are declared in
 `mods/machines-dn2/mod.json`; the DSP hook and limits live in the device

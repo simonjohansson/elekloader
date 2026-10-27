@@ -215,7 +215,7 @@ R1=R1+R2;
 R1=R1+R0;
 R2=0x6d;
 R1=R1+R2;
-R6=0x20093d14;
+R6=0x20093d18;
 R5=0;
 params:
 R2=0xfffe;
@@ -243,8 +243,14 @@ R5=R5+1;
 R3=40;
 COMP(R5,R3);
 IF LT JUMP params;
-R2=0x20093d14;
+R2=0x20093d18;
 DM(0x20093d10)=R2;
+// This slot's state: the linker's base plus the slot times one voice's size.
+R1=DM(0x20093e24);
+R1=R0*R1(SSI);
+R2=DM(0x20093e20);
+R1=R1+R2;
+DM(0x20093d14)=R1;
 // Pin the C context, preserving the firmware register bank and interrupt setup.
 M5=0;
 M6=1;

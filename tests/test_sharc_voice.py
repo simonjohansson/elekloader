@@ -24,18 +24,7 @@ def artifact():
 
 class EnvelopeTests(unittest.TestCase):
     def test_adapter_shift_counts_are_sign_extended(self):
-        def malformed(code):
-            offsets = []
-            # Conservative Type 6b LSHIFT scan of this fixed adapter, not a decoder.
-            for offset in range(0, len(code) - 5, 2):
-                a, b, c = struct.unpack_from('<3H', code, offset)
-                word = (a << 32) | (b << 16) | c
-                if word & 0xffc187ff0000 == 0x020000000000:
-                    expected = 15 if word & 0x8000 else 0
-                    if (word >> 27) & 15 != expected:
-                        offsets.append(offset)
-            return offsets
-
+        malformed = sharc.suspect_shifts
         # Type 6b's negative count needs DATAEX=0xf; missing it halts real DSPs.
         good = bytes.fromhex('3e0200002210 3e02007822f0')
         bad = bytes.fromhex('3e02000022f0')
@@ -45,6 +34,16 @@ class EnvelopeTests(unittest.TestCase):
             code = bytes.fromhex(doc['segments'][0]['hex'])
             self.assertEqual(malformed(code), [])
             self.assertIn(0, malformed(bad + code[6:]))
+        self.assertEqual(malformed(bytes.fromhex(PROFILE['peek_code'])), [])   # core-dn2's DSP peek
+
+    def test_lint_notes_negative_shift_immediates_past_the_adapter(self):
+        from types import SimpleNamespace
+        from elekloader import lint
+        doc = voice_artifact(b'\x01\x00' * 2 + bytes.fromhex('3e02000022f0'), bytes(4), 0, 5, 128)
+        mod = SimpleNamespace(id='x', sharc=sharc.module_payload(doc, PROFILE), rel=SimpleNamespace(sharc=PROFILE))
+        self.assertEqual(lint.sharc_shifts(mod), [{'mod': 'x', 'offset': 2048 + 4}])
+        mod.sharc = sharc.module_payload(artifact(), PROFILE)
+        self.assertEqual(lint.sharc_shifts(mod), [])
 
     def test_voice_envelope_and_mutations(self):
         doc = artifact()

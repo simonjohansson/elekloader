@@ -50,6 +50,20 @@ def byte_span(profile, address, size, unit='loader-byte', *, check_protected=Tru
     raise ModError('SHARC byte span is outside the supported address map')
 
 
+def suspect_shifts(code):
+    """Byte offsets in CODE (loader order) of what look like shifts by an immediate count whose
+    sign is not extended (Type 6b: a negative count needs DATAEX 0xf). One halts a real DSP; the
+    pinned Selache emits it for `LSHIFT/ASHIFT ... BY -n`. The scan tries every halfword without
+    instruction boundaries, so a hit is a lead to check in the listing, not proof."""
+    offsets = []
+    for offset in range(0, len(code) - 5, 2):
+        a, b, c = struct.unpack_from('<3H', code, offset)
+        word = (a << 32) | (b << 16) | c
+        if word & 0xffc187ff0000 == 0x020000000000 and (word >> 27) & 15 != (15 if word & 0x8000 else 0):
+            offsets.append(offset)
+    return offsets
+
+
 def pc16(profile, address):
     """Map a loader byte address to an instruction pointer, without truncation."""
     byte_span(profile, address, 2)

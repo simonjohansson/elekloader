@@ -297,6 +297,15 @@ elekloader's own development.
 The checks cover the packaging: the guard, the 32 KiB covered in full, the
 stack and the firmware's size limits. They cannot prove what the
 instructions do, what they write, or that they meet the audio deadline.
+
+Two things the pinned Selache gets wrong halt a real DSP while the emulator
+runs them. A shift by a negative immediate (`LSHIFT R1 BY -16`) is encoded
+without its sign extension: put the count in a register (`R2=-16; R1=LSHIFT
+R1 BY R2;`). lint notes each place in a mod's own SHARC code that looks like
+one; the scan cannot see instruction boundaries, so check each in the
+listing. A C function whose locals sit more than about 63 words from its
+frame pointer, such as one large local array, is compiled wrongly: keep
+large buffers static or in the voice state.
 [SHARC-DN2.md](SHARC-DN2.md) has what the emulator and a unit showed for
 the sine variants, and the limits that remain.
 

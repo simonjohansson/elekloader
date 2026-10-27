@@ -17,7 +17,7 @@ void core_additem(void *menu, const void *row);
 extern volatile uint32_t fw_ui_queue[];
 unsigned char fw_sysex_send(const void *data, unsigned length, const void *abort, unsigned port);
 
-/* DSP peek: up to CORE_DSP_PEEK_MAX words from a word-aligned L1 or L2 address, one halfword
+/* core-dn2 0.3: DSP peek: up to CORE_DSP_PEEK_MAX words from a word-aligned L1 or L2 address, one halfword
  * per audio block (about 3 KB/s). Only a build with a SHARC mod has the DSP side; without one a
  * peek stays busy. Start from any task; the answer arrives in the audio interrupt. */
 enum { CORE_DSP_PEEK_MAX = 1024 };

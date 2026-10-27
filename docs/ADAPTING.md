@@ -165,9 +165,10 @@ abort, port)` is the stock sender; port 2 selects USB. Keep UI actions out
 of the MIDI task; queue bounded work for `ev_tick`. The DigiHealth DN2
 port is an example of using all of this without owning stock sites.
 
-### The DSP peek (core-dn2, Digitone II)
+### The DSP peek (core-dn2 0.3, Digitone II)
 
-A build with a SHARC mod lets the ColdFire read the DSP's memory. From any
+A build with a SHARC mod lets the ColdFire read the DSP's memory; a mod
+that calls the peek sets `"resources": {"core": "0.3"}`. From any
 task, `core_dsp_peek(address, count)` starts a read of 1..`CORE_DSP_PEEK_MAX`
 (1024) words from a word-aligned L1 or L2 address and ends the last one;
 `core_dsp_peek_status(&received, &total)` says how many halfwords have

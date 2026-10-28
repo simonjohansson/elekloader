@@ -160,9 +160,9 @@ the callback when the stock internal filter type has settled to zero.
 The first block after selection may still use the previous stock filter.
 Other IDs follow the stock path.
 
-`mods/machines-dn2/filter-bridge.s` produces 1,698 code bytes, padded to
+`mods/machines-dn2/filter-bridge.s` produces 1,884 code bytes, padded to
 2 KiB, SHA-256
-`25874709a7e520514efcc567edf458b4f5019a73ab1129c287fb337156a68dc5`.
+`10576ba32964c88b620a72c73cd46aadb8bb66095eef98cfce29280f648b42c4`.
 The [adapter rebuild instructions](MACHINES-DN2-VOICE.md#context-and-memory)
 cover both machine adapters. Native sites are declared in
 `mods/machines-dn2/mod.json`; the DSP hook and limits live in the device

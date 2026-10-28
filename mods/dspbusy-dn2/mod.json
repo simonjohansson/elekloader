@@ -7,6 +7,6 @@
  "requires": ["core"],
  "resources": {"core": "0.3"},
  "sites": [
-  {"addr": "0x20011576", "stock": "3e07ff00f0ff", "op": "bytes", "new": "3e0617004001"}
+  {"addr": "0x20011576", "stock": "3e07ff00f0ff", "op": "bytes", "new": "3e0617004501"}
  ]
 }

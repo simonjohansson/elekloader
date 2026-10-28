@@ -164,9 +164,9 @@ the voice pipeline at `0x1c9459`. Its guarded six-byte stack adjustment is
 `8715ffffeeff`; the adapter executes it and continues at `0xb8251e`.
 Rebuild both machine adapters from `mods/machines-dn2/*-bridge.s` with
 `rebuild_voice.py`; the Selache pin is
-`2b26d3b75c53063575bc5c820fa0d38879335187`. The voice adapter's 1,840 code
+`2b26d3b75c53063575bc5c820fa0d38879335187`. The voice adapter's 1,980 code
 bytes are padded to 2 KiB, SHA-256
-`47c17e0be5576ae67069c4d9b528f475b0037e441fe0a30c1b14ece200a27947`.
+`5bbf8b98c5ff13d4121a17e2d7a8ca550f05821b4564a67c0ce84737319da3f0`.
 
 The adapter uses register counts for right shifts. This Selache pin omits
 the required sign-extension bits in negative immediate shifts, which can

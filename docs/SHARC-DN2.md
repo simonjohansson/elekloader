@@ -124,6 +124,7 @@ SHARC mod, and builds without one keep a stock DSP.
   DSP reads word k of the tail (byte `0xa80` of the frame) as halfword
   2k + 1 above halfword 2k. The request is four words: `0xd5ee | seq << 16`,
   address, count (1..1024 words), and the first three xor `0x5a5a5a5a`.
+  Sequences whose low four bits are zero are skipped, reserving reply tag zero for idle.
   Stock leaves the tail zero, and stock DSP code ignores it.
 - **The answer** comes from a stub at the end of the block handler: the
   hook replaces the store at PC16 `0x1c9e5f` (`mods/core-dn2/peek.s`, rebuilt

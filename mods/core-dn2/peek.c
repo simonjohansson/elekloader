@@ -56,7 +56,9 @@ int core_dsp_peek(unsigned address, unsigned count)
         got[i] = 0;
     received = refused = 0;
     total = 2 * count;
-    s = seq = (seq + 1) & 0xffff;
+    do {                                      /* Reply tag zero means idle. */
+        s = seq = (seq + 1) & 0xffff;
+    } while (!(s & 15));
     request[1] = address;
     request[2] = count;
     request[3] = (MAGIC | s << 16) ^ address ^ count ^ CHECK;

@@ -11,7 +11,9 @@ whole windows with it.
 import json
 import os
 from pathlib import Path
+import shutil
 import struct
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -24,6 +26,17 @@ READY = os.environ.get('ELEKLOADER_DN2_EMU_READY')
 MS = 132000  # emulated instructions per millisecond
 RETURN = 'fe4d3f0e3f083f3401190100'  # I12=DM(M7,I6); JUMP(M14,I12)(DB); RFRAME; NOP;
 NAMES = ('request', 'words', 'got', 'received', 'total', 'refused', 'seq')
+
+
+@unittest.skipUnless(shutil.which('cc'), 'needs a native C compiler')
+class ColdFirePeekTests(unittest.TestCase):
+    def test_idle_replies_cannot_complete_a_read_across_sequence_wrap(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            executable = str(Path(tmp) / 'peek')
+            subprocess.run(['cc', '-std=c99', '-Wall', '-Werror',
+                            '-I', str(ROOT / 'elekloader/sdk/include'),
+                            str(ROOT / 'tests/test_dn2_dsp_peek.c'), '-o', executable], check=True)
+            subprocess.run([executable], check=True)
 
 
 @unittest.skipUnless(STOCK and DIGIKIT and EMUD and READY and os.environ.get('ELEKLOADER_CROSS'),
@@ -77,6 +90,8 @@ class DspPeekTests(unittest.TestCase):
                 def peek(address, count):
                     """Start a read as core_dsp_peek does, wait for it, -> (refused, words)."""
                     seq = (emu.peek32(at['seq']) + 1) & 0xffff
+                    if not seq & 15:
+                        seq = (seq + 1) & 0xffff
                     emu.poke32(at['request'], 0)
                     for i in range(0, 256, 4):
                         emu.poke32(at['got'] + i, 0)
@@ -97,6 +112,9 @@ class DspPeekTests(unittest.TestCase):
                 data = machine_layout('filter')['data_address']
                 self.assertEqual(peek(data, 8), (0, [int.from_bytes(pattern[4 * i:4 * i + 4], 'little') for i in range(8)]))
                 self.assertEqual(peek(0x31000000, 1)[0], 1)              # peripherals are refused
+                self.assertEqual(peek(0x200f9ffc, 1)[0], 0)             # the last readable L2 word
+                self.assertEqual(peek(0x200f9ffc, 2)[0], 1)             # crossing its end is refused
+                self.assertEqual(peek(0xfffffffc, 1)[0], 1)             # as is a uint32-wrapping end
                 self.assertEqual(peek(guard, 1), (0, [profile['stack_guard']]))   # and the next read is clean
                 wait(1500)                                               # two 1024-block windows
                 seq, idle, total, peak_idle, peak_total, seq2 = struct.unpack(

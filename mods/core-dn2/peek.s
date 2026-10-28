@@ -93,6 +93,8 @@ R11=R14 AND R11;
 IF NE JUMP refuse;
 R11=LSHIFT R15 BY 2;
 R11=R11+R14;                // the end
+COMPU(R11,R14);
+IF LE JUMP refuse;         // reject an end that wrapped past uint32
 R13=0x240000;
 COMPU(R14,R13);
 IF LT JUMP refuse;

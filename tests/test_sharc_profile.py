@@ -38,7 +38,7 @@ class ProfileTests(unittest.TestCase):
         self.assertEqual(PROFILE['patch_ranges'], ((0x2838489a, 0x283848a0), (0x20004a36, 0x20004a3c),
                                                   (0x28392b0e, 0x28392b14), (0x8052dba4, 0x8052dba8),
                                                   (0x28393cbe, 0x28393cc4)))
-        self.assertEqual(PROFILE['data_sites'], {0x20011576: ('3e07ff00f0ff', '3e0617004001')})
+        self.assertEqual(PROFILE['data_sites'], {0x20011576: ('3e07ff00f0ff', '3e0617004501')})
         self.assertEqual(PROFILE['abi'], 'dn2-master-mono32-v1')
         self.assertEqual(PROFILE['l2_abi'], 'dn2-master-mono32-l2-v1')
         self.assertEqual(PROFILE['pitch_range'], (0x282dda00, 0x282dde00))

@@ -103,6 +103,11 @@ class SharcTests(unittest.TestCase):
         patched = sharc.insert(data, profile, patches=[(0x20001000, b'\x05\x06', b'\xaa\xbb')])
         self.assertEqual(patched[84:88], b'\xaa\xbb\x07\x08')
         self.assertEqual(patched[:84] + patched[88:], data[:84] + data[88:])
+        companion = dict(profile, patch_ranges=(), data_sites={0x20001000: ('0506', 'aabb')})
+        self.assertEqual(sharc.insert(data, companion, patches=[(0x20001000, b'\x05\x06', b'\xaa\xbb')]), patched)
+        self.refusal(lambda: sharc.insert(data, companion,
+                     patches=[(0x20001000, b'\x05\x06', b'\xaa\xcc')]),
+                     'SHARC patch is outside the profile patch range')
         self.refusal(lambda: sharc.insert(data, profile,
                      patches=[(0x20001000, b'\x00\x06', b'\xaa\xbb')]),
                      'SHARC patch stock instruction does not match')

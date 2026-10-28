@@ -19,6 +19,9 @@ DM(0x268a38)=R1;            // the store the hook displaced
 // (dn2_idle_entry adds them) and its total cycles, in the record at 0x2e0630: seq, idle, total, the
 // busiest window's idle and total, seq again (two different seqs: read across an update). Busy is
 // not headroom: stock's audio task also holds the DSP while it waits.
+R13=DM(0x2e0610);
+R13=PASS R13;
+IF EQ JUMP peek;            // no idle hook: leave the busy record zero
 R13=DM(0x2e0618);
 R13=R13+1;
 DM(0x2e0618)=R13;

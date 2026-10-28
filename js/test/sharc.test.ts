@@ -162,6 +162,10 @@ test('SHARC instruction patch requires exact unique stock load', () => {
   const p = { ...synthetic, decodedSha256: sha(data), patchRanges: [[0x20001000, 0x20001004] as [number, number]] }
   const patched = sharc.insert(data, p, [], [], [[0x20001000, bytes('0506'), bytes('aabb')]])
   assert.equal(Buffer.from(patched.subarray(84, 88)).toString('hex'), 'aabb0708')
+  const companion = { ...p, patchRanges: [], dataSites: { 0x20001000: ['0506', 'aabb'] as [string, string] } }
+  assert.deepEqual(sharc.insert(data, companion, [], [], [[0x20001000, bytes('0506'), bytes('aabb')]]), patched)
+  refusal(() => sharc.insert(data, companion, [], [], [[0x20001000, bytes('0506'), bytes('aacc')]]),
+    'SHARC patch is outside the profile patch range')
   refusal(() => sharc.insert(data, p, [], [], [[0x20001000, bytes('0006'), bytes('aabb')]]),
     'SHARC patch stock instruction does not match')
   refusal(() => sharc.insert(data, { ...p, patchRanges: [] }, [], [], [[0x20001000, bytes('0506'), bytes('aabb')]]),
@@ -192,7 +196,8 @@ test('SHARC owner-stock exact no-op', { skip: !process.env.ELEKLOADER_DN2_SYX },
   assert.equal(Buffer.from(patched.subarray(changed[0], changed[0] + 6)).toString('hex'), '3e06160006eb')
   // core-dn2's DSP peek, as the linker inserts it with any SHARC mod: owned, and its hook matches stock.
   const [peekLo, peekHi] = profile.peekRange!, peek = bytes(profile.peekCode!), [site, old, replacement] = profile.peekHook!
-  const [idleSite, idleOld, idleNew] = profile.idleHook!
+  const [idleAddress, [idleOld, idleNew]] = Object.entries(profile.dataSites!)[0]
+  const idleSite = Number(idleAddress)
   const withPeek = sharc.insert(decoded, profile, [[peekLo, peek]], [[peekLo + peek.length, peekHi - peekLo - peek.length, 0]],
     [[site, bytes(old), bytes(replacement)], [idleSite, bytes(idleOld), bytes(idleNew)]])
   const peekRecords = sharc.parse(withPeek, profile)
@@ -345,5 +350,24 @@ test('DN2 machine IDs can span stored parts without losing the SHARC registratio
     assert.deepEqual(relocated.impliedNames(image), [])
     assert(check([core, relocated], image).includes(
       'voice 0.1: SHARC voice machine_id must match its single native voice registration'))
+  }
+})
+
+test('DN2 busy companion accepts only its exact data site and requires a SHARC payload', () => {
+  const rel = DIGITONE_MK2.releases[0], target = targetOf(DIGITONE_MK2, rel)
+  const [address, [old, replacement]] = Object.entries(profile.dataSites!)[0]
+  const doc = { elemod: 2, id: 'busy', version: '0.1', target, sections: {},
+    sites: [{ addr: Number(address), len: bytes(old).length, kind: 'data', stock_sha256: sha(bytes(old)), new: replacement }] }
+  const busy = new Mod2(doc, 'busy')
+  const image = new Uint8Array(rel.mainLen)
+  assert.ok(check([busy], image).includes('busy 0.1: SHARC data site requires a SHARC mod'))
+  const core = new Mod2({ elemod: 2, id: 'core', version: '0.3', target,
+    sections: { '.boot': { parts: [['hex', '4e75']] } } }, 'core')
+  const app = new Mod2({ elemod: 2, id: 'app', version: '0.1', target, sections: {}, sharc: inertArtifact }, 'app')
+  assert.deepEqual(check([core, busy, app], image), [])
+  for (const change of [{ new: old }, { kind: 'code' }, { stock_sha256: '0'.repeat(64) },
+    { relocs: [[0, 'abs32', 'abs', 0]] }, { len: 4, new: replacement.slice(0, 8) }]) {
+    refusal(() => new Mod2({ ...doc, sites: [{ ...doc.sites[0], ...change }] }, 'busy'),
+      'busy site 0: unqualified SHARC data site')
   }
 })

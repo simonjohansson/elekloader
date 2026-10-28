@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // The DN2's observed boot-record subset. Paired with elekloader/sharc.py; no external parser code.
-import { sha } from './bytes.ts'
+import { equal, fromHex, sha } from './bytes.ts'
 import type { SharcProfile } from './devices.ts'
 import { ModError } from './elemod.ts'
 
@@ -138,7 +138,9 @@ export function insert(stream: Uint8Array, profile: SharcProfile,
       old.length !== replacement.length || target % 2 || old.length % 2)
       throw new ModError('SHARC patch needs equal nonempty instruction bytes')
     const [lo, hi] = byteSpan(profile, target, old.length, 'loader-byte', false)
-    if (!profile.patchRanges?.some(([start, end]) => start <= lo && hi <= end))
+    const qualified = profile.dataSites?.[target]
+    if (!(qualified && equal(old, fromHex(qualified[0])!) && equal(replacement, fromHex(qualified[1])!)) &&
+      !profile.patchRanges?.some(([start, end]) => start <= lo && hi <= end))
       throw new ModError('SHARC patch is outside the profile patch range')
     const overlaps = records.filter(r => (r.flags === LOAD || r.flags === FILL) && r.target < hi && lo < r.target + r.count)
     if (overlaps.length !== 1 || overlaps[0].flags !== LOAD || overlaps[0].target > lo || hi > overlaps[0].target + overlaps[0].count)

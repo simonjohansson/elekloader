@@ -184,7 +184,9 @@ def insert(stream, profile, *, loads=(), fills=(), patches=()):
                 or target % 2 or len(old) % 2:
             raise ModError('SHARC patch needs equal nonempty instruction bytes')
         lo, hi = byte_span(profile, target, len(old), check_protected=False)
-        if not any(start <= lo and hi <= end for start, end in profile.get('patch_ranges', ())):
+        qualified = profile.get('data_sites', {}).get(target)
+        if qualified != (old.hex(), new.hex()) and not any(
+                start <= lo and hi <= end for start, end in profile.get('patch_ranges', ())):
             raise ModError('SHARC patch is outside the profile patch range')
         overlaps = [r for r in records if r.flags in (LOAD, FILL)
                     and r.target < hi and lo < r.target + r.count]

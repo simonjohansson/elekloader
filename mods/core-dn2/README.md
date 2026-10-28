@@ -22,6 +22,9 @@ Core **0.3** adds the DSP peek (`peek.c` on the ColdFire, `peek.s` on the
 DSP; [SHARC-DN2.md](../../docs/SHARC-DN2.md#the-dsp-peek)): one more site,
 the frame sender's call of the SPI driver, and nothing else changes on the
 control side. A mod that calls the peek sets `resources.core: "0.3"`.
+The optional [dspbusy-dn2 companion](../dspbusy-dn2/README.md) enables the
+busy measure in builds with a SHARC mod; without it the record stays zero
+and the peek still works.
 
 `bridge.sharc.json` is the bridge, already compiled and linked from
 `sharc-bridge.s`, with the slot and pitch reader the

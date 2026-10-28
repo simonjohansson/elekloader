@@ -5,7 +5,8 @@ A build with a SHARC filter carries the peek's DSP side. The test starts reads a
 core_dsp_peek does, by writing the core's request variables, and checks that the answers
 arriving through reply word 2 are the DSP's memory: the filter stack's guard word, the
 filter's data, and a refusal for a peripheral address. It also checks that the record of how
-busy the DSP is (CORE_DSP_BUSY_RECORD) publishes whole windows.
+busy the DSP is (CORE_DSP_BUSY_RECORD) stays zero without dspbusy-dn2 and publishes
+whole windows with it.
 """
 import json
 import os
@@ -29,6 +30,12 @@ NAMES = ('request', 'words', 'got', 'received', 'total', 'refused', 'seq')
                      'needs DN2 stock, the cross compiler, DigiKit, its digi-emud and ready inputs')
 class DspPeekTests(unittest.TestCase):
     def test_reads_dsp_memory_and_refuses_peripherals(self):
+        self.check_build(False)
+
+    def test_busy_companion_publishes_windows(self):
+        self.check_build(True)
+
+    def check_build(self, busy):
         from elekloader import patch
         from elekloader.devices.digitone_mk2 import DEVICE
         from elekloader.sdk import build as sdk
@@ -38,6 +45,8 @@ class DspPeekTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp)
             mods = [sdk.build(str(ROOT / 'mods' / src), STOCK, str(work / src))[0] for src in ('core-dn2', 'machines-dn2')]
+            if busy:
+                mods.append(sdk.build(str(ROOT / 'mods/dspbusy-dn2'), STOCK, str(work / 'busy'))[0])
             stage = work / 'custom'
             stage.mkdir()
             (stage / 'machine.c').write_text('#include "mk2/machines.h"\n'
@@ -93,8 +102,11 @@ class DspPeekTests(unittest.TestCase):
                 seq, idle, total, peak_idle, peak_total, seq2 = struct.unpack(
                     '<6I', bytes.fromhex(emu.call('dsp.peek', addr=0x282e0630, len=24)['hex']))
                 self.assertEqual(seq, seq2)
-                self.assertGreaterEqual(seq, 1)
-                self.assertTrue(0 < total and idle <= total and peak_idle <= peak_total)
+                if busy:
+                    self.assertGreaterEqual(seq, 1)
+                    self.assertTrue(0 < idle < total and 0 < peak_idle <= peak_total)
+                else:
+                    self.assertEqual((seq, idle, total, peak_idle, peak_total, seq2), (0,) * 6)
                 status = emu.status()
                 self.assertIsNone(status['cf'].get('error'))
                 self.assertIsNone(status['audio']['halted'])

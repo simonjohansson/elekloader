@@ -17,7 +17,7 @@ import { pSpan } from './dsp.ts'
 import {
   type AnyMod, type Part, type Region, type Site, type Span, COMMON, ModError, RSIZE, cmpVersions, commonChecks, formatOf, get,
   hexBytes, insnCheck, int, isDict, iter, overlaps, parseNeedsCore, parseParts, parseResources, parseSites, partsBytes, partsLen,
-  pyEq, resolveTarget, summarize, unpack,
+  pyEq, resolveTarget, sharcSite, summarize, unpack,
 } from './elemod.ts'
 import { PCREL, decodeColdFire, readerAt } from './isa/coldfire.ts'
 import { AttributeError, KeyError, PyException, ValueError, hex8, pyType, repr, str } from './py.ts'
@@ -384,6 +384,9 @@ export function check(mods: Mod2[], image: Uint8Array): string[] {
         bad.push(`${m.label()} needs core ${m.needsCore} or newer, and this build has core ${cores[0].version}`)
   }
   const sharcMods = mods.filter(m => m.sharc && !m.sections.has('.boot'))
+  for (const m of mods)
+    if (!sharcMods.length && m.sites.some(s => sharcSite(m.rel, s.addr)))
+      bad.push(`${m.label()}: SHARC data site requires a SHARC mod`)
   if (sharcMods.length > 1 && sharcMods.map(m => m.sharc!.machineKind).sort().join(',') !== 'filter,voice')
     bad.push('SHARC mods may combine only one DN2 voice and one DN2 filter')
   for (const kind of ['voice', 'filter'] as const) {
@@ -660,8 +663,12 @@ export function link(mods: Mod2[], image: Uint8Array, lock: store.Lock | null = 
     const [peekLo, peekHi] = rel.sharc!.peekRange!, peek = hexBytes(rel.sharc!.peekCode!, 'SHARC peek')
     allLoads.push([peekLo, peek])
     allFills.push([peekLo + peek.length, peekHi - peekLo - peek.length, 0])
-    for (const [site, old, replacement] of [rel.sharc!.peekHook!, rel.sharc!.idleHook!])
-      allPatches.push([site, hexBytes(old, 'SHARC stock hook'), hexBytes(replacement, 'SHARC peek hook')])
+    const [site, old, replacement] = rel.sharc!.peekHook!
+    allPatches.push([site, hexBytes(old, 'SHARC stock hook'), hexBytes(replacement, 'SHARC peek hook')])
+    for (const m of order) for (const s of m.sites) {
+      const qualified = sharcSite(rel, s.addr)
+      if (qualified) allPatches.push([s.addr, hexBytes(qualified[0], 'SHARC site'), s.new])
+    }
     dspStream = sharcRecords.insert(sharcStream, rel.sharc!,
       allLoads, allFills, allPatches)
     dspStored = syx.packMain(dspStream)
@@ -950,6 +957,7 @@ export function link(mods: Mod2[], image: Uint8Array, lock: store.Lock | null = 
   for (const [c, [tag]] of dspTables) dspPut(tag, tabAt.get(c)!, tab.get(c)!)
   for (const m of order) {
     for (const s of m.sites) {
+      if (sharcSite(rel, s.addr)) continue
       const nw = s.new.slice()
       for (const [off, typ, tgt, add] of s.relocs) place(m, nw, off, typ, tgt, add, s.addr + off, `site ${hex8(s.addr)}`)
       img.set(nw, s.addr - dev.mainLoad)
@@ -967,7 +975,7 @@ export function link(mods: Mod2[], image: Uint8Array, lock: store.Lock | null = 
     }
   }
   const declared: [number, number, string][] = []
-  for (const m of order) for (const s of m.sites) declared.push([s.addr, s.addr + s.len, `${m.label()} site ${hex8(s.addr)}`])
+  for (const m of order) for (const s of m.sites) if (!sharcSite(rel, s.addr)) declared.push([s.addr, s.addr + s.len, `${m.label()} site ${hex8(s.addr)}`])
   for (const [k, tag] of [...dspSecs].sort((a, b) => base.get(a[0])! - base.get(b[0])!)) {
     const words = Math.floor((content.get(k)?.length ?? 0) / 3)
     if (words) {

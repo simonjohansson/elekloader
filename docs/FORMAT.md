@@ -37,6 +37,11 @@ A **site** is a change to the stock main OS:
 - A `code` site must be whole instructions: the end exactly, and the start
   by linear sweeps that must all land on it.
 - `relocs` exist in format 2 only.
+- On the Digitone II, format 2 also accepts the profile's exact SHARC
+  `data_sites`: fixed data sites with no relocations. Their stock hash,
+  length and replacement must match the profile. They patch section 7
+  through the SHARC writer, require a SHARC mod, and share the usual
+  overlap checks. Other addresses outside the main OS are refused.
 
 Wherever a mod's bytes repeat the firmware, it can say
 `["stock", "0x40071998", 58]` in place of the bytes. The loader then copies

@@ -130,7 +130,9 @@ the one a mod that uses it names in `resources.core`.
   mods, one mod's code on the DSP at the master output (core-dn2 0.2;
   ADAPTING.md, "SHARC mods"; the [callback contract](SHARC-DN2-ABI.md) and
   the [sine example](../examples/sharc-sine/README.md)); from 0.3 a DSP
-  memory peek (ADAPTING.md, "The DSP peek"). The
+  memory peek (ADAPTING.md, "The DSP peek"). The optional
+  [dspbusy-dn2 companion](../mods/dspbusy-dn2/README.md) enables the busy
+  measure for a build with a SHARC mod. The
   [machines companion](MACHINES-DN2.md) adds a
   [selectable track synth](MACHINES-DN2-VOICE.md) and a
   [custom filter](MACHINES-DN2-FILTER.md) through the `mk2_*` tables. An

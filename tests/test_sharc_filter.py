@@ -8,7 +8,7 @@ import struct
 import tempfile
 import unittest
 
-from elekloader import elemod, formats, link, sharc
+from elekloader import devices, elemod, formats, link, sharc
 from elekloader.devices.digitone_mk2 import DEVICE
 from elekloader.sdk import build as sdk
 from elekloader.sdk.sharc import filter_artifact, machine_layout, voice_artifact
@@ -23,6 +23,26 @@ def artifact():
 
 
 class EnvelopeTests(unittest.TestCase):
+    def test_only_the_exact_profiled_sharc_data_site_is_accepted(self):
+        address, (old, new) = next(iter(PROFILE['data_sites'].items()))
+        doc = {'elemod': 2, 'id': 'busy', 'version': '0.1',
+               'target': devices.target_of(DEVICE, DEVICE.releases['1.12']), 'sections': {},
+               'sites': [{'addr': address, 'len': len(bytes.fromhex(old)), 'kind': 'data',
+                          'stock_sha256': elemod.sha(bytes.fromhex(old)), 'new': new}]}
+        self.assertEqual(len(link.Mod2(doc).sites), 1)
+        for change in ({'new': old}, {'kind': 'code'}, {'stock_sha256': '0' * 64},
+                       {'relocs': [[0, 'abs32', 'abs', 0]]}, {'len': 4, 'new': new[:8]}):
+            bad = copy.deepcopy(doc)
+            bad['sites'][0].update(change)
+            with self.subTest(change=change), self.assertRaisesRegex(elemod.ModError, 'unqualified SHARC data site'):
+                link.Mod2(bad)
+        bad = copy.deepcopy(doc)
+        bad['sites'][0]['addr'] += 2
+        with self.assertRaisesRegex(elemod.ModError, 'outside the stock image'):
+            link.Mod2(bad)
+        with self.assertRaisesRegex(elemod.ModError, 'outside the stock image'):
+            elemod.parse_sites(doc, 'format-1', DEVICE, DEVICE.releases['1.12'])
+
     def test_filter_layout_and_producer_bounds(self):
         payload = sharc.module_payload(artifact(), PROFILE)
         self.assertEqual(payload['owner'], (0x200a0000, 0x200b0000))
@@ -104,6 +124,7 @@ class PairLinkTests(unittest.TestCase):
         cls.stream = cls.stock.section(7)
         cls.base = [elemod.load_any(sdk.build(str(ROOT / 'mods' / src), STOCK, str(root / src))[0])
                     for src in ('core-dn2', 'machines-dn2')]
+        cls.busy = elemod.load_any(sdk.build(str(ROOT / 'mods/dspbusy-dn2'), STOCK, str(root / 'busy'))[0])
         cls.mods = {}
         for kind, producer, native in (('voice', voice_artifact, 'synth'), ('filter', filter_artifact, 'filter')):
             for machine_id in (6, 7):
@@ -190,13 +211,36 @@ class PairLinkTests(unittest.TestCase):
         lo, hi = PROFILE['peek_range']
         code = bytes.fromhex(PROFILE['peek_code'])
         self.assertEqual(self.at(out.sharc_stream, lo, len(code)), code)
-        for hook in ('peek_hook', 'idle_hook'):
-            site, old, new = PROFILE[hook]
-            self.assertEqual(self.at(self.stream, site), bytes.fromhex(old))
-            self.assertEqual(self.at(out.sharc_stream, site), bytes.fromhex(new))
+        site, old, new = PROFILE['peek_hook']
+        self.assertEqual(self.at(self.stream, site), bytes.fromhex(old))
+        self.assertEqual(self.at(out.sharc_stream, site), bytes.fromhex(new))
+        for site, (old, _new) in PROFILE['data_sites'].items():
+            self.assertEqual(self.at(out.sharc_stream, site), bytes.fromhex(old))
         records = sharc.parse(out.sharc_stream, PROFILE)
         self.assertTrue(any(r.flags == sharc.FILL and r.target == lo + len(code) and r.count == hi - lo - len(code)
                             for r in records))
+
+    def test_busy_companion_requires_a_sharc_mod_and_owns_only_its_site(self):
+        self.assertEqual(self.busy.sections, {})
+        self.assertIsNone(self.busy.sharc)
+        self.assertEqual(link.check(self.base + [self.busy], self.image),
+                         ['dspbusy-dn2 0.1: SHARC data site requires a SHARC mod'])
+        mods = self.base + [self.mods['voice-6'], self.busy]
+        self.assertEqual(link.check(mods, self.image), [])
+        plain = self.linked(self.mods['voice-6'])
+        busy = self.linked(self.mods['voice-6'], self.busy)
+        self.assertEqual(plain.image, busy.image)
+        address, (old, new) = next(iter(PROFILE['data_sites'].items()))
+        self.assertEqual(self.at(plain.sharc_stream, address), bytes.fromhex(old))
+        self.assertEqual(self.at(busy.sharc_stream, address), bytes.fromhex(new))
+        changed = [i for i, (a, b) in enumerate(zip(plain.sharc_stream, busy.sharc_stream)) if a != b]
+        record = next(r for r in sharc.parse(self.stream, PROFILE)
+                      if r.flags == sharc.LOAD and r.target <= address < r.target + r.count)
+        offset = record.offset + 16 + address - record.target
+        self.assertEqual(changed, [offset + i for i, (a, b) in enumerate(zip(bytes.fromhex(old), bytes.fromhex(new))) if a != b])
+        duplicate = copy.deepcopy(self.busy.doc)
+        duplicate['id'] = 'other-busy'
+        self.assertTrue(any('overlap' in e for e in link.check(mods + [link.Mod2(duplicate)], self.image)))
 
     def test_each_machine_gets_its_own_guarded_stack_in_l1(self):
         for kind, other in (('voice', 'filter'), ('filter', 'voice')):

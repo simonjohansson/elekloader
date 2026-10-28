@@ -181,8 +181,11 @@ measures it (EMUCLK cycles); it is not the DSP's load. DigiHealth's
 `dsppeek` uses these. The protocol is in [SHARC-DN2.md](SHARC-DN2.md#the-dsp-peek).
 `CORE_DSP_BUSY_RECORD` is the DSP address of a record, read with the peek,
 of how busy the DSP is: the share of cycles outside FreeRTOS's idle task
-over the last 1024 blocks and over the busiest such window. It is not
-headroom (SHARC-DN2.md says why); DigiHealth's `dspbusy` reads it.
+over the last 1024 blocks and over the busiest such window. Add the
+code-free [dspbusy-dn2 companion](../mods/dspbusy-dn2/README.md) to enable
+it; it requires core 0.3 and a SHARC mod. Without it the record stays zero
+and the peek still works. It is not headroom (SHARC-DN2.md says why);
+DigiHealth's `dspbusy` reads it.
 
 The Analog Rytm MKII's core (mods/core-ar2) has `ev_tick`, `ev_draw`,
 `ev_key`, `ev_enc`, `ev_settings`, `ev_render_in` and `ev_render_out`, and
@@ -3224,6 +3227,8 @@ Some differences from an octabam build, by design:
 | `is a DSP reference to a ColdFire address` (or the reverse) | a `dsp24` relocation names a ColdFire symbol, or a ColdFire one a DSP label | name the right symbol; DSP labels are word addresses on the DSP |
 | `dsp_asm is not installed` | the SDK needs octabam's DSP assembler | build octabam's `vendor/dsp56300` and set `ELEKLOADER_DSP_ASM` |
 | `the label N is part of a longer word here` (SDK) | dsp_asm would put N's address inside that word | rename the label |
+| `unqualified SHARC data site` | a companion's data site differs from the profile's exact stock hash, length or replacement, uses code or has relocations | rebuild the unmodified [dspbusy-dn2 companion](../mods/dspbusy-dn2/README.md) with a matching loader |
+| `SHARC data site requires a SHARC mod` | the idle hook would jump into absent DSP code | add a SHARC mod or omit dspbusy-dn2 |
 | `SHARC ABI does not match the device profile` | the artifact does not name a supported master-output, track-synth or track-filter contract | build for the matching [SHARC contract](FORMAT.md#digitone-ii-sharc-mod); changing only the ABI string does not relocate code |
 | `SHARC voice machine_id must match its single native voice registration` / `DN2 voice registration requires a matching SHARC voice payload` | a voice descriptor and DSP artifact disagree, or the artifact is absent | package one matching descriptor and payload as the [track-synth contract](MACHINES-DN2-VOICE.md) describes |
 | `SHARC filter machine_id must match its single native filter registration` / `DN2 filter registration requires a matching SHARC filter payload` | a filter descriptor and DSP artifact disagree, or the artifact is absent | package one matching descriptor and payload as the [filter contract](MACHINES-DN2-FILTER.md) describes |

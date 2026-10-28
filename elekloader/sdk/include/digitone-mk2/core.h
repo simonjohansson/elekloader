@@ -29,4 +29,10 @@ void core_dsp_peek_stop(void);
 /* The block handler's span as stock measures it (EMUCLK cycles, the DSP reply's word 0): the
  * latest, and the peak since the last call. It is not the DSP's load. */
 void core_dsp_span(unsigned *latest, unsigned *peak);
+/* core-dn2 0.3, with a SHARC mod: the DSP address of a record of how busy the DSP is, for the
+ * peek. Six words: seq; the idle task's cycles and all cycles over the last 1024 blocks; the same
+ * for the busiest such window; seq again (equal seqs: one window). The DSP runs at 1 GHz (666,667
+ * cycles a block). Busy (1 - idle / all) is time outside FreeRTOS's idle task, which includes
+ * stock's audio task waiting, so it is not headroom. */
+enum { CORE_DSP_BUSY_RECORD = 0x2e0630 };
 #endif

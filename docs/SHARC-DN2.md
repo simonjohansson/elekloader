@@ -143,6 +143,18 @@ SHARC mod, and builds without one keep a stock DSP.
 On a unit (OS 1.12) the peek reads the machine stacks' guard words and its
 own code back exactly, and refuses a peripheral address; audio is unchanged.
 
+**How busy the DSP is.** A second hook takes the idle task's jump back
+(PC16 `0xb88abb`, loader `0x20011576`): each pass adds the cycles since the
+last one to an idle total, unless the gap is 3000 cycles or more, which was
+other work. Every 1024 blocks the stub publishes the window's idle and
+total cycles, and the busiest window's, at `0x2e0630` (`CORE_DSP_BUSY_RECORD`),
+between two copies of a sequence number. The DSP runs at 1 GHz: 666,706
+cycles a block on a unit. There, the share outside the idle task was about
+80% with nothing playing and 65% with 64 notes held: stock's audio task
+holds the DSP for most of each block and less of it under load, so the
+share counts waiting and is not headroom. Stock's reply word 0, the block
+handler's span, behaves the same way (79% and 68%).
+
 ## Qualification
 
 The current C and assembly sources were checked with fresh builds,

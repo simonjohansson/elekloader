@@ -190,9 +190,10 @@ class PairLinkTests(unittest.TestCase):
         lo, hi = PROFILE['peek_range']
         code = bytes.fromhex(PROFILE['peek_code'])
         self.assertEqual(self.at(out.sharc_stream, lo, len(code)), code)
-        site, old, new = PROFILE['peek_hook']
-        self.assertEqual(self.at(self.stream, site), bytes.fromhex(old))
-        self.assertEqual(self.at(out.sharc_stream, site), bytes.fromhex(new))
+        for hook in ('peek_hook', 'idle_hook'):
+            site, old, new = PROFILE[hook]
+            self.assertEqual(self.at(self.stream, site), bytes.fromhex(old))
+            self.assertEqual(self.at(out.sharc_stream, site), bytes.fromhex(new))
         records = sharc.parse(out.sharc_stream, PROFILE)
         self.assertTrue(any(r.flags == sharc.FILL and r.target == lo + len(code) and r.count == hi - lo - len(code)
                             for r in records))

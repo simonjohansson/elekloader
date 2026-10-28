@@ -37,6 +37,13 @@ PROCESSOR p0 {OUTPUT($COMMAND_LINE_OUTPUT_FILE) SECTIONS {
         code += b'\x01\x00' * (len(code) // 2 % 2)        # to whole words
         print('peek: %d bytes; SHA-256 %s' % (len(code), hashlib.sha256(code).hexdigest()))
         print(code.hex())
+        symtab = next(s for s in sections if s[1] == 2)
+        names = sections[symtab[6]]
+        for at in range(symtab[4], symtab[4] + symtab[5], 16):
+            name, value = struct.unpack_from('<II', raw, at)
+            name = raw[names[4] + name:raw.index(b'\0', names[4] + name)].decode()
+            if name.startswith('dn2_') and name.endswith('_entry'):
+                print('%s: PC16 %#x' % (name, value))       # symbols are PC16
 
 
 if __name__ == '__main__':

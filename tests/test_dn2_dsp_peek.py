@@ -4,11 +4,13 @@
 A build with a SHARC filter carries the peek's DSP side. The test starts reads as
 core_dsp_peek does, by writing the core's request variables, and checks that the answers
 arriving through reply word 2 are the DSP's memory: the filter stack's guard word, the
-filter's data, and a refusal for a peripheral address.
+filter's data, and a refusal for a peripheral address. It also checks that the record of how
+busy the DSP is (CORE_DSP_BUSY_RECORD) publishes whole windows.
 """
 import json
 import os
 from pathlib import Path
+import struct
 import sys
 import tempfile
 import unittest
@@ -87,6 +89,12 @@ class DspPeekTests(unittest.TestCase):
                 self.assertEqual(peek(data, 8), (0, [int.from_bytes(pattern[4 * i:4 * i + 4], 'little') for i in range(8)]))
                 self.assertEqual(peek(0x31000000, 1)[0], 1)              # peripherals are refused
                 self.assertEqual(peek(guard, 1), (0, [profile['stack_guard']]))   # and the next read is clean
+                wait(1500)                                               # two 1024-block windows
+                seq, idle, total, peak_idle, peak_total, seq2 = struct.unpack(
+                    '<6I', bytes.fromhex(emu.call('dsp.peek', addr=0x282e0630, len=24)['hex']))
+                self.assertEqual(seq, seq2)
+                self.assertGreaterEqual(seq, 1)
+                self.assertTrue(0 < total and idle <= total and peak_idle <= peak_total)
                 status = emu.status()
                 self.assertIsNone(status['cf'].get('error'))
                 self.assertIsNone(status['audio']['halted'])

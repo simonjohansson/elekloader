@@ -179,6 +179,10 @@ halfword of each word first. One halfword arrives per audio block, about
 `core_dsp_span(&latest, &peak)` gives the block handler's span as stock
 measures it (EMUCLK cycles); it is not the DSP's load. DigiHealth's
 `dsppeek` uses these. The protocol is in [SHARC-DN2.md](SHARC-DN2.md#the-dsp-peek).
+`CORE_DSP_BUSY_RECORD` is the DSP address of a record, read with the peek,
+of how busy the DSP is: the share of cycles outside FreeRTOS's idle task
+over the last 1024 blocks and over the busiest such window. It is not
+headroom (SHARC-DN2.md says why); DigiHealth's `dspbusy` reads it.
 
 The Analog Rytm MKII's core (mods/core-ar2) has `ev_tick`, `ev_draw`,
 `ev_key`, `ev_enc`, `ev_settings`, `ev_render_in` and `ev_render_out`, and

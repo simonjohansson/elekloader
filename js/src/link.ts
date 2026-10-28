@@ -658,10 +658,10 @@ export function link(mods: Mod2[], image: Uint8Array, lock: store.Lock | null = 
     }
     // core-dn2's DSP peek rides along whenever section 7 changes (mods/core-dn2/peek.s).
     const [peekLo, peekHi] = rel.sharc!.peekRange!, peek = hexBytes(rel.sharc!.peekCode!, 'SHARC peek')
-    const [peekSite, peekOld, peekNew] = rel.sharc!.peekHook!
     allLoads.push([peekLo, peek])
     allFills.push([peekLo + peek.length, peekHi - peekLo - peek.length, 0])
-    allPatches.push([peekSite, hexBytes(peekOld, 'SHARC stock hook'), hexBytes(peekNew, 'SHARC peek hook')])
+    for (const [site, old, replacement] of [rel.sharc!.peekHook!, rel.sharc!.idleHook!])
+      allPatches.push([site, hexBytes(old, 'SHARC stock hook'), hexBytes(replacement, 'SHARC peek hook')])
     dspStream = sharcRecords.insert(sharcStream, rel.sharc!,
       allLoads, allFills, allPatches)
     dspStored = syx.packMain(dspStream)
